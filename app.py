@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import os
+import re
 from datetime import datetime
 import pytz
 
@@ -74,6 +75,8 @@ st.markdown("""
     .delta-neutral { color: #95a5a6; font-size: 14px; font-weight: bold; margin-top: 8px; }
     .bi-title { color: #ffaa00; font-size: 24px; font-weight: bold; border-bottom: 2px solid #ffaa00; padding-bottom: 5px; margin-top: 40px; margin-bottom: 20px;}
     .simulator-card { background-color: #0e2439; padding: 20px; border-radius: 10px; border: 2px dashed #2ecc71; text-align: center; margin-top: 15px;}
+    .alert-card { background-color: #4a1c1c; padding: 15px; border-radius: 10px; border: 2px solid #e74c3c; margin-bottom: 10px; }
+    .alert-title { color: #e74c3c; font-size: 18px; font-weight: bold; margin-bottom: 5px;}
     
     /* Optimized PDF Print CSS */
     @media print {
@@ -85,43 +88,13 @@ st.markdown("""
         [data-testid="stSidebarCollapsedControl"] { 
             display: none !important; 
         }
-        
-        .main .block-container {
-            max-width: 100% !important;
-            padding: 10mm !important;
-            margin: 0 !important;
-        }
-        
-        .bi-title {
-            page-break-before: always !important;
-            color: #1e3d59 !important;
-            border-bottom: 2px solid #1e3d59 !important;
-            padding-top: 10mm !important;
-        }
-        
-        .metric-card, 
-        .element-container, 
-        div[data-testid="stPlotlyChart"],
-        .stDataFrame,
-        .simulator-card {
-            page-break-inside: avoid !important;
-            margin-bottom: 5mm !important;
-        }
-        
-        h1, h2, h3, p, .metric-label {
-            color: #000000 !important;
-        }
-        .metric-card {
-            background-color: #f0f4f8 !important;
-            border: 1px solid #1e3d59 !important;
-        }
-        .simulator-card {
-            background-color: #ebf7ee !important;
-            border: 2px solid #2ecc71 !important;
-        }
-        .metric-value {
-            color: #1e3d59 !important;
-        }
+        .main .block-container { max-width: 100% !important; padding: 10mm !important; margin: 0 !important; }
+        .bi-title { page-break-before: always !important; color: #1e3d59 !important; border-bottom: 2px solid #1e3d59 !important; padding-top: 10mm !important; }
+        .metric-card, .element-container, div[data-testid="stPlotlyChart"], .stDataFrame, .simulator-card { page-break-inside: avoid !important; margin-bottom: 5mm !important; }
+        h1, h2, h3, p, .metric-label { color: #000000 !important; }
+        .metric-card { background-color: #f0f4f8 !important; border: 1px solid #1e3d59 !important; }
+        .simulator-card { background-color: #ebf7ee !important; border: 2px solid #2ecc71 !important; }
+        .metric-value { color: #1e3d59 !important; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -272,7 +245,6 @@ if uploaded_file is not None:
     st.markdown('<div class="bi-title">🧪 Monthly Test Volume & Deficit Analysis</div>', unsafe_allow_html=True)
     if 'Date ( test)' in filtered_df.columns and 'Test Type' in filtered_df.columns:
         v_df = filtered_df.dropna(subset=['Date ( test)', 'Test Type']).copy()
-        
         v_df['Month_Sort'] = v_df['Date ( test)'].dt.to_period('M')
         v_df['Month'] = v_df['Date ( test)'].dt.strftime('%b %Y')
         
@@ -280,8 +252,7 @@ if uploaded_file is not None:
         monthly_summary = monthly_summary.sort_values('Month_Sort')
         
         fig_vol = px.bar(monthly_summary, x='Month', y='Volume', color='Test Type', barmode='group',
-                         title="Testing Intensity & Production Coverage per Month",
-                         color_discrete_sequence=px.colors.qualitative.Bold)
+                         title="Testing Intensity & Production Coverage per Month", color_discrete_sequence=px.colors.qualitative.Bold)
         
         ch_col, txt_col = st.columns([0.7, 0.3])
         ch_col.plotly_chart(fig_vol, use_container_width=True)
@@ -291,22 +262,16 @@ if uploaded_file is not None:
             if not monthly_summary.empty:
                 top_row = monthly_summary.loc[monthly_summary['Volume'].idxmax()]
                 st.info(f"📊 **Peak Activity:**\nIn **{top_row['Month']}**, the highest utilized test was **{top_row['Test Type']}** with **{top_row['Volume']}** requests logged.")
-                
                 months_ordered = monthly_summary['Month_Sort'].drop_duplicates().sort_values().tolist()
                 if len(months_ordered) > 1:
                     last_month_sort = months_ordered[-1]
                     prev_month_sort = months_ordered[-2]
-                    
-                    last_month_name = last_month_sort.strftime('%b %Y')
-                    prev_month_name = prev_month_sort.strftime('%b %Y')
-                    
                     last_count = v_df[v_df['Month_Sort'] == last_month_sort].shape[0]
                     prev_count = v_df[v_df['Month_Sort'] == prev_month_sort].shape[0]
-                    
                     if last_count < prev_count:
-                        st.warning(f"⚠️ **Coverage Alert:**\nTotal log volume dropped from **{prev_count}** in {prev_month_name} to **{last_count}** in {last_month_name}. Verify potential field testing deficits.")
+                        st.warning(f"⚠️ **Coverage Alert:**\nTotal log volume dropped from **{prev_count}** to **{last_count}**. Verify potential field testing deficits.")
                     else:
-                        st.success(f"✅ **Stable Volume:**\nTesting coverage is expanding smoothly from {prev_month_name} into {last_month_name}.")
+                        st.success(f"✅ **Stable Volume:**\nTesting coverage is expanding smoothly.")
             else:
                 st.text("No data available for tracking.")
 
@@ -316,8 +281,7 @@ if uploaded_file is not None:
     st.markdown('<div class="bi-title">⏱️ Workflow & Delay Risk Analysis</div>', unsafe_allow_html=True)
     
     rejected_count = len(filtered_df[filtered_df['sample status'].isin(['REJECTED', 'REVISE'])]) if 'sample status' in filtered_df.columns else 0
-    worst_office_name = "N/A"
-    worst_office_delay = 0
+    worst_office_name, worst_office_delay = "N/A", 0
 
     if 'Done BY' in filtered_df.columns and 'DURATION' in filtered_df.columns:
         office_delays = filtered_df.dropna(subset=['DURATION']).groupby('Done BY')['DURATION'].mean().reset_index()
@@ -338,20 +302,10 @@ if uploaded_file is not None:
 TO: Management Team of [{worst_office_name}]
 DATE: {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d")}
 
-This is an automated notification from the Project Quality BI System.
-
-Our data analytics framework indicates a critical workflow bottleneck originating from your department. Currently, your average processing duration is [{worst_office_delay} Days], which significantly exceeds acceptable project execution constraints.
-
-Immediate corrective action is required to expedite all pending documentation. Please submit a mitigation and recovery schedule within 24 hours.
-
-Best Regards,
-Project Quality Management Office"""
-            
+Our data analytics framework indicates a critical workflow bottleneck originating from your department. Currently, your average processing duration is [{worst_office_delay} Days], which significantly exceeds acceptable project execution constraints. Immediate corrective action is required."""
             st.code(memo_text, language="markdown")
-            
-            st.markdown(f"#### 📋 Isolated Audit Trail: All Log Records for [{worst_office_name}]")
-            worst_office_data = filtered_df[filtered_df['Done BY'] == worst_office_name]
-            st.dataframe(worst_office_data, use_container_width=True)
+            st.markdown(f"#### 📋 Isolated Audit Trail for [{worst_office_name}]")
+            st.dataframe(filtered_df[filtered_df['Done BY'] == worst_office_name], use_container_width=True)
 
     # ==========================================
     # BI MODULE 2: AI Predictive Analytics
@@ -360,107 +314,59 @@ Project Quality Management Office"""
     if 'Date ( test)' in filtered_df.columns and 'DURATION' in filtered_df.columns:
         pred_df = filtered_df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
         pred_df['7-Day Trend'] = pred_df['DURATION'].rolling(window=7, min_periods=1).mean()
-        
-        fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], 
-                           title="Duration Forecasting & Trendline Tracking",
-                           color_discrete_sequence=['rgba(255,170,0,0.3)', '#e74c3c'])
-        
-        latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
+        fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], title="Duration Forecasting & Trendline Tracking", color_discrete_sequence=['rgba(255,170,0,0.3)', '#e74c3c'])
         
         p1, p2 = st.columns([0.7, 0.3])
         p1.plotly_chart(fig_pred, use_container_width=True)
         with p2:
             st.info("**AI Risk Assessment:**")
-            if latest_trend > current_metrics["Avg_Duration"]:
-                st.error(f"🚨 **Warning:** The recent workflow trend is rising ({latest_trend:.1f} days) compared to the overall average. Bottlenecks are forming.")
-            else:
-                st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
+            latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
+            if latest_trend > current_metrics["Avg_Duration"]: st.error(f"🚨 **Warning:** The recent workflow trend is rising ({latest_trend:.1f} days) compared to average.")
+            else: st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
 
     # ==========================================
     # BI MODULE 3: Geospatial / Zone Analysis
     # ==========================================
     st.markdown('<div class="bi-title">🗺️ Sector / Zone Performance Map</div>', unsafe_allow_html=True)
     if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
-        
         tree_df = filtered_df.copy()
-        tree_df['Classification'] = tree_df['Classification'].fillna('Unknown Sector')
-        tree_df['Company Name'] = tree_df['Company Name'].fillna('Unknown Company')
-        tree_df['sample status'] = tree_df['sample status'].fillna('Unknown Status')
-
-        fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], 
-                              title="Project Hierarchy Breakdown (Click to Drill Down)",
-                              color='sample status',
-                              color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
-        fig_tree.update_traces(root_color="lightgrey")
-        st.plotly_chart(fig_tree, use_container_width=True)
+        tree_df.fillna({'Classification':'Unknown Sector', 'Company Name':'Unknown Company', 'sample status':'Unknown Status'}, inplace=True)
+        fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], title="Project Hierarchy Breakdown", color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
+        st.plotly_chart(fig_tree.update_traces(root_color="lightgrey"), use_container_width=True)
 
     # ==========================================
     # BI MODULE 4: Automated Executive Report
     # ==========================================
     st.markdown('<div class="bi-title">🖨️ Automated Executive Report</div>', unsafe_allow_html=True)
-    
     report_text = f"""# Executive BI Summary Report
-Date Generated: {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M")}
-Project Data File: {uploaded_file.name}
+Date: {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M")}
+File: {uploaded_file.name}
 
-## 1. Overall Performance Overview
-- Total Requests Processed: {current_metrics["Total_Requests"]}
-- Total Tests Conducted: {current_metrics["Total_Tests"]}
-- Project Average Duration: {current_metrics["Avg_Duration"]} Days
-- Quality Alert: {rejected_count} samples are currently flagged as REJECTED or REVISE.
-
-## 2. Delay & Bottleneck Analysis
-- Critical Warning: The office/entity [{worst_office_name}] is experiencing the highest turnaround times, averaging {worst_office_delay} days per request.
-- Recommendation: Immediate review of workflow and staffing at [{worst_office_name}] is required to prevent downstream project delays.
+- Total Requests: {current_metrics["Total_Requests"]}
+- Total Tests: {current_metrics["Total_Tests"]}
+- Avg Duration: {current_metrics["Avg_Duration"]} Days
+- Quality Alert: {rejected_count} samples REJECTED/REVISE.
 """
-    
     st.markdown(report_text)
-    st.download_button(
-        label="📄 Download Executive Report (TXT)",
-        data=report_text,
-        file_name=f"Executive_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.txt",
-        mime="text/plain"
-    )
-
+    st.download_button(label="📄 Download Executive Report", data=report_text, file_name=f"Executive_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.txt", mime="text/plain")
     st.divider()
 
     # ==========================================
     # 6. KPI Trend Tracker (Historical Growth)
     # ==========================================
     global_history_df = HistoryManager.load_history()
-    
     if not global_history_df.empty:
-        if 'File_Name' not in global_history_df.columns:
-            global_history_df['File_Name'] = uploaded_file.name
-            
+        if 'File_Name' not in global_history_df.columns: global_history_df['File_Name'] = uploaded_file.name
         file_trend_df = global_history_df[global_history_df['File_Name'] == uploaded_file.name].copy()
-        
         if len(file_trend_df) > 1:
             st.markdown(f"### 🚀 KPI Daily Growth Trend for `{uploaded_file.name}`")
-            
             file_trend_df['Added_Requests'] = file_trend_df['Total_Requests'].diff().fillna(0)
             file_trend_df['Growth_Rate_%'] = ((file_trend_df['Total_Requests'].diff() / file_trend_df['Total_Requests'].shift(1)) * 100).fillna(0)
             file_trend_df['Date_Time'] = pd.to_datetime(file_trend_df['Timestamp']).dt.strftime('%m-%d %H:%M')
             
             col_t1, col_t2 = st.columns(2)
-            with col_t1:
-                fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', 
-                                   title="Daily Added Requests Trend",
-                                   text_auto=True, color_discrete_sequence=['#ffaa00'])
-                st.plotly_chart(fig_added, use_container_width=True)
-                
-            with col_t2:
-                fig_rate = px.line(file_trend_df.iloc[1:], x='Date_Time', y='Growth_Rate_%', 
-                                   title="Growth Rate Trend Percentage (%)",
-                                   markers=True, color_discrete_sequence=['#2ecc71'])
-                st.plotly_chart(fig_rate, use_container_width=True)
-                
-            with st.expander("🖨️ View & Export History Log for this File"):
-                export_df = file_trend_df[['Timestamp', 'Total_Requests', 'Added_Requests', 'Growth_Rate_%', 'Avg_DPL', 'Avg_Duration']].copy()
-                export_df.rename(columns={'Added_Requests': '+ Added', 'Growth_Rate_%': 'Growth %'}, inplace=True)
-                st.dataframe(export_df.round(2), use_container_width=True)
-                
-            st.divider()
+            col_t1.plotly_chart(px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', title="Daily Added Requests", text_auto=True, color_discrete_sequence=['#ffaa00']), use_container_width=True)
+            col_t2.plotly_chart(px.line(file_trend_df.iloc[1:], x='Date_Time', y='Growth_Rate_%', title="Growth Rate (%)", markers=True, color_discrete_sequence=['#2ecc71']), use_container_width=True)
 
     # ==========================================
     # 7. Test Type Breakdown
@@ -469,33 +375,19 @@ Project Data File: {uploaded_file.name}
         st.markdown("### 🧪 Detailed Test Counts by Type")
         test_summary = filtered_df.groupby('Test Type')[num_tests_col].sum().reset_index()
         t_cols = st.columns(len(test_summary))
-        for i, row in test_summary.iterrows():
-            create_card(t_cols[i], row['Test Type'], int(row[num_tests_col]))
+        for i, row in test_summary.iterrows(): create_card(t_cols[i], row['Test Type'], int(row[num_tests_col]))
         st.divider()
 
     # ==========================================
-    # 🔥 8. Quality Distribution & Outlier Detection
+    # 8. Quality Distribution & Outlier Detection
     # ==========================================
     st.markdown("### 📈 Quality Metrics Distribution (DPL & Average Values)")
     if 'AVERAGE VALUE' in filtered_df.columns:
         dpl_df = filtered_df.dropna(subset=['AVERAGE VALUE']).copy()
         dpl_df['AVERAGE VALUE'] = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce')
         dpl_df = dpl_df.dropna(subset=['AVERAGE VALUE'])
-        
         if not dpl_df.empty:
-            fig_dpl = px.histogram(
-                dpl_df, 
-                x='AVERAGE VALUE', 
-                color='Test Type' if 'Test Type' in dpl_df.columns else None,
-                marginal='box', 
-                title="Statistical Distribution & Outlier Detection for Test Values",
-                nbins=30,
-                color_discrete_sequence=px.colors.qualitative.Set2
-            )
-            
-            st.plotly_chart(fig_dpl, use_container_width=True)
-            
-            st.info("💡 **AI Quality Insight:** Use the box plot above the histogram to visually identify any isolated dots (outliers). A tight, bell-shaped distribution indicates high consistency in contractor materials and execution.")
+            st.plotly_chart(px.histogram(dpl_df, x='AVERAGE VALUE', color='Test Type' if 'Test Type' in dpl_df.columns else None, marginal='box', title="Statistical Distribution & Outlier Detection", nbins=30, color_discrete_sequence=px.colors.qualitative.Set2), use_container_width=True)
     st.divider()
 
     # ==========================================
@@ -503,29 +395,19 @@ Project Data File: {uploaded_file.name}
     # ==========================================
     st.markdown("### 💡 Strategic Insights & Recommendations")
     ins_col1, ins_col2 = st.columns(2)
-    with ins_col1:
-        st.success("✅ **Quality Improvement:**\n* Maintain tight oversight on duration KPIs.\n* Stable DPL curves confirm materials testing compliance.")
-    with ins_col2:
-        st.warning("⚠️ **Risk Mitigation:**\n* Closely audit moisture metrics for failed trials.\n* Intervene in lagging workflow review desks.")
-
+    ins_col1.success("✅ **Quality Improvement:**\n* Maintain tight oversight on duration KPIs.\n* Stable DPL curves confirm materials testing compliance.")
+    ins_col2.warning("⚠️ **Risk Mitigation:**\n* Closely audit moisture metrics for failed trials.\n* Intervene in lagging workflow review desks.")
     st.divider()
 
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
-        if 'Company Name' in filtered_df.columns:
-            st.plotly_chart(px.bar(filtered_df, x='Company Name', color='Test Type', title="Workload per Contractor 🏢"), use_container_width=True)
-        if 'Done BY' in filtered_df.columns:
-            st.plotly_chart(px.bar(filtered_df, x='Done BY', color='Test Type', title="Office Performance Analysis (Done BY) 👨‍💼"), use_container_width=True)
-
+        if 'Company Name' in filtered_df.columns: st.plotly_chart(px.bar(filtered_df, x='Company Name', color='Test Type', title="Workload per Contractor 🏢"), use_container_width=True)
+        if 'Done BY' in filtered_df.columns: st.plotly_chart(px.bar(filtered_df, x='Done BY', color='Test Type', title="Office Performance Analysis (Done BY) 👨‍💼"), use_container_width=True)
     with chart_col2:
-        if 'sample status' in filtered_df.columns:
-            st.plotly_chart(px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴"), use_container_width=True)
-        
+        if 'sample status' in filtered_df.columns: st.plotly_chart(px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴"), use_container_width=True)
         if 'Classification' in filtered_df.columns:
             class_df = filtered_df.dropna(subset=['Classification']).copy()
-            if not class_df.empty:
-                st.plotly_chart(px.pie(class_df, names='Classification', title="Sample Classification Distribution 📑"), use_container_width=True)
-
+            if not class_df.empty: st.plotly_chart(px.pie(class_df, names='Classification', title="Sample Classification Distribution 📑"), use_container_width=True)
     st.divider()
 
     # ==========================================
@@ -533,51 +415,26 @@ Project Data File: {uploaded_file.name}
     # ==========================================
     st.markdown("### 📈 Timeline Analysis")
     time_col1, time_col2 = st.columns(2)
-    
     with time_col1:
         if 'Date ( test)' in filtered_df.columns:
             filtered_df['Month_Plot'] = filtered_df['Date ( test)'].dt.to_period('M').astype(str)
-            monthly_data = filtered_df.groupby('Month_Plot').size().reset_index(name='Count')
-            st.plotly_chart(px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅"), use_container_width=True)
-
+            st.plotly_chart(px.line(filtered_df.groupby('Month_Plot').size().reset_index(name='Count').sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅"), use_container_width=True)
     with time_col2:
         if 'Date( SUB)' in filtered_df.columns and 'sample status' in filtered_df.columns:
             gap_df = filtered_df.dropna(subset=['Date( SUB)']).copy()
             gap_df['Month_Plot'] = gap_df['Date( SUB)'].dt.to_period('M').astype(str)
-            
             total_sub = gap_df.groupby('Month_Plot').size().reset_index(name='Total Submitted')
-            
-            accepted_mask = gap_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-            accepted_sub = gap_df[accepted_mask].groupby('Month_Plot').size().reset_index(name='Accepted')
-            
-            rejected_mask = gap_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])
-            rejected_sub = gap_df[rejected_mask].groupby('Month_Plot').size().reset_index(name='Rejected')
-            
+            accepted_sub = gap_df[gap_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].groupby('Month_Plot').size().reset_index(name='Accepted')
+            rejected_sub = gap_df[gap_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])].groupby('Month_Plot').size().reset_index(name='Rejected')
             merged_gap = total_sub.merge(accepted_sub, on='Month_Plot', how='left').merge(rejected_sub, on='Month_Plot', how='left').fillna(0)
-            
             melted_gap = merged_gap.melt(id_vars='Month_Plot', value_vars=['Total Submitted', 'Accepted', 'Rejected'], var_name='Status', value_name='Count')
-            
-            fig_gap = px.bar(
-                melted_gap.sort_values('Month_Plot'), 
-                x='Month_Plot', 
-                y='Count', 
-                color='Status', 
-                barmode='group',
-                color_discrete_map={
-                    'Total Submitted': '#85C1E9', 
-                    'Accepted': '#1A5276',        
-                    'Rejected': '#E74C3C'         
-                },
-                title="Monthly Quality Yield (Based on Submission Date) 🎯"
-            )
-            st.plotly_chart(fig_gap, use_container_width=True)
-
+            st.plotly_chart(px.bar(melted_gap.sort_values('Month_Plot'), x='Month_Plot', y='Count', color='Status', barmode='group', color_discrete_map={'Total Submitted': '#85C1E9', 'Accepted': '#1A5276', 'Rejected': '#E74C3C'}, title="Monthly Quality Yield 🎯"), use_container_width=True)
     st.divider()
 
     # ==========================================
-    # 🔥 11. SMART Borehole (BH) Deep Dive Investigation
+    # 🔥 11. ULTIMATE Borehole (BH) Deep Dive Auditor
     # ==========================================
-    st.markdown('<div class="bi-title">🔍 Borehole (BH) Deep Dive Investigation</div>', unsafe_allow_html=True)
+    st.markdown('<div class="bi-title">🔍 Advanced Borehole (BH) Quality Auditor</div>', unsafe_allow_html=True)
     
     bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
 
@@ -591,38 +448,103 @@ Project Data File: {uploaded_file.name}
             if selected_bh != "-- Select Location --":
                 bh_df = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
                 
-                st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
+                # --- 1. Layer Sorting Logic ---
+                if 'layer' in bh_df.columns:
+                    bh_df['Layer_Num'] = bh_df['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
+                    bh_df = bh_df.sort_values(['Layer_Num', 'Date ( test)'])
                 
+                st.markdown(f"#### 🎯 Audit Report: `{selected_bh}`")
+                
+                # --- 2. BH Start/End & Basic KPIs ---
                 bh_total = len(bh_df)
                 bh_accepted = len(bh_df[bh_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bh_df.columns else 0
                 bh_pass_rate = (bh_accepted / bh_total * 100) if bh_total > 0 else 0
-                bh_avg_dpl = pd.to_numeric(bh_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in bh_df.columns else 0
                 
-                bc1, bc2, bc3, bc4 = st.columns(4)
-                create_card(bc1, "Total Requests on this BH", bh_total)
-                create_card(bc2, "Passed/Approved", bh_accepted)
-                create_card(bc3, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
-                create_card(bc4, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
+                start_date = bh_df['Date ( test)'].min().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].min()) else "N/A"
+                end_date = bh_df['Date ( test)'].max().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].max()) else "N/A"
                 
+                c1, c2, c3, c4, c5 = st.columns(5)
+                create_card(c1, "Total Tests", bh_total)
+                create_card(c2, "Passed/Approved", bh_accepted)
+                create_card(c3, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
+                create_card(c4, "First Test Date", start_date)
+                create_card(c5, "Last Test Date", end_date)
+                
+                # --- 3 & 4. Unresolved Failures (إنذار الطبقات المعلقة) ---
+                if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
+                    rejected_layers = set(bh_df[bh_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]['layer'].dropna().unique())
+                    accepted_layers = set(bh_df[bh_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]['layer'].dropna().unique())
+                    
+                    unresolved_layers = rejected_layers - accepted_layers # طبقات سقطت ولم تنجح لاحقاً
+                    
+                    if unresolved_layers:
+                        st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Layers)")
+                        alert_cols = st.columns(min(len(unresolved_layers), 4))
+                        for idx, layer_alert in enumerate(list(unresolved_layers)[:4]):
+                            alert_cols[idx % 4].markdown(f"""
+                                <div class="alert-card">
+                                    <div class="alert-title">⚠️ Action Required</div>
+                                    <div style="color: #ffffff;">Layer: <b>{layer_alert}</b> has REJECTED/REVISE records without a subsequent APPROVED status. Please investigate immediately.</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                
+                st.divider()
+
+                # --- 5. Sampling Location (Bottom of Excavation & Soil Analysis) ---
+                if 'Sampling Location' in bh_df.columns:
+                    st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
+                    boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
+                    if not boe_df.empty:
+                        boe_count = len(boe_df)
+                        st.info(f"📌 Found **{boe_count}** records related to Bottom of Excavation / Soil in this BH.")
+                        if 'Classification' in boe_df.columns:
+                            class_counts = boe_df['Classification'].value_counts().reset_index()
+                            class_counts.columns = ['Classification', 'Count']
+                            st.plotly_chart(px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications found at Bottom", color='Classification', text_auto=True), use_container_width=True)
+                    else:
+                        st.success("No 'Bottom of Excavation' specific issues or tests logged for this BH.")
+
+                st.divider()
+                
+                # --- 6. Task Matrix (Test Type -> Done By -> Layer/Location) ---
+                st.markdown("#### 👨‍🔧 Office & Execution Matrix")
+                if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
+                    # نستخدم Location لو مفيش رقم طبقة، ولو فيه نستخدم اسم الطبقة
+                    bh_df['Execution_Node'] = np.where(bh_df['layer'].astype(str).str.contains(r'\d'), bh_df['layer'], bh_df['Sampling Location'])
+                    bh_df['Execution_Node'] = bh_df['Execution_Node'].fillna('General Location')
+                    
+                    fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], 
+                                          title=f"Who did What & Where in {selected_bh}",
+                                          color='Done BY', color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_matrix.update_traces(textinfo="label+value")
+                    st.plotly_chart(fig_matrix, use_container_width=True)
+
+                st.divider()
+
+                # --- 7. Ordered Layer Trends & Status ---
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
                     if 'sample status' in bh_df.columns:
-                        fig_bh_pie = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-                        st.plotly_chart(fig_bh_pie, use_container_width=True)
+                        st.plotly_chart(px.pie(bh_df, names='sample status', title=f"Overall Status Breakdown", hole=0.4), use_container_width=True)
                 
                 with b_col2:
-                    if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns:
-                        bh_trend = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE']).sort_values('Date ( test)')
-                        if not bh_trend.empty:
-                            fig_bh_trend = px.line(bh_trend, x='Date ( test)', y='AVERAGE VALUE', markers=True, 
-                                                   title=f"DPL/Value Trend over time for {selected_bh}", 
-                                                   color='layer' if 'layer' in bh_df.columns else None)
-                            st.plotly_chart(fig_bh_trend, use_container_width=True)
+                    if 'layer' in bh_df.columns:
+                        layer_reqs = bh_df.groupby('layer').size().reset_index(name='Requests')
+                        # ترتيب البار شارت بالطبقات
+                        layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
+                        layer_reqs = layer_reqs.sort_values('Layer_Num')
+                        st.plotly_chart(px.bar(layer_reqs, x='layer', y='Requests', title="Number of Requests per Layer (Sorted)", text_auto=True), use_container_width=True)
+
+                if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
+                    trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
+                    if not trend_df.empty:
+                        # الخطوط في الشارت هنا هتترتب صح بناءً على الـ Layer_Num اللي عملناه فوق
+                        st.plotly_chart(px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over Time"), use_container_width=True)
                 
-                st.markdown(f"**Detailed Log specifically for `{selected_bh}`:**")
-                st.dataframe(bh_df, use_container_width=True)
+                st.markdown(f"**Detailed Audit Log for `{selected_bh}`:**")
+                st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
     else:
-        st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' or 'BH' column in your uploaded file to enable Deep Dive Analysis.")
+        st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' or 'BH' column to enable Deep Dive Analysis.")
 
     st.divider()
 
