@@ -4,6 +4,10 @@ import numpy as np
 import plotly.express as px
 import os
 from datetime import datetime
+import pytz
+
+# تعريف توقيت القاهرة لاستخدامه في كل أنحاء الداشبورد
+EGYPT_TZ = pytz.timezone('Africa/Cairo')
 
 # ==========================================
 # 1. Architecture: Per-File History Manager 
@@ -13,7 +17,7 @@ class HistoryManager:
 
     @staticmethod
     def save_metrics(metrics_dict):
-        metrics_dict['Timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        metrics_dict['Timestamp'] = datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S")
         df_new = pd.DataFrame([metrics_dict])
         
         if os.path.exists(HistoryManager.FILE_NAME):
@@ -332,7 +336,7 @@ if uploaded_file is not None:
         if st.button("Generate Official Warning Memo"):
             memo_text = f"""SUBJECT: URGENT: Action Required - Escalating Turnaround Delays
 TO: Management Team of [{worst_office_name}]
-DATE: {datetime.now().strftime("%Y-%m-%d")}
+DATE: {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d")}
 
 This is an automated notification from the Project Quality BI System.
 
@@ -396,7 +400,7 @@ Project Quality Management Office"""
     st.markdown('<div class="bi-title">🖨️ Automated Executive Report</div>', unsafe_allow_html=True)
     
     report_text = f"""# Executive BI Summary Report
-Date Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}
+Date Generated: {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M")}
 Project Data File: {uploaded_file.name}
 
 ## 1. Overall Performance Overview
@@ -414,7 +418,7 @@ Project Data File: {uploaded_file.name}
     st.download_button(
         label="📄 Download Executive Report (TXT)",
         data=report_text,
-        file_name=f"Executive_Report_{datetime.now().strftime('%Y%m%d')}.txt",
+        file_name=f"Executive_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.txt",
         mime="text/plain"
     )
 
@@ -575,14 +579,10 @@ Project Data File: {uploaded_file.name}
     # ==========================================
     st.markdown('<div class="bi-title">🔍 Borehole (BH) Deep Dive Investigation</div>', unsafe_allow_html=True)
     
-    # Smart Column Finder: Looks for any variation of Element or BH regardless of case/spaces
     bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
 
     if bh_col_name:
-        # التعديل الجراحي لتجنب أي إيرور: تنظيف الخانات الفاضية وتحويلها لنص
         filtered_df[bh_col_name] = filtered_df[bh_col_name].fillna('').astype(str).str.strip()
-        
-        # إنشاء القائمة بصيغة آمنة 100%
         bh_list = [bh for bh in filtered_df[bh_col_name].unique() if str(bh).upper() != 'NAN' and str(bh) != '']
         
         if len(bh_list) > 0:
