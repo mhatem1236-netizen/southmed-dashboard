@@ -1,0 +1,223 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+# ==========================================
+# 1. Page Config & Professional Branding
+# ==========================================
+st.set_page_config(page_title="South Med AI Dashboard", layout="wide")
+
+# التعديل البصري: الكروت الزرقاء والكلام الأبيض
+st.markdown("""
+    <style>
+    .metric-card {
+        background-color: #1e3d59;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        border: 1px solid #30363d;
+        margin-bottom: 10px;
+    }
+    .metric-label {
+        color: #d1d5da; 
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .metric-value {
+        color: #ffffff !important;
+        font-size: 30px;
+        font-weight: bold;
+    }
+    .stDataFrame {
+        border: 1px solid #1e3d59;
+        border-radius: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# دالة مساعدة لعمل الكروت بنفس الشكل المطلوب
+def create_card(column, label, value):
+    column.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">{label}</div>
+            <div class="metric-value">{value}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# AI Assistant Function (كما هي في كودك القديم)
+def ai_assistant(query, data_summary):
+    query = query.lower()
+    if "delay" in query or "time" in query or "duration" in query:
+        return f"Based on data, the average duration is {data_summary['avg_duration']} days. Check the monthly gap chart to identify bottlenecks."
+    elif "dpl" in query:
+        return f"Current average DPL is {data_summary['avg_dpl']}. Ensure rejected samples are re-tested after proper compaction."
+    else:
+        return "I'm here to help! Ask me about project logs, contractor performance, or quality issues."
+
+# --- إضافة صورة الغلاف واللوجو في الهيدر ---
+try:
+    st.image("5.jpg", use_column_width=True)
+except:
+    pass
+
+col_h1, col_h2 = st.columns([0.8, 0.2])
+with col_h1:
+    st.title("South Med Quality Control AI Dashboard 🏗️🤖")
+with col_h2:
+    try:
+        st.image("شششششششش.JPG", width=120)
+    except:
+        pass
+
+# ==========================================
+# 2. File Upload Section
+# ==========================================
+uploaded_file = st.file_uploader("Upload your Project Log (CSV format) 📂", type="csv")
+
+if uploaded_file is not None:
+    # Read Data
+    df = pd.read_csv(uploaded_file)
+    df.columns = df.columns.str.strip() 
+    
+    # Standardize Test Types & Dates
+    if 'Test Type' in df.columns:
+        df['Test Type'] = df['Test Type'].str.strip().str.upper()
+    if 'Date ( test)' in df.columns:
+        df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce')
+    if 'Date( SUB)' in df.columns:
+        df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce')
+
+    # ==========================================
+    # 3. Sidebar: AI Chat & Dynamic Filters
+    # ==========================================
+    # إضافة لوجو المكتب في السايد بار للحقوق
+    try:
+        st.sidebar.image("شششششششش.JPG", use_column_width=True)
+        st.sidebar.divider()
+    except:
+        pass
+
+    st.sidebar.header("AI Assistant & Filters 🔍")
+    
+    # Quick Summary for AI
+    curr_avg_dpl = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in df.columns else 0
+    curr_avg_dur = pd.to_numeric(df['DURATION'], errors='coerce').mean() if 'DURATION' in df.columns else 0
+    
+    # AI Chatbot
+    st.sidebar.subheader("Ask AI Assistant 💬")
+    user_question = st.sidebar.text_input("Ask about any log issue:")
+    if user_question:
+        summary = {"avg_dpl": round(curr_avg_dpl, 2), "avg_duration": round(curr_avg_dur, 1)}
+        st.sidebar.info(f"AI Response: {ai_assistant(user_question, summary)}")
+    
+    st.sidebar.divider()
+    
+    # Dynamic Filters
+    companies = df['Company Name'].dropna().unique() if 'Company Name' in df.columns else []
+    selected_companies = st.sidebar.multiselect("Select Contractor:", options=companies, default=companies)
+    
+    statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
+    selected_statuses = st.sidebar.multiselect("Sample Status:", options=statuses, default=statuses)
+
+    # Apply Filters
+    filtered_df = df.copy()
+    if len(companies) > 0:
+        filtered_df = filtered_df[filtered_df['Company Name'].isin(selected_companies)]
+    if len(statuses) > 0:
+        filtered_df = filtered_df[filtered_df['sample status'].isin(selected_statuses)]
+
+    num_tests_col = next((c for c in filtered_df.columns if 'NUM' in c.upper() and 'TEST' in c.upper()), None)
+    if num_tests_col:
+        filtered_df[num_tests_col] = pd.to_numeric(filtered_df[num_tests_col], errors='coerce').fillna(0)
+
+    # ==========================================
+    # 4. Performance Metrics (تعديل الشكل للأبيض والأزرق)
+    # ==========================================
+    st.markdown("### 📊 Key Performance Indicators (KPIs)")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    create_card(col1, "Total Requests", len(filtered_df))
+    
+    total_actual = int(filtered_df[num_tests_col].sum() if num_tests_col else 0)
+    create_card(col2, "Total Tests", total_actual)
+    
+    avg_dpl = pd.to_numeric(filtered_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in filtered_df.columns else 0
+    create_card(col3, "Avg DPL Value", round(avg_dpl, 2))
+
+    avg_dur = pd.to_numeric(filtered_df['DURATION'], errors='coerce').mean() if 'DURATION' in filtered_df.columns else 0
+    create_card(col4, "Avg. Dur (Days)", round(avg_dur, 1))
+    
+    page_col = next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)
+    total_p = filtered_df[page_col].sum() if page_col else 0
+    create_card(col5, "Total Paperwork", int(total_p))
+
+    st.divider()
+
+    # ==========================================
+    # 5. Test Type Breakdown (كروت زرقاء إضافية)
+    # ==========================================
+    if num_tests_col and 'Test Type' in filtered_df.columns:
+        st.markdown("### 🧪 Detailed Test Counts by Type")
+        test_summary = filtered_df.groupby('Test Type')[num_tests_col].sum().reset_index()
+        t_cols = st.columns(len(test_summary))
+        for i, row in test_summary.iterrows():
+            create_card(t_cols[i], row['Test Type'], int(row[num_tests_col]))
+        st.divider()
+
+    # ==========================================
+    # 6. Strategic Insights (كما هي)
+    # ==========================================
+    st.markdown("### 💡 Strategic Insights & Recommendations")
+    ins_col1, ins_col2 = st.columns(2)
+    with ins_col1:
+        st.success("✅ **Quality Improvement Tips:**\n* Keep average duration low.\n* Stable DPL values indicate consistency.")
+    with ins_col2:
+        st.warning("⚠️ **Problem Solving:**\n* Check moisture content for rejected samples.\n* Analyze 'REVISE' status offices.")
+
+    st.divider()
+
+    # ==========================================
+    # 7. Detailed Charts (كل الشارتات القديمة موجودة)
+    # ==========================================
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        if 'Company Name' in filtered_df.columns:
+            st.plotly_chart(px.bar(filtered_df, x='Company Name', color='Test Type', title="Workload per Contractor 🏢"), use_container_width=True)
+        if 'Done BY' in filtered_df.columns:
+            st.plotly_chart(px.bar(filtered_df, x='Done BY', color='Test Type', title="Office Performance (Done BY) 👨‍💼"), use_container_width=True)
+
+    with chart_col2:
+        if 'sample status' in filtered_df.columns:
+            st.plotly_chart(px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴"), use_container_width=True)
+        if 'Classification' in filtered_df.columns:
+            st.plotly_chart(px.pie(filtered_df, names='Classification', title="Sample Classification 📑"), use_container_width=True)
+
+    st.divider()
+
+    # ==========================================
+    # 8. Timeline Analysis (كما هي)
+    # ==========================================
+    st.markdown("### 📈 Timeline Analysis")
+    time_col1, time_col2 = st.columns(2)
+    
+    with time_col1:
+        if 'Date ( test)' in filtered_df.columns:
+            filtered_df['Month'] = filtered_df['Date ( test)'].dt.to_period('M').astype(str)
+            monthly_data = filtered_df.groupby('Month').size().reset_index(name='Count')
+            st.plotly_chart(px.line(monthly_data.sort_values('Month'), x='Month', y='Count', markers=True, title="Monthly Workload Trend 📅"), use_container_width=True)
+
+    with time_col2:
+        if 'Date( SUB)' in filtered_df.columns and 'Date ( test)' in filtered_df.columns:
+            sub_c = filtered_df.groupby(filtered_df['Date( SUB)'].dt.to_period('M').astype(str)).size().reset_index(name='Submitted (SUB)')
+            test_c = filtered_df.groupby(filtered_df['Date ( test)'].dt.to_period('M').astype(str)).size().reset_index(name='Approved (TEST)')
+            merged = pd.merge(sub_c, test_c, left_on='Date( SUB)', right_on='Date ( test)', how='outer').fillna(0)
+            merged.rename(columns={'Date( SUB)': 'Month'}, inplace=True)
+            st.plotly_chart(px.bar(merged.sort_values('Month'), x='Month', y=['Submitted (SUB)', 'Approved (TEST)'], barmode='group', title="Monthly Submission vs Approval Gap ⏳"), use_container_width=True)
+
+    st.divider()
+    st.markdown("### 📋 Detailed Log Records")
+    st.dataframe(filtered_df, use_container_width=True)
+
+else:
+    st.info("👈 Please upload the CSV file to start AI Analysis.")
