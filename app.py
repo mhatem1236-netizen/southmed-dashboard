@@ -200,6 +200,29 @@ if uploaded_file is not None:
     st.sidebar.header("🎛️ What-If Optimization Simulator")
     sim_days_saved = st.sidebar.slider("Simulate Admin Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
 
+    # ==========================================
+    # 🗄️ نظام النسخ الاحتياطي للهيستوري (Backup & Restore)
+    # ==========================================
+    st.sidebar.divider()
+    with st.sidebar.expander("🗄️ History Database Backup"):
+        st.markdown("<span style='font-size:12px; color:#d1d5da;'>Because cloud servers reset daily, save your history before leaving and restore it tomorrow.</span>", unsafe_allow_html=True)
+        
+        history_upload = st.file_uploader("1. Restore History Log", type="csv")
+        if history_upload is not None:
+            restored_df = pd.read_csv(history_upload)
+            restored_df.to_csv(HistoryManager.FILE_NAME, index=False)
+            st.success("✅ History Restored!")
+            
+        if os.path.exists(HistoryManager.FILE_NAME):
+            with open(HistoryManager.FILE_NAME, "rb") as f:
+                st.download_button(
+                    label="2. Download Backup 💾",
+                    data=f,
+                    file_name=f"history_backup_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+
     filtered_df = df.copy()
     if len(companies) > 0: filtered_df = filtered_df[filtered_df['Company Name'].isin(selected_companies)]
     if len(statuses) > 0: filtered_df = filtered_df[filtered_df['sample status'].isin(selected_statuses)]
@@ -242,7 +265,7 @@ if uploaded_file is not None:
     col1, col2, col3, col4, col5 = st.columns(5)
     
     d1 = HistoryManager.get_delta_html(current_metrics["Total_Requests"], "Total_Requests", uploaded_file.name)
-    create_card(col1, "Total Submittals", current_metrics["Total_Requests"], delta_html=d1) # تغيير الاسم لـ Submittals بناء على طلبك
+    create_card(col1, "Total Submittals", current_metrics["Total_Requests"], delta_html=d1)
     
     d2 = HistoryManager.get_delta_html(current_metrics["Total_Tests"], "Total_Tests", uploaded_file.name)
     create_card(col2, "Total Tests", current_metrics["Total_Tests"], delta_html=d2)
@@ -599,14 +622,13 @@ Project Data File: {uploaded_file.name}
                 st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
                 
                 # --- حسابات الكروت العلوية (فصل Submittals عن Tests وتحديد التواريخ) ---
-                bh_total_submittals = len(bh_df) # الريكويستات = عدد الصفوف
+                bh_total_submittals = len(bh_df) 
                 
-                # إجمالي الاختبارات بييجي من عمود Number of Tests لو موجود
                 num_tests_col_bh = next((c for c in bh_df.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
                 if num_tests_col_bh:
                     bh_total_tests = int(pd.to_numeric(bh_df[num_tests_col_bh], errors='coerce').fillna(0).sum())
                 else:
-                    bh_total_tests = bh_total_submittals # كبديل في حالة عدم وجود العمود
+                    bh_total_tests = bh_total_submittals 
                 
                 bh_accepted = len(bh_df[bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bh_df.columns else 0
                 bh_pass_rate = (bh_accepted / bh_total_submittals * 100) if bh_total_submittals > 0 else 0
@@ -615,7 +637,6 @@ Project Data File: {uploaded_file.name}
                 start_date = bh_df['Date ( test)'].min().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].min()) else "N/A"
                 end_date = bh_df['Date ( test)'].max().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].max()) else "N/A"
                 
-                # عرض الكروت صفين
                 c1, c2, c3, c4 = st.columns(4)
                 create_card(c1, "Total Submittals", bh_total_submittals)
                 create_card(c2, "Total Tests", bh_total_tests)
@@ -644,12 +665,12 @@ Project Data File: {uploaded_file.name}
                             ser = row.get('serial', 'N/A')
                             unresolved_alerts.append((l, t_type, ser))
                             
-                    unresolved_alerts = list(set(unresolved_alerts)) # منع التكرار
+                    unresolved_alerts = list(set(unresolved_alerts))
                     
                     if unresolved_alerts:
                         st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
                         alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
-                        for idx, alert in enumerate(unresolved_alerts[:8]): # عرض أقصى 8 كروت عشان الشاشة
+                        for idx, alert in enumerate(unresolved_alerts[:8]): 
                             l, t_type, ser = alert
                             alert_cols[idx % 4].markdown(f"""
                                 <div style="background-color: #4a1c1c; padding: 15px; border-radius: 10px; border: 2px solid #e74c3c; margin-bottom: 10px;">
@@ -684,7 +705,6 @@ Project Data File: {uploaded_file.name}
                 # --- خريطة المهام (Test Type & Done BY) ---
                 st.markdown("#### 👨‍🔧 Office & Execution Matrix")
                 if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
-                    # نستخدم الطبقة لو موجودة، لو فاضية نستخدم الـ Sampling Location
                     bh_df['Execution_Node'] = np.where(bh_df['layer'].astype(str).str.contains(r'\d'), bh_df['layer'], bh_df['Sampling Location'])
                     bh_df['Execution_Node'] = bh_df['Execution_Node'].fillna('General Location')
                     
