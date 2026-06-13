@@ -552,7 +552,83 @@ Project Data File: {uploaded_file.name}
     st.divider()
 
     # ==========================================
-    # 10. Timeline Analysis
+    # 10. Contractor Materials & Sourcing Analysis (القسم الجديد)
+    # ==========================================
+    st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
+    
+    if 'Company Name' in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
+        mat_df = filtered_df.copy()
+        mat_df['Sampling_Lower'] = mat_df['Sampling Location'].astype(str).str.lower()
+        
+        # دالة تصنيف مكان العينة بناءً على الكلمات المفتاحية
+        def categorize_location(loc):
+            if 'stock' in loc or 'مشون' in loc: return 'Stockpile (مشاون)'
+            elif 'bottom' in loc or 'قاع' in loc: return 'Bottom of Excavation (قاع حفر)'
+            elif 'fill' in loc or 'ردم' in loc: return 'Fill (ردم)'
+            else: return 'Other (أخرى)'
+            
+        mat_df['Loc_Category'] = mat_df['Sampling_Lower'].apply(categorize_location)
+        
+        # --- 1. الجدول المجمع للطباعة ---
+        st.markdown("#### 📑 Consolidated Contractors Summary (Ready for Print)")
+        st.info("💡 You can print this summary as PDF directly by pressing `Ctrl+P`.")
+        
+        summary_pivot = pd.crosstab(mat_df['Company Name'], mat_df['Loc_Category'], margins=True, margins_name="Total")
+        # ترتيب الأعمدة ليكون شكلها منطقي
+        cols_order = ['Stockpile (مشاون)', 'Bottom of Excavation (قاع حفر)', 'Fill (ردم)', 'Other (أخرى)', 'Total']
+        existing_cols = [c for c in cols_order if c in summary_pivot.columns]
+        summary_pivot = summary_pivot[existing_cols]
+        
+        st.dataframe(summary_pivot, use_container_width=True)
+        
+        st.divider()
+        
+        # --- 2. تفاصيل كل مقاول (Interactive) ---
+        st.markdown("#### 🏢 Individual Contractor Deep Dive")
+        comp_list = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
+        
+        if comp_list:
+            selected_comp = st.selectbox("Select a Contractor to Analyze:", comp_list)
+            comp_df = mat_df[mat_df['Company Name'] == selected_comp]
+            
+            # حساب الكروت
+            stock_count = len(comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)'])
+            bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation (قاع حفر)'])
+            fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill (ردم)'])
+            
+            cc1, cc2, cc3 = st.columns(3)
+            create_card(cc1, "Stockpile Samples (مشاون)", stock_count)
+            create_card(cc2, "Bottom Excavation (قاع حفر)", bottom_count)
+            create_card(cc3, "Fill Samples (ردم)", fill_count)
+            
+            # الشارتات الخاصة بالمقاول
+            ch_col1, ch_col2 = st.columns(2)
+            
+            with ch_col1:
+                # نسب تصنيف الستوك بيل
+                stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)']
+                if 'Classification' in stock_df.columns and not stock_df.empty:
+                    fig_class = px.pie(stock_df, names='Classification', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
+                    st.plotly_chart(fig_class, use_container_width=True)
+                else:
+                    st.info(f"No Stockpile classification data logged for {selected_comp}.")
+                    
+            with ch_col2:
+                # نسب القبول والرفض للمقاول
+                if 'sample status' in comp_df.columns and not comp_df.empty:
+                    fig_status = px.pie(comp_df, names='sample status', title=f"Overall Approval/Rejection Rate for {selected_comp}", hole=0.3,
+                                        color='sample status',
+                                        color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
+                    st.plotly_chart(fig_status, use_container_width=True)
+                else:
+                    st.info(f"No status data logged for {selected_comp}.")
+    else:
+        st.warning("⚠️ Required columns ('Company Name' or 'Sampling Location') not found for this analysis.")
+
+    st.divider()
+
+    # ==========================================
+    # 11. Timeline Analysis
     # ==========================================
     st.markdown("### 📈 Timeline Analysis")
     time_col1, time_col2 = st.columns(2)
@@ -598,7 +674,7 @@ Project Data File: {uploaded_file.name}
     st.divider()
 
     # ==========================================
-    # 🔥 11. ADVANCED Borehole (BH) Quality Auditor
+    # 🔥 12. ADVANCED Borehole (BH) Quality Auditor
     # ==========================================
     st.markdown('<div class="bi-title">🔍 Advanced Borehole (BH) Quality Auditor</div>', unsafe_allow_html=True)
     
@@ -742,7 +818,7 @@ Project Data File: {uploaded_file.name}
     st.divider()
 
     # ==========================================
-    # 12. Complete Operational Records
+    # 13. Complete Operational Records
     # ==========================================
     st.markdown("### 📋 Complete Operational Records")
     st.dataframe(filtered_df, use_container_width=True)
