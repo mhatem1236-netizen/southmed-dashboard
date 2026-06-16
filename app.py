@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go  # إضافة مكتبة العدادات
 import os
 from datetime import datetime
 import pytz
@@ -58,70 +59,57 @@ class HistoryManager:
         else: return f'<div class="delta-neutral">➖ No change</div>'
 
 # ==========================================
-# 2. Page Config & BI Branding + Print CSS
+# 2. Page Config & Premium UI Branding
 # ==========================================
 st.set_page_config(page_title="Infrastructure BI Dashboard", layout="wide")
 
 st.markdown("""
     <style>
-    /* Screen Styles */
-    .metric-card { background-color: #1e3d59; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #30363d; margin-bottom: 10px; }
-    .metric-label { color: #d1d5da; font-size: 16px; font-weight: bold; margin-bottom: 5px; }
-    .metric-value { color: #ffffff !important; font-size: 30px; font-weight: bold; }
-    .stDataFrame { border: 1px solid #1e3d59; border-radius: 5px; }
+    /* Premium Glassmorphism UI */
+    .metric-card { 
+        background: rgba(30, 61, 89, 0.45); 
+        backdrop-filter: blur(12px); 
+        -webkit-backdrop-filter: blur(12px);
+        padding: 20px; 
+        border-radius: 15px; 
+        text-align: center; 
+        border: 1px solid rgba(255, 255, 255, 0.1); 
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        margin-bottom: 10px; 
+        transition: transform 0.3s ease;
+    }
+    .metric-card:hover { transform: translateY(-5px); }
+    .metric-label { color: #d1d5da; font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;}
+    .metric-value { color: #ffffff !important; font-size: 34px; font-weight: 800; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);}
+    
+    .stDataFrame { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; }
     .delta-up { color: #2ecc71; font-size: 14px; font-weight: bold; margin-top: 8px; }
     .delta-down { color: #e74c3c; font-size: 14px; font-weight: bold; margin-top: 8px; }
     .delta-neutral { color: #95a5a6; font-size: 14px; font-weight: bold; margin-top: 8px; }
-    .bi-title { color: #ffaa00; font-size: 24px; font-weight: bold; border-bottom: 2px solid #ffaa00; padding-bottom: 5px; margin-top: 40px; margin-bottom: 20px;}
-    .simulator-card { background-color: #0e2439; padding: 20px; border-radius: 10px; border: 2px dashed #2ecc71; text-align: center; margin-top: 15px;}
+    
+    .bi-title { color: #ffaa00; font-size: 26px; font-weight: bold; border-bottom: 2px solid rgba(255, 170, 0, 0.3); padding-bottom: 8px; margin-top: 40px; margin-bottom: 20px;}
+    
+    .simulator-card { 
+        background: linear-gradient(135deg, rgba(14, 36, 57, 0.8), rgba(46, 204, 113, 0.15));
+        backdrop-filter: blur(10px);
+        padding: 20px; border-radius: 15px; border: 1px solid rgba(46, 204, 113, 0.3); text-align: center; margin-top: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .leaderboard-card {
+        background: rgba(20, 20, 20, 0.5); padding: 20px; border-radius: 15px; border-left: 5px solid; margin-bottom: 15px;
+    }
     
     /* Optimized PDF Print CSS */
     @media print {
-        [data-testid="stSidebar"], 
-        .stFileUploader, 
-        .stButton, 
-        header, 
-        footer,
-        [data-testid="stSidebarCollapsedControl"] { 
-            display: none !important; 
-        }
-        
-        .main .block-container {
-            max-width: 100% !important;
-            padding: 10mm !important;
-            margin: 0 !important;
-        }
-        
-        .bi-title {
-            page-break-before: always !important;
-            color: #1e3d59 !important;
-            border-bottom: 2px solid #1e3d59 !important;
-            padding-top: 10mm !important;
-        }
-        
-        .metric-card, 
-        .element-container, 
-        div[data-testid="stPlotlyChart"],
-        .stDataFrame,
-        .simulator-card {
-            page-break-inside: avoid !important;
-            margin-bottom: 5mm !important;
-        }
-        
-        h1, h2, h3, p, .metric-label {
-            color: #000000 !important;
-        }
-        .metric-card {
-            background-color: #f0f4f8 !important;
-            border: 1px solid #1e3d59 !important;
-        }
-        .simulator-card {
-            background-color: #ebf7ee !important;
-            border: 2px solid #2ecc71 !important;
-        }
-        .metric-value {
-            color: #1e3d59 !important;
-        }
+        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+        .main .block-container { max-width: 100% !important; padding: 10mm !important; margin: 0 !important; }
+        .bi-title { page-break-before: always !important; color: #1e3d59 !important; border-bottom: 2px solid #1e3d59 !important; padding-top: 10mm !important; }
+        .metric-card, .element-container, div[data-testid="stPlotlyChart"], .stDataFrame, .simulator-card { page-break-inside: avoid !important; margin-bottom: 5mm !important; }
+        h1, h2, h3, p, .metric-label { color: #000000 !important; }
+        .metric-card { background-color: #f0f4f8 !important; border: 1px solid #1e3d59 !important; box-shadow: none !important; }
+        .simulator-card { background-color: #ebf7ee !important; border: 2px solid #2ecc71 !important; }
+        .metric-value { color: #1e3d59 !important; text-shadow: none !important; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -201,7 +189,7 @@ if uploaded_file is not None:
     sim_days_saved = st.sidebar.slider("Simulate Admin Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
 
     # ==========================================
-    # 🗄️ نظام النسخ الاحتياطي للهيستوري (Backup & Restore)
+    # 🗄️ Backup & Restore
     # ==========================================
     st.sidebar.divider()
     with st.sidebar.expander("🗄️ History Database Backup"):
@@ -279,15 +267,43 @@ if uploaded_file is not None:
     d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
     create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
 
-    if sim_days_saved > 0:
-        total_time_recovered = sim_days_saved * total_requests_count
-        st.markdown(f"""
-            <div class="simulator-card">
-                <h4 style="color: #2ecc71; margin: 0;">✨ Simulated Optimization Impact</h4>
-                <p style="font-size: 24px; font-weight: bold; color: #ffffff; margin: 5px 0;">{total_time_recovered:,} Total Project Days Saved</p>
-                <p style="font-size: 14px; color: #d1d5da; margin: 0;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
-            </div>
-            """, unsafe_allow_html=True)
+    # --- Speedometer & Simulator Row (New Addition) ---
+    g_col, s_col = st.columns([0.4, 0.6])
+    with g_col:
+        overall_acc = len(filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in filtered_df.columns else 0
+        overall_rate = (overall_acc / total_requests_count * 100) if total_requests_count > 0 else 0
+        
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number", value=overall_rate,
+            title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': 'white'}},
+            number={'suffix': "%", 'font': {'size': 40, 'color': 'white'}},
+            gauge={
+                'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
+                'bar': {'color': "#ffffff", 'thickness': 0.2},
+                'bgcolor': "rgba(255,255,255,0.1)",
+                'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}],
+            }
+        ))
+        fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20))
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+    with s_col:
+        if sim_days_saved > 0:
+            total_time_recovered = sim_days_saved * total_requests_count
+            st.markdown(f"""
+                <div class="simulator-card">
+                    <h4 style="color: #2ecc71; margin: 0;">✨ Simulated Optimization Impact</h4>
+                    <p style="font-size: 24px; font-weight: bold; color: #ffffff; margin: 5px 0;">{total_time_recovered:,} Total Project Days Saved</p>
+                    <p style="font-size: 14px; color: #d1d5da; margin: 0;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+                <div class="simulator-card" style="border-color: rgba(255,255,255,0.1); background: rgba(30,61,89,0.3);">
+                    <h4 style="color: #d1d5da; margin: 0; font-size: 20px;">🎛️ Optimization Simulator Inactive</h4>
+                    <p style="font-size: 15px; color: #d1d5da; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
+                </div>
+                """, unsafe_allow_html=True)
 
     # ==========================================
     # 5. Monthly Volume & Deficit Analysis
@@ -305,6 +321,7 @@ if uploaded_file is not None:
         fig_vol = px.bar(monthly_summary, x='Month', y='Volume', color='Test Type', barmode='group',
                          title="Testing Intensity & Production Coverage per Month",
                          color_discrete_sequence=px.colors.qualitative.Bold)
+        fig_vol.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         
         ch_col, txt_col = st.columns([0.7, 0.3])
         ch_col.plotly_chart(fig_vol, use_container_width=True)
@@ -387,6 +404,7 @@ Project Quality Management Office"""
         fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], 
                            title="Duration Forecasting & Trendline Tracking",
                            color_discrete_sequence=['rgba(255,170,0,0.3)', '#e74c3c'])
+        fig_pred.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         
         latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
         
@@ -470,12 +488,14 @@ Project Data File: {uploaded_file.name}
                 fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', 
                                    title="Daily Added Submittals Trend",
                                    text_auto=True, color_discrete_sequence=['#ffaa00'])
+                fig_added.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig_added, use_container_width=True)
                 
             with col_t2:
                 fig_rate = px.line(file_trend_df.iloc[1:], x='Date_Time', y='Growth_Rate_%', 
                                    title="Growth Rate Trend Percentage (%)",
                                    markers=True, color_discrete_sequence=['#2ecc71'])
+                fig_rate.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig_rate, use_container_width=True)
                 
             with st.expander("🖨️ View & Export History Log for this File"):
@@ -515,7 +535,7 @@ Project Data File: {uploaded_file.name}
                 nbins=30,
                 color_discrete_sequence=px.colors.qualitative.Set2
             )
-            
+            fig_dpl.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_dpl, use_container_width=True)
             
             st.info("💡 **AI Quality Insight:** Use the box plot above the histogram to visually identify any isolated dots (outliers). A tight, bell-shaped distribution indicates high consistency in contractor materials and execution.")
@@ -536,26 +556,66 @@ Project Data File: {uploaded_file.name}
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
         if 'Company Name' in filtered_df.columns:
-            st.plotly_chart(px.bar(filtered_df, x='Company Name', color='Test Type', title="Workload per Contractor 🏢"), use_container_width=True)
+            fig_c1 = px.bar(filtered_df, x='Company Name', color='Test Type', title="Workload per Contractor 🏢")
+            fig_c1.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_c1, use_container_width=True)
         if 'Done BY' in filtered_df.columns:
-            st.plotly_chart(px.bar(filtered_df, x='Done BY', color='Test Type', title="Office Performance Analysis (Done BY) 👨‍💼"), use_container_width=True)
+            fig_c2 = px.bar(filtered_df, x='Done BY', color='Test Type', title="Office Performance Analysis (Done BY) 👨‍💼")
+            fig_c2.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_c2, use_container_width=True)
 
     with chart_col2:
         if 'sample status' in filtered_df.columns:
-            st.plotly_chart(px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴"), use_container_width=True)
+            fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴")
+            fig_p1.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_p1, use_container_width=True)
         
         if 'Classification' in filtered_df.columns:
             class_df = filtered_df.dropna(subset=['Classification']).copy()
             if not class_df.empty:
-                st.plotly_chart(px.pie(class_df, names='Classification', title="Sample Classification Distribution 📑"), use_container_width=True)
+                fig_p2 = px.pie(class_df, names='Classification', title="Sample Classification Distribution 📑")
+                fig_p2.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig_p2, use_container_width=True)
 
     st.divider()
 
     # ==========================================
-    # 10. Contractor Materials & Sourcing Analysis
+    # 10. Contractor Materials & Sourcing Analysis (With Leaderboard)
     # ==========================================
     st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
     
+    # --- Contractor Leaderboard (New Addition) ---
+    if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
+        comp_stats = []
+        for comp in filtered_df['Company Name'].dropna().unique():
+            cdf = filtered_df[filtered_df['Company Name'] == comp]
+            c_total = len(cdf)
+            c_acc = len(cdf[cdf['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])])
+            rate = (c_acc / c_total * 100) if c_total > 0 else 0
+            comp_stats.append({'Company': comp, 'Total': c_total, 'Rate': rate})
+        
+        c_df = pd.DataFrame(comp_stats)
+        if not c_df.empty:
+            valid_c_df = c_df[c_df['Total'] >= 5] if len(c_df[c_df['Total'] >= 5]) > 0 else c_df
+            best_comp = valid_c_df.loc[valid_c_df['Rate'].idxmax()]
+            worst_comp = valid_c_df.loc[valid_c_df['Rate'].idxmin()]
+            
+            l_col1, l_col2 = st.columns(2)
+            l_col1.markdown(f"""
+                <div class="leaderboard-card" style="border-left-color: #2ecc71;">
+                    <h4 style="margin:0; color:#2ecc71;">🏆 Top Performer Contractor</h4>
+                    <h2 style="margin:5px 0; color:white;">{best_comp['Company']}</h2>
+                    <span style="color:#d1d5da;">Approval Rate: <b>{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
+                </div>
+            """, unsafe_allow_html=True)
+            l_col2.markdown(f"""
+                <div class="leaderboard-card" style="border-left-color: #e74c3c;">
+                    <h4 style="margin:0; color:#e74c3c;">⚠️ Needs Attention</h4>
+                    <h2 style="margin:5px 0; color:white;">{worst_comp['Company']}</h2>
+                    <span style="color:#d1d5da;">Approval Rate: <b>{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
+                </div>
+            """, unsafe_allow_html=True)
+
     if 'Company Name' in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
         mat_df = filtered_df.copy()
         mat_df['Sampling_Lower'] = mat_df['Sampling Location'].astype(str).str.lower()
@@ -602,6 +662,7 @@ Project Data File: {uploaded_file.name}
                 stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)']
                 if 'Classification' in stock_df.columns and not stock_df.empty:
                     fig_class = px.pie(stock_df, names='Classification', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_class.update_layout(paper_bgcolor="rgba(0,0,0,0)")
                     st.plotly_chart(fig_class, use_container_width=True)
                 else:
                     st.info(f"No Stockpile classification data logged for {selected_comp}.")
@@ -611,6 +672,7 @@ Project Data File: {uploaded_file.name}
                     fig_status = px.pie(comp_df, names='sample status', title=f"Overall Approval/Rejection Rate for {selected_comp}", hole=0.3,
                                         color='sample status',
                                         color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
+                    fig_status.update_layout(paper_bgcolor="rgba(0,0,0,0)")
                     st.plotly_chart(fig_status, use_container_width=True)
                 else:
                     st.info(f"No status data logged for {selected_comp}.")
@@ -629,7 +691,9 @@ Project Data File: {uploaded_file.name}
         if 'Date ( test)' in filtered_df.columns:
             filtered_df['Month_Plot'] = filtered_df['Date ( test)'].dt.to_period('M').astype(str)
             monthly_data = filtered_df.groupby('Month_Plot').size().reset_index(name='Count')
-            st.plotly_chart(px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅"), use_container_width=True)
+            fig_m = px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅")
+            fig_m.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_m, use_container_width=True)
 
     with time_col2:
         if 'Date( SUB)' in filtered_df.columns and 'sample status' in filtered_df.columns:
@@ -661,6 +725,7 @@ Project Data File: {uploaded_file.name}
                 },
                 title="Monthly Quality Yield (Based on Submission Date) 🎯"
             )
+            fig_gap.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_gap, use_container_width=True)
 
     st.divider()
@@ -717,7 +782,7 @@ Project Data File: {uploaded_file.name}
                 create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
                 create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
 
-                # --- كارت الشركات وتواريخ عملها (الإضافة الجديدة) ---
+                # --- كارت الشركات وتواريخ عملها ---
                 if 'Company Name' in bh_df.columns:
                     if 'Date ( test)' in bh_df.columns:
                         comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
@@ -787,7 +852,9 @@ Project Data File: {uploaded_file.name}
                         if 'Classification' in boe_df.columns:
                             class_counts = boe_df['Classification'].value_counts().reset_index()
                             class_counts.columns = ['Classification', 'Count']
-                            st.plotly_chart(px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True), use_container_width=True)
+                            fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True)
+                            fig_sc.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                            st.plotly_chart(fig_sc, use_container_width=True)
                     else:
                         st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
 
@@ -803,6 +870,7 @@ Project Data File: {uploaded_file.name}
                                           title=f"Who did What & Where in {selected_bh}",
                                           color='Done BY', color_discrete_sequence=px.colors.qualitative.Pastel)
                     fig_matrix.update_traces(textinfo="label+value")
+                    fig_matrix.update_layout(paper_bgcolor="rgba(0,0,0,0)")
                     st.plotly_chart(fig_matrix, use_container_width=True)
 
                 st.divider()
@@ -811,19 +879,25 @@ Project Data File: {uploaded_file.name}
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
                     if 'sample status' in bh_df.columns:
-                        st.plotly_chart(px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel), use_container_width=True)
+                        fig_ep = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+                        fig_ep.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+                        st.plotly_chart(fig_ep, use_container_width=True)
                 
                 with b_col2:
                     if 'layer' in bh_df.columns:
                         layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
                         layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
                         layer_reqs = layer_reqs.sort_values('Layer_Num')
-                        st.plotly_chart(px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True), use_container_width=True)
+                        fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True)
+                        fig_eb.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                        st.plotly_chart(fig_eb, use_container_width=True)
 
                 if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
                     trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
                     if not trend_df.empty:
-                        st.plotly_chart(px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}"), use_container_width=True)
+                        fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}")
+                        fig_el.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                        st.plotly_chart(fig_el, use_container_width=True)
                 
                 st.markdown(f"**Detailed Audit Log for `{selected_bh}`:**")
                 st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
