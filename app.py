@@ -9,7 +9,7 @@ import pytz
 import base64
 
 # ==========================================
-# إعدادات التوقيت والألوان
+# إعدادات التوقيت والألوان النيون
 # ==========================================
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
@@ -27,11 +27,13 @@ def style_3d_glassy(fig, chart_type="bar"):
     )
     
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
+        # تطبيق تأثير الإزاز: شفافية 85% مع إطار أبيض خفيف
         fig.update_traces(
             marker=dict(line=dict(color='rgba(255, 255, 255, 0.4)', width=1.5)),
             opacity=0.85
         )
     elif chart_type == "line":
+        # زيادة سمك الخطوط وإضافة نقط مضيئة
         fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=1.5)))
         
     fig.update_xaxes(showgrid=False)
@@ -140,6 +142,7 @@ st.markdown("""
     
     .simulator-card { background: linear-gradient(135deg, rgba(14, 36, 57, 0.7), rgba(46, 204, 113, 0.1)); backdrop-filter: blur(12px); padding: 25px; border-radius: 20px; border: 1px solid rgba(46, 204, 113, 0.4); text-align: center; margin-top: 15px; box-shadow: 0 8px 25px rgba(46, 204, 113, 0.15);}
     .leaderboard-card { background: rgba(10, 20, 33, 0.7); padding: 25px; border-radius: 20px; border-left: 5px solid; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.3);}
+    
     .health-card { background: rgba(10, 20, 33, 0.8); backdrop-filter: blur(10px); padding: 15px 25px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);}
     
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -147,32 +150,15 @@ st.markdown("""
     ::-webkit-scrollbar-thumb { background: rgba(255, 170, 0, 0.5); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255, 170, 0, 0.8); }
 
-    /* 🔥 CSS قوي ومتقدم للطباعة كـ PDF (Ctrl+P) 🔥 */
+    /* 🔥 CSS للطباعة الاحترافية كـ PDF (Ctrl+P) 🔥 */
     @media print {
-        * {
-            -webkit-print-color-adjust: exact !important; 
-            print-color-adjust: exact !important; 
-        }
-        body, [data-testid="stAppViewContainer"] {
-            background: #050a11 !important;
-        }
-        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { 
-            display: none !important; 
-        }
-        .main .block-container { 
-            max-width: 100% !important; padding: 5mm !important; margin: 0 !important; 
-        }
-        .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"] { 
-            page-break-inside: avoid !important; 
-            background: #0b1a2e !important;
-            border: 1px solid rgba(255, 170, 0, 0.4) !important;
-        }
-        .metric-value, .bi-title { 
-            -webkit-text-fill-color: white !important; color: white !important; 
-        }
-        h1, h2, h3, h4, p, span, .metric-label { 
-            color: #d1d5da !important; 
-        }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body, [data-testid="stAppViewContainer"] { background: #050a11 !important; }
+        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+        .main .block-container { max-width: 100% !important; padding: 5mm !important; margin: 0 !important; }
+        .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"] { page-break-inside: avoid !important; background: #0b1a2e !important; border: 1px solid rgba(255, 170, 0, 0.4) !important; }
+        .metric-value, .bi-title { -webkit-text-fill-color: white !important; color: white !important; }
+        h1, h2, h3, h4, p, span, .metric-label { color: #d1d5da !important; }
         .gradient-divider { display: none !important; }
     }
     </style>
@@ -231,7 +217,7 @@ if uploaded_file is not None:
     if 'Date ( test)' in df.columns: df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
     if 'Date( SUB)' in df.columns: df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce', dayfirst=True)
 
-    # 🔥 1. Health Inspector المحدث 🔥
+    # 🔥 1. Health Inspector 🔥
     total_rows = len(df)
     missing_dates = df['Date ( test)'].isnull().sum() if 'Date ( test)' in df.columns else 0
     missing_status = df['sample status'].isnull().sum() if 'sample status' in df.columns else 0
@@ -249,7 +235,7 @@ if uploaded_file is not None:
     if duplicate_serials > 0: error_details.append(f"{duplicate_serials} Duplicate Serials")
     
     scanned_msg = f"<span style='color:#00d2ff; font-weight:bold;'>Scanned {total_rows:,} Rows</span>"
-    error_str = f"{scanned_msg} ➔ " + " | ".join(error_details) if error_details else f"{scanned_msg} ➔ Data is 100% clean and structured."
+    error_str = f"{scanned_msg} &rarr; " + " | ".join(error_details) if error_details else f"{scanned_msg} &rarr; Data is 100% clean and structured."
     
     st.markdown(f"""
         <div class="health-card" style="border-left: 5px solid {health_color};">
@@ -266,7 +252,7 @@ if uploaded_file is not None:
     # 🔥 2. Global Smart Search 🔥
     st.sidebar.divider()
     st.sidebar.markdown("### 🔍 Global Smart Search")
-    global_search = st.sidebar.text_input("Search anything (Serial, Element, Date...):", placeholder="Type keyword...")
+    global_search = st.sidebar.text_input("Search anything (Serial, Element, Date...):", placeholder="Type keyword to filter all...")
     
     if global_search:
         mask = df.astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
@@ -738,7 +724,7 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 10. Contractor Materials & Sourcing Analysis (With Leaderboard)
+    # 10. Contractor Materials & Sourcing Analysis
     # ==========================================
     st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
     
@@ -888,11 +874,12 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 🔥 12. ADVANCED Element Quality Auditor
+    # 🔥 12. ADVANCED Element Quality Auditor (معدلة للفصل بين Zones) 🔥
     # ==========================================
     st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
     
     bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
+    zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
 
     if bh_col_name:
         filtered_df[bh_col_name] = filtered_df[bh_col_name].fillna('').astype(str).str.strip()
@@ -902,150 +889,146 @@ Project Quality Management Office"""
             selected_bh = st.selectbox(f"Select an Element ({bh_col_name}) to investigate:", ["-- Select Element --"] + sorted(bh_list))
             
             if selected_bh != "-- Select Element --":
-                bh_df = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
+                bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
+                bh_df = None
                 
-                if 'layer' in bh_df.columns:
-                    bh_df['Layer_Num'] = bh_df['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
-                    bh_df = bh_df.sort_values(['Layer_Num', 'Date ( test)'])
-                
-                st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
-                
-                bh_total_submittals = len(bh_df) 
-                
-                num_tests_col_bh = next((c for c in bh_df.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
-                if num_tests_col_bh:
-                    bh_total_tests = int(pd.to_numeric(bh_df[num_tests_col_bh], errors='coerce').fillna(0).sum())
+                # الفلتر الذكي: إذا كان الـ Element متكرر في أكثر من Zone
+                if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
+                    available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
+                    st.warning(f"⚠️ **انتباه:** العنصر `{selected_bh}` متكرر في قطاعات/مناطق مختلفة. يرجى تحديد الـ Zone المطلوب:")
+                    selected_zone = st.radio("📍 اختر المنطقة (Zone):", available_zones, horizontal=True)
+                    
+                    if selected_zone:
+                        bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
+                        st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
                 else:
-                    bh_total_tests = bh_total_submittals 
+                    bh_df = bh_df_raw
+                    st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
                 
-                bh_accepted = len(bh_df[bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bh_df.columns else 0
-                bh_pass_rate = (bh_accepted / bh_total_submittals * 100) if bh_total_submittals > 0 else 0
-                bh_avg_dpl = pd.to_numeric(bh_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in bh_df.columns else 0
-                
-                start_date = bh_df['Date ( test)'].min().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].min()) else "N/A"
-                end_date = bh_df['Date ( test)'].max().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].max()) else "N/A"
-                
-                c1, c2, c3, c4 = st.columns(4)
-                create_card(c1, "Total Submittals", bh_total_submittals)
-                create_card(c2, "Total Tests", bh_total_tests)
-                create_card(c3, "First Test Date", start_date)
-                create_card(c4, "Last Test Date", end_date)
-                
-                c5, c6, c7, c8 = st.columns(4)
-                create_card(c5, "Passed/Approved", bh_accepted)
-                create_card(c6, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
-                create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
-                create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
-
-                if 'Company Name' in bh_df.columns:
-                    if 'Date ( test)' in bh_df.columns:
-                        comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
-                        comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:#8da3b9;'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
-                        companies_str = "<br>".join(comp_details) if comp_details else "N/A"
-                    else:
-                        companies_worked = bh_df['Company Name'].dropna().unique()
-                        companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
-                    
-                    c9 = st.columns(1)[0]
-                    c9.markdown(f"""
-                        <div class="metric-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
-                            <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element (التسلسل الزمني للشركات)</div>
-                            <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500;">{companies_str}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
-                    rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                    approved_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                    
-                    approved_layers = set(bh_df[approved_mask]['layer'].dropna().astype(str).unique())
-                    rejected_rows = bh_df[rejected_mask]
-                    
-                    unresolved_alerts = []
-                    for _, row in rejected_rows.iterrows():
-                        l = str(row.get('layer', 'Unknown'))
-                        if l not in approved_layers:
-                            t_type = row.get('Test Type', 'N/A')
-                            ser = row.get('serial', 'N/A')
-                            unresolved_alerts.append((l, t_type, ser))
-                            
-                    unresolved_alerts = list(set(unresolved_alerts))
-                    
-                    if unresolved_alerts:
-                        st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
-                        alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
-                        for idx, alert in enumerate(unresolved_alerts[:8]): 
-                            l, t_type, ser = alert
-                            alert_cols[idx % 4].markdown(f"""
-                                <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
-                                    <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
-                                    <div style="color: #ffffff; font-size: 14px; line-height: 1.6;">
-                                        <b>Layer:</b> {l}<br>
-                                        <b>Test:</b> {t_type}<br>
-                                        <b>Serial No:</b> {ser}<br>
-                                        <span style="font-size:12px; color:#ffcccc;">Status is REVISE/REJECTED with no subsequent approval found!</span>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                
-                st.divider()
-
-                if 'Sampling Location' in bh_df.columns:
-                    st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
-                    boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
-                    if not boe_df.empty:
-                        boe_count = len(boe_df)
-                        st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
-                        if 'Classification' in boe_df.columns:
-                            class_counts = boe_df['Classification'].value_counts().reset_index()
-                            class_counts.columns = ['Classification', 'Count']
-                            fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True, color_discrete_sequence=NEON_COLORS)
-                            fig_sc = style_3d_glassy(fig_sc, chart_type="bar")
-                            st.plotly_chart(fig_sc, use_container_width=True)
-                    else:
-                        st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
-
-                st.divider()
-
-                st.markdown("#### 👨‍🔧 Office & Execution Matrix")
-                if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
-                    bh_df['Execution_Node'] = np.where(bh_df['layer'].astype(str).str.contains(r'\d'), bh_df['layer'], bh_df['Sampling Location'])
-                    bh_df['Execution_Node'] = bh_df['Execution_Node'].fillna('General Location')
-                    
-                    fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], 
-                                          title=f"Who did What & Where in {selected_bh}",
-                                          color='Done BY', color_discrete_sequence=NEON_COLORS)
-                    fig_matrix.update_traces(textinfo="label+value")
-                    fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
-                    st.plotly_chart(fig_matrix, use_container_width=True)
-
-                st.divider()
-
-                b_col1, b_col2 = st.columns(2)
-                with b_col1:
-                    if 'sample status' in bh_df.columns:
-                        fig_ep = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
-                        fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
-                        st.plotly_chart(fig_ep, use_container_width=True)
-                
-                with b_col2:
+                if bh_df is not None:
                     if 'layer' in bh_df.columns:
-                        layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
-                        layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
-                        layer_reqs = layer_reqs.sort_values('Layer_Num')
-                        fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
-                        fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
-                        st.plotly_chart(fig_eb, use_container_width=True)
+                        bh_df['Layer_Num'] = bh_df['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
+                        bh_df = bh_df.sort_values(['Layer_Num', 'Date ( test)'])
+                    
+                    bh_total_submittals = len(bh_df) 
+                    num_tests_col_bh = next((c for c in bh_df.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
+                    bh_total_tests = int(pd.to_numeric(bh_df[num_tests_col_bh], errors='coerce').fillna(0).sum()) if num_tests_col_bh else bh_total_submittals 
+                    bh_accepted = len(bh_df[bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bh_df.columns else 0
+                    bh_pass_rate = (bh_accepted / bh_total_submittals * 100) if bh_total_submittals > 0 else 0
+                    bh_avg_dpl = pd.to_numeric(bh_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in bh_df.columns else 0
+                    
+                    start_date = bh_df['Date ( test)'].min().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].min()) else "N/A"
+                    end_date = bh_df['Date ( test)'].max().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].max()) else "N/A"
+                    
+                    c1, c2, c3, c4 = st.columns(4)
+                    create_card(c1, "Total Submittals", bh_total_submittals)
+                    create_card(c2, "Total Tests", bh_total_tests)
+                    create_card(c3, "First Test Date", start_date)
+                    create_card(c4, "Last Test Date", end_date)
+                    
+                    c5, c6, c7, c8 = st.columns(4)
+                    create_card(c5, "Passed/Approved", bh_accepted)
+                    create_card(c6, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
+                    create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
+                    create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
 
-                if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
-                    trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
-                    if not trend_df.empty:
-                        fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}", color_discrete_sequence=NEON_COLORS)
-                        fig_el = style_3d_glassy(fig_el, chart_type="line")
-                        st.plotly_chart(fig_el, use_container_width=True)
-                
-                with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
-                    st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
+                    if 'Company Name' in bh_df.columns:
+                        if 'Date ( test)' in bh_df.columns:
+                            comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
+                            # استخدام كود السهم الواضح الملون &rarr;
+                            comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:#8da3b9;'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
+                            companies_str = "<br>".join(comp_details) if comp_details else "N/A"
+                        else:
+                            companies_worked = bh_df['Company Name'].dropna().unique()
+                            companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
+                        
+                        st.markdown(f"""
+                            <div class="metric-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
+                                <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element (التسلسل الزمني للشركات)</div>
+                                <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500;">{companies_str}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                    if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
+                        rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
+                        approved_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                        
+                        approved_layers = set(bh_df[approved_mask]['layer'].dropna().astype(str).unique())
+                        unresolved_alerts = list(set([(str(row.get('layer', 'Unknown')), row.get('Test Type', 'N/A'), row.get('serial', 'N/A')) for _, row in bh_df[rejected_mask].iterrows() if str(row.get('layer', 'Unknown')) not in approved_layers]))
+                        
+                        if unresolved_alerts:
+                            st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
+                            alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
+                            for idx, alert in enumerate(unresolved_alerts[:8]): 
+                                l, t_type, ser = alert
+                                alert_cols[idx % 4].markdown(f"""
+                                    <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
+                                        <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
+                                        <div style="color: #ffffff; font-size: 14px; line-height: 1.6;">
+                                            <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
+                                            <span style="font-size:12px; color:#ffcccc;">Status is REVISE/REJECTED with no subsequent approval found!</span>
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                    
+                    st.divider()
+
+                    if 'Sampling Location' in bh_df.columns:
+                        st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
+                        boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
+                        if not boe_df.empty:
+                            boe_count = len(boe_df)
+                            st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
+                            if 'Classification' in boe_df.columns:
+                                class_counts = boe_df['Classification'].value_counts().reset_index()
+                                class_counts.columns = ['Classification', 'Count']
+                                fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True, color_discrete_sequence=NEON_COLORS)
+                                fig_sc = style_3d_glassy(fig_sc, chart_type="bar")
+                                st.plotly_chart(fig_sc, use_container_width=True)
+                        else:
+                            st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
+
+                    st.divider()
+
+                    st.markdown("#### 👨‍🔧 Office & Execution Matrix")
+                    if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
+                        bh_df['Execution_Node'] = np.where(bh_df['layer'].astype(str).str.contains(r'\d'), bh_df['layer'], bh_df['Sampling Location'])
+                        bh_df['Execution_Node'] = bh_df['Execution_Node'].fillna('General Location')
+                        
+                        fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], 
+                                              title=f"Who did What & Where in {selected_bh}",
+                                              color='Done BY', color_discrete_sequence=NEON_COLORS)
+                        fig_matrix.update_traces(textinfo="label+value")
+                        fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
+                        st.plotly_chart(fig_matrix, use_container_width=True)
+
+                    st.divider()
+
+                    b_col1, b_col2 = st.columns(2)
+                    with b_col1:
+                        if 'sample status' in bh_df.columns:
+                            fig_ep = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                            fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
+                            st.plotly_chart(fig_ep, use_container_width=True)
+                    
+                    with b_col2:
+                        if 'layer' in bh_df.columns:
+                            layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
+                            layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
+                            layer_reqs = layer_reqs.sort_values('Layer_Num')
+                            fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
+                            fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
+                            st.plotly_chart(fig_eb, use_container_width=True)
+
+                    if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
+                        trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
+                        if not trend_df.empty:
+                            fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}", color_discrete_sequence=NEON_COLORS)
+                            fig_el = style_3d_glassy(fig_el, chart_type="line")
+                            st.plotly_chart(fig_el, use_container_width=True)
+                    
+                    with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
+                        st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
     else:
         st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
