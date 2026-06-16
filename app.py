@@ -11,6 +11,37 @@ import pytz
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 
 # ==========================================
+# باليتة ألوان نيون زاهية لتناسب الخلفية الغامقة وتبرز الشركات
+# ==========================================
+NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
+
+# ==========================================
+# دالة سحرية لجعل الرسوم البيانية زجاجية 3D
+# ==========================================
+def style_3d_glassy(fig, chart_type="bar"):
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Montserrat", color="#d1d5da", size=12),
+        margin=dict(t=50, b=20, l=20, r=20)
+    )
+    
+    if chart_type in ["bar", "pie", "histogram", "treemap"]:
+        # تطبيق تأثير الإزاز: شفافية 85% مع إطار أبيض خفيف
+        fig.update_traces(
+            marker=dict(line=dict(color='rgba(255, 255, 255, 0.4)', width=1.5)),
+            opacity=0.85
+        )
+    elif chart_type == "line":
+        # زيادة سمك الخطوط وإضافة نقط مضيئة
+        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=1.5)))
+        
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+    return fig
+
+# ==========================================
 # 1. Architecture: Per-File History Manager 
 # ==========================================
 class HistoryManager:
@@ -98,8 +129,8 @@ st.markdown("""
     }
     .metric-card:hover { 
         transform: translateY(-8px) scale(1.02); 
-        border-left: 4px solid #2ecc71;
-        box-shadow: 0 15px 35px rgba(255, 170, 0, 0.25);
+        border-left: 4px solid #00d2ff;
+        box-shadow: 0 15px 35px rgba(0, 210, 255, 0.25);
     }
     
     .metric-label { 
@@ -383,10 +414,8 @@ if uploaded_file is not None:
         
         fig_vol = px.bar(monthly_summary, x='Month', y='Volume', color='Test Type', barmode='group',
                          title="Testing Intensity & Production Coverage per Month",
-                         color_discrete_sequence=px.colors.qualitative.Pastel)
-        fig_vol.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-        fig_vol.update_xaxes(showgrid=False)
-        fig_vol.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+                         color_discrete_sequence=NEON_COLORS)
+        fig_vol = style_3d_glassy(fig_vol, chart_type="bar")
         
         ch_col, txt_col = st.columns([0.7, 0.3])
         ch_col.plotly_chart(fig_vol, use_container_width=True)
@@ -468,10 +497,8 @@ Project Quality Management Office"""
         
         fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], 
                            title="Duration Forecasting & Trendline Tracking",
-                           color_discrete_sequence=['rgba(255,170,0,0.3)', '#e74c3c'])
-        fig_pred.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-        fig_pred.update_xaxes(showgrid=False)
-        fig_pred.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+                           color_discrete_sequence=['#ffaa00', '#00d2ff'])
+        fig_pred = style_3d_glassy(fig_pred, chart_type="line")
         
         latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
         
@@ -498,9 +525,8 @@ Project Quality Management Office"""
         fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], 
                               title="Project Hierarchy Breakdown (Click to Drill Down)",
                               color='sample status',
-                              color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
-        fig_tree.update_traces(root_color="rgba(255,255,255,0.05)")
-        fig_tree.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat"))
+                              color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+        fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
         st.plotly_chart(fig_tree, use_container_width=True)
 
     # ==========================================
@@ -555,19 +581,15 @@ Project Data File: {uploaded_file.name}
             with col_t1:
                 fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', 
                                    title="Daily Added Submittals Trend",
-                                   text_auto=True, color_discrete_sequence=['#ffaa00'])
-                fig_added.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-                fig_added.update_xaxes(showgrid=False)
-                fig_added.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+                                   text_auto=True, color_discrete_sequence=['#00d2ff'])
+                fig_added = style_3d_glassy(fig_added, chart_type="bar")
                 st.plotly_chart(fig_added, use_container_width=True)
                 
             with col_t2:
                 fig_rate = px.line(file_trend_df.iloc[1:], x='Date_Time', y='Growth_Rate_%', 
                                    title="Growth Rate Trend Percentage (%)",
                                    markers=True, color_discrete_sequence=['#2ecc71'])
-                fig_rate.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-                fig_rate.update_xaxes(showgrid=False)
-                fig_rate.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+                fig_rate = style_3d_glassy(fig_rate, chart_type="line")
                 st.plotly_chart(fig_rate, use_container_width=True)
                 
             with st.expander("🖨️ View & Export History Log for this File"):
@@ -605,11 +627,9 @@ Project Data File: {uploaded_file.name}
                 marginal='box', 
                 title="Statistical Distribution & Outlier Detection for Test Values",
                 nbins=30,
-                color_discrete_sequence=px.colors.qualitative.Pastel
+                color_discrete_sequence=NEON_COLORS
             )
-            fig_dpl.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-            fig_dpl.update_xaxes(showgrid=False)
-            fig_dpl.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+            fig_dpl = style_3d_glassy(fig_dpl, chart_type="histogram")
             st.plotly_chart(fig_dpl, use_container_width=True)
             
             st.info("💡 **AI Quality Insight:** Use the box plot above the histogram to visually identify any isolated dots (outliers). A tight, bell-shaped distribution indicates high consistency in contractor materials and execution.")
@@ -627,32 +647,32 @@ Project Data File: {uploaded_file.name}
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
+    # 🔥 تم حل مشكلة الألوان هنا بتجميع الداتا قبل الرسم 🔥
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
-        if 'Company Name' in filtered_df.columns:
-            fig_c1 = px.bar(filtered_df, x='Company Name', color='Test Type', title="Workload per Contractor 🏢")
-            fig_c1.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-            fig_c1.update_xaxes(showgrid=False)
-            fig_c1.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+        if 'Company Name' in filtered_df.columns and 'Test Type' in filtered_df.columns:
+            c1_df = filtered_df.groupby(['Company Name', 'Test Type']).size().reset_index(name='Count')
+            fig_c1 = px.bar(c1_df, x='Company Name', y='Count', color='Test Type', title="Workload per Contractor 🏢", color_discrete_sequence=NEON_COLORS)
+            fig_c1 = style_3d_glassy(fig_c1, chart_type="bar")
             st.plotly_chart(fig_c1, use_container_width=True)
-        if 'Done BY' in filtered_df.columns:
-            fig_c2 = px.bar(filtered_df, x='Done BY', color='Test Type', title="Office Performance Analysis (Done BY) 👨‍💼")
-            fig_c2.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-            fig_c2.update_xaxes(showgrid=False)
-            fig_c2.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+            
+        if 'Done BY' in filtered_df.columns and 'Test Type' in filtered_df.columns:
+            c2_df = filtered_df.groupby(['Done BY', 'Test Type']).size().reset_index(name='Count')
+            fig_c2 = px.bar(c2_df, x='Done BY', y='Count', color='Test Type', title="Office Performance Analysis (Done BY) 👨‍💼", color_discrete_sequence=NEON_COLORS)
+            fig_c2 = style_3d_glassy(fig_c2, chart_type="bar")
             st.plotly_chart(fig_c2, use_container_width=True)
 
     with chart_col2:
         if 'sample status' in filtered_df.columns:
-            fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴", color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
-            fig_p1.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+            fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴", color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+            fig_p1 = style_3d_glassy(fig_p1, chart_type="pie")
             st.plotly_chart(fig_p1, use_container_width=True)
         
         if 'Classification' in filtered_df.columns:
             class_df = filtered_df.dropna(subset=['Classification']).copy()
             if not class_df.empty:
-                fig_p2 = px.pie(class_df, names='Classification', title="Sample Classification Distribution 📑")
-                fig_p2.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                fig_p2 = px.pie(class_df, names='Classification', title="Sample Classification Distribution 📑", color_discrete_sequence=NEON_COLORS)
+                fig_p2 = style_3d_glassy(fig_p2, chart_type="pie")
                 st.plotly_chart(fig_p2, use_container_width=True)
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -738,8 +758,8 @@ Project Data File: {uploaded_file.name}
             with ch_col1:
                 stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)']
                 if 'Classification' in stock_df.columns and not stock_df.empty:
-                    fig_class = px.pie(stock_df, names='Classification', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
-                    fig_class.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                    fig_class = px.pie(stock_df, names='Classification', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
+                    fig_class = style_3d_glassy(fig_class, chart_type="pie")
                     st.plotly_chart(fig_class, use_container_width=True)
                 else:
                     st.info(f"No Stockpile classification data logged for {selected_comp}.")
@@ -748,8 +768,8 @@ Project Data File: {uploaded_file.name}
                 if 'sample status' in comp_df.columns and not comp_df.empty:
                     fig_status = px.pie(comp_df, names='sample status', title=f"Overall Approval/Rejection Rate for {selected_comp}", hole=0.3,
                                         color='sample status',
-                                        color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
-                    fig_status.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                                        color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                    fig_status = style_3d_glassy(fig_status, chart_type="pie")
                     st.plotly_chart(fig_status, use_container_width=True)
                 else:
                     st.info(f"No status data logged for {selected_comp}.")
@@ -768,10 +788,8 @@ Project Data File: {uploaded_file.name}
         if 'Date ( test)' in filtered_df.columns:
             filtered_df['Month_Plot'] = filtered_df['Date ( test)'].dt.to_period('M').astype(str)
             monthly_data = filtered_df.groupby('Month_Plot').size().reset_index(name='Count')
-            fig_m = px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅")
-            fig_m.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-            fig_m.update_xaxes(showgrid=False)
-            fig_m.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+            fig_m = px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅", color_discrete_sequence=['#00d2ff'])
+            fig_m = style_3d_glassy(fig_m, chart_type="line")
             st.plotly_chart(fig_m, use_container_width=True)
 
     with time_col2:
@@ -798,15 +816,13 @@ Project Data File: {uploaded_file.name}
                 color='Status', 
                 barmode='group',
                 color_discrete_map={
-                    'Total Submitted': '#85C1E9', 
-                    'Accepted': '#1A5276',        
-                    'Rejected': '#E74C3C'         
+                    'Total Submitted': '#00d2ff', 
+                    'Accepted': '#2ecc71',        
+                    'Rejected': '#ff007f'         
                 },
                 title="Monthly Quality Yield (Based on Submission Date) 🎯"
             )
-            fig_gap.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-            fig_gap.update_xaxes(showgrid=False)
-            fig_gap.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+            fig_gap = style_3d_glassy(fig_gap, chart_type="bar")
             st.plotly_chart(fig_gap, use_container_width=True)
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -928,10 +944,8 @@ Project Data File: {uploaded_file.name}
                         if 'Classification' in boe_df.columns:
                             class_counts = boe_df['Classification'].value_counts().reset_index()
                             class_counts.columns = ['Classification', 'Count']
-                            fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True)
-                            fig_sc.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-                            fig_sc.update_xaxes(showgrid=False)
-                            fig_sc.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+                            fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True, color_discrete_sequence=NEON_COLORS)
+                            fig_sc = style_3d_glassy(fig_sc, chart_type="bar")
                             st.plotly_chart(fig_sc, use_container_width=True)
                     else:
                         st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
@@ -945,9 +959,9 @@ Project Data File: {uploaded_file.name}
                     
                     fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], 
                                           title=f"Who did What & Where in {selected_bh}",
-                                          color='Done BY', color_discrete_sequence=px.colors.qualitative.Pastel)
+                                          color='Done BY', color_discrete_sequence=NEON_COLORS)
                     fig_matrix.update_traces(textinfo="label+value")
-                    fig_matrix.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat"))
+                    fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
                     st.plotly_chart(fig_matrix, use_container_width=True)
 
                 st.divider()
@@ -955,8 +969,8 @@ Project Data File: {uploaded_file.name}
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
                     if 'sample status' in bh_df.columns:
-                        fig_ep = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-                        fig_ep.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                        fig_ep = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                        fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
                         st.plotly_chart(fig_ep, use_container_width=True)
                 
                 with b_col2:
@@ -964,19 +978,15 @@ Project Data File: {uploaded_file.name}
                         layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
                         layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
                         layer_reqs = layer_reqs.sort_values('Layer_Num')
-                        fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True)
-                        fig_eb.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-                        fig_eb.update_xaxes(showgrid=False)
-                        fig_eb.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+                        fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
+                        fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
                         st.plotly_chart(fig_eb, use_container_width=True)
 
                 if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
                     trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
                     if not trend_df.empty:
-                        fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}")
-                        fig_el.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
-                        fig_el.update_xaxes(showgrid=False)
-                        fig_el.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+                        fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}", color_discrete_sequence=NEON_COLORS)
+                        fig_el = style_3d_glassy(fig_el, chart_type="line")
                         st.plotly_chart(fig_el, use_container_width=True)
                 
                 with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
