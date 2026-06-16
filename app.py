@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go  # إضافة مكتبة العدادات
+import plotly.graph_objects as go
 import os
 from datetime import datetime
 import pytz
@@ -59,7 +59,7 @@ class HistoryManager:
         else: return f'<div class="delta-neutral">➖ No change</div>'
 
 # ==========================================
-# 2. Page Config & Premium UI Branding
+# 2. Page Config & Premium UI Sytling
 # ==========================================
 st.set_page_config(page_title="Infrastructure BI Dashboard", layout="wide")
 
@@ -89,6 +89,15 @@ st.markdown("""
     
     .bi-title { color: #ffaa00; font-size: 26px; font-weight: bold; border-bottom: 2px solid rgba(255, 170, 0, 0.3); padding-bottom: 8px; margin-top: 40px; margin-bottom: 20px;}
     
+    /* 🌟 الفواصل الزجاجية المضيئة المحدثة */
+    .gradient-divider {
+        height: 2px;
+        background: linear-gradient(90deg, rgba(30,61,89,0) 0%, rgba(30,61,89,1) 25%, rgba(255,170,0,1) 50%, rgba(30,61,89,1) 75%, rgba(30,61,89,0) 100%);
+        margin-top: 35px;
+        margin-bottom: 35px;
+        border: none;
+    }
+    
     .simulator-card { 
         background: linear-gradient(135deg, rgba(14, 36, 57, 0.8), rgba(46, 204, 113, 0.15));
         backdrop-filter: blur(10px);
@@ -110,6 +119,7 @@ st.markdown("""
         .metric-card { background-color: #f0f4f8 !important; border: 1px solid #1e3d59 !important; box-shadow: none !important; }
         .simulator-card { background-color: #ebf7ee !important; border: 2px solid #2ecc71 !important; }
         .metric-value { color: #1e3d59 !important; text-shadow: none !important; }
+        .gradient-divider { display: none !important; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -267,7 +277,7 @@ if uploaded_file is not None:
     d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
     create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
 
-    # --- Speedometer & Simulator Row (New Addition) ---
+    # --- Speedometer & Simulator Row ---
     g_col, s_col = st.columns([0.4, 0.6])
     with g_col:
         overall_acc = len(filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in filtered_df.columns else 0
@@ -463,7 +473,8 @@ Project Data File: {uploaded_file.name}
         mime="text/plain"
     )
 
-    st.divider()
+    # 🌟 استبدال st.divider بالفواصل المضيئة
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
     # 6. KPI Trend Tracker (Historical Growth)
@@ -503,7 +514,7 @@ Project Data File: {uploaded_file.name}
                 export_df.rename(columns={'Added_Requests': '+ Added', 'Growth_Rate_%': 'Growth %'}, inplace=True)
                 st.dataframe(export_df.round(2), use_container_width=True)
                 
-            st.divider()
+            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
     # 7. Test Type Breakdown
@@ -514,7 +525,7 @@ Project Data File: {uploaded_file.name}
         t_cols = st.columns(len(test_summary))
         for i, row in test_summary.iterrows():
             create_card(t_cols[i], row['Test Type'], int(row[num_tests_col]))
-        st.divider()
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
     # 8. Quality Distribution & Outlier Detection
@@ -539,7 +550,7 @@ Project Data File: {uploaded_file.name}
             st.plotly_chart(fig_dpl, use_container_width=True)
             
             st.info("💡 **AI Quality Insight:** Use the box plot above the histogram to visually identify any isolated dots (outliers). A tight, bell-shaped distribution indicates high consistency in contractor materials and execution.")
-    st.divider()
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
     # 9. Strategic Insights & Recommendation Charts
@@ -551,7 +562,7 @@ Project Data File: {uploaded_file.name}
     with ins_col2:
         st.warning("⚠️ **Risk Mitigation:**\n* Closely audit moisture metrics for failed trials.\n* Intervene in lagging workflow review desks.")
 
-    st.divider()
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
@@ -577,14 +588,13 @@ Project Data File: {uploaded_file.name}
                 fig_p2.update_layout(paper_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig_p2, use_container_width=True)
 
-    st.divider()
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
     # 10. Contractor Materials & Sourcing Analysis (With Leaderboard)
     # ==========================================
     st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
     
-    # --- Contractor Leaderboard (New Addition) ---
     if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
         comp_stats = []
         for comp in filtered_df['Company Name'].dropna().unique():
@@ -679,7 +689,7 @@ Project Data File: {uploaded_file.name}
     else:
         st.warning("⚠️ Required columns ('Company Name' or 'Sampling Location') not found for this analysis.")
 
-    st.divider()
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
     # 11. Timeline Analysis
@@ -728,7 +738,7 @@ Project Data File: {uploaded_file.name}
             fig_gap.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_gap, use_container_width=True)
 
-    st.divider()
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
     # 🔥 12. ADVANCED Element Quality Auditor
@@ -904,7 +914,7 @@ Project Data File: {uploaded_file.name}
     else:
         st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
-    st.divider()
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
     # 13. Complete Operational Records
