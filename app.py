@@ -6,14 +6,12 @@ import plotly.graph_objects as go
 import os
 from datetime import datetime
 import pytz
-import base64  # تم إضافته لإنشاء التقرير الذكي
+import base64
 
-# تعريف توقيت القاهرة لاستخدامه في كل أنحاء الداشبورد
+# ==========================================
+# إعدادات التوقيت والألوان
+# ==========================================
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
-
-# ==========================================
-# باليتة ألوان نيون زاهية لتناسب الخلفية الغامقة وتبرز الشركات
-# ==========================================
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
 
 # ==========================================
@@ -29,13 +27,11 @@ def style_3d_glassy(fig, chart_type="bar"):
     )
     
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
-        # تطبيق تأثير الإزاز: شفافية 85% مع إطار أبيض خفيف
         fig.update_traces(
             marker=dict(line=dict(color='rgba(255, 255, 255, 0.4)', width=1.5)),
             opacity=0.85
         )
     elif chart_type == "line":
-        # زيادة سمك الخطوط وإضافة نقط مضيئة
         fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=1.5)))
         
     fig.update_xaxes(showgrid=False)
@@ -43,7 +39,7 @@ def style_3d_glassy(fig, chart_type="bar"):
     return fig
 
 # ==========================================
-# 1. Architecture: Per-File History Manager 
+# مدير البيانات والتاريخ (History Manager)
 # ==========================================
 class HistoryManager:
     FILE_NAME = "project_history_log.csv"
@@ -91,20 +87,18 @@ class HistoryManager:
         else: return f'<div class="delta-neutral">➖ No change</div>'
 
 # ==========================================
-# 2. Page Config & ULTIMATE UI Branding 💎
+# إعداد الصفحة وتصميم الـ CSS المتقدم
 # ==========================================
 st.set_page_config(page_title="Infrastructure BI Dashboard", layout="wide")
 
 st.markdown("""
     <style>
-    /* استدعاء خطوط احترافية */
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&family=Tajawal:wght@400;700&display=swap');
 
     html, body, [class*="css"] {
         font-family: 'Montserrat', 'Tajawal', sans-serif !important;
     }
 
-    /* خلفية متدرجة عميقة وراقية */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at top right, #0b1a2e, #050a11) !important;
     }
@@ -114,7 +108,6 @@ st.markdown("""
         border-right: 1px solid rgba(255, 170, 0, 0.1);
     }
 
-    /* تصميم الكروت المستقبلي والمبهر */
     .metric-card { 
         background: linear-gradient(145deg, rgba(20, 35, 54, 0.6), rgba(10, 20, 33, 0.9));
         backdrop-filter: blur(15px); 
@@ -134,90 +127,52 @@ st.markdown("""
         box-shadow: 0 15px 35px rgba(0, 210, 255, 0.25);
     }
     
-    .metric-label { 
-        color: #8da3b9; 
-        font-size: 14px; 
-        font-weight: 500; 
-        margin-bottom: 5px; 
-        text-transform: uppercase; 
-        letter-spacing: 1.5px;
-    }
-    
-    .metric-value { 
-        color: #ffffff !important; 
-        font-size: 38px; 
-        font-weight: 800; 
-        background: -webkit-linear-gradient(#ffffff, #a0aec0);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+    .metric-label { color: #8da3b9; font-size: 14px; font-weight: 500; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1.5px;}
+    .metric-value { color: #ffffff !important; font-size: 38px; font-weight: 800; background: -webkit-linear-gradient(#ffffff, #a0aec0); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
     
     .stDataFrame { border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; overflow: hidden; }
     .delta-up { color: #2ecc71; font-size: 14px; font-weight: bold; margin-top: 8px; text-shadow: 0 0 10px rgba(46, 204, 113, 0.4);}
     .delta-down { color: #e74c3c; font-size: 14px; font-weight: bold; margin-top: 8px; text-shadow: 0 0 10px rgba(231, 76, 60, 0.4);}
     .delta-neutral { color: #95a5a6; font-size: 14px; font-weight: bold; margin-top: 8px; }
     
-    .bi-title { 
-        color: #ffaa00; 
-        font-size: 28px; 
-        font-weight: 800; 
-        margin-top: 40px; 
-        margin-bottom: 20px;
-        text-shadow: 0px 0px 15px rgba(255, 170, 0, 0.3);
-    }
+    .bi-title { color: #ffaa00; font-size: 28px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; text-shadow: 0px 0px 15px rgba(255, 170, 0, 0.3);}
+    .gradient-divider { height: 2px; background: linear-gradient(90deg, transparent 0%, rgba(255,170,0,0.8) 50%, transparent 100%); margin-top: 40px; margin-bottom: 40px; border: none; opacity: 0.6;}
     
-    /* الفواصل المضيئة الأنيقة */
-    .gradient-divider {
-        height: 2px;
-        background: linear-gradient(90deg, transparent 0%, rgba(255,170,0,0.8) 50%, transparent 100%);
-        margin-top: 40px;
-        margin-bottom: 40px;
-        border: none;
-        opacity: 0.6;
-    }
+    .simulator-card { background: linear-gradient(135deg, rgba(14, 36, 57, 0.7), rgba(46, 204, 113, 0.1)); backdrop-filter: blur(12px); padding: 25px; border-radius: 20px; border: 1px solid rgba(46, 204, 113, 0.4); text-align: center; margin-top: 15px; box-shadow: 0 8px 25px rgba(46, 204, 113, 0.15);}
+    .leaderboard-card { background: rgba(10, 20, 33, 0.7); padding: 25px; border-radius: 20px; border-left: 5px solid; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.3);}
+    .health-card { background: rgba(10, 20, 33, 0.8); backdrop-filter: blur(10px); padding: 15px 25px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);}
     
-    .simulator-card { 
-        background: linear-gradient(135deg, rgba(14, 36, 57, 0.7), rgba(46, 204, 113, 0.1));
-        backdrop-filter: blur(12px);
-        padding: 25px; border-radius: 20px; border: 1px solid rgba(46, 204, 113, 0.4); text-align: center; margin-top: 15px;
-        box-shadow: 0 8px 25px rgba(46, 204, 113, 0.15);
-    }
-    
-    .leaderboard-card {
-        background: rgba(10, 20, 33, 0.7); padding: 25px; border-radius: 20px; border-left: 5px solid; margin-bottom: 15px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    }
-
-    /* 🩺 Health Inspector Styling */
-    .health-card { 
-        background: rgba(10, 20, 33, 0.8); 
-        backdrop-filter: blur(10px); 
-        padding: 15px 25px; 
-        border-radius: 15px; 
-        border: 1px solid rgba(255, 255, 255, 0.1); 
-        display: flex; 
-        align-items: center; 
-        justify-content: space-between; 
-        margin-bottom: 25px; 
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
-    
-    /* تجميل الـ Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #050a11; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 170, 0, 0.5); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255, 170, 0, 0.8); }
 
-    /* Optimized PDF Print CSS */
+    /* 🔥 CSS قوي ومتقدم للطباعة كـ PDF (Ctrl+P) 🔥 */
     @media print {
-        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { display: none !important; }
-        .main .block-container { max-width: 100% !important; padding: 10mm !important; margin: 0 !important; }
-        .bi-title { page-break-before: always !important; color: #1e3d59 !important; padding-top: 10mm !important; text-shadow: none !important;}
-        .metric-card, .element-container, div[data-testid="stPlotlyChart"], .stDataFrame, .simulator-card, .health-card { page-break-inside: avoid !important; margin-bottom: 5mm !important; }
-        h1, h2, h3, p, .metric-label { color: #000000 !important; }
-        .metric-card { background: #f0f4f8 !important; border: 1px solid #1e3d59 !important; box-shadow: none !important; }
-        .simulator-card { background: #ebf7ee !important; border: 2px solid #2ecc71 !important; }
-        .metric-value { color: #1e3d59 !important; -webkit-text-fill-color: #1e3d59 !important;}
+        * {
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+        }
+        body, [data-testid="stAppViewContainer"] {
+            background: #050a11 !important;
+        }
+        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { 
+            display: none !important; 
+        }
+        .main .block-container { 
+            max-width: 100% !important; padding: 5mm !important; margin: 0 !important; 
+        }
+        .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"] { 
+            page-break-inside: avoid !important; 
+            background: #0b1a2e !important;
+            border: 1px solid rgba(255, 170, 0, 0.4) !important;
+        }
+        .metric-value, .bi-title { 
+            -webkit-text-fill-color: white !important; color: white !important; 
+        }
+        h1, h2, h3, h4, p, span, .metric-label { 
+            color: #d1d5da !important; 
+        }
         .gradient-divider { display: none !important; }
     }
     </style>
@@ -241,6 +196,9 @@ def ai_assistant(query, data_summary):
     else:
         return "I am here to assist. Ask me about project logs, contractor performance, or quality control metrics."
 
+# ==========================================
+# الهيدر والتصميم العلوي
+# ==========================================
 try: st.image("5.jpg", use_container_width=True)
 except: pass
 
@@ -273,14 +231,14 @@ if uploaded_file is not None:
     if 'Date ( test)' in df.columns: df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
     if 'Date( SUB)' in df.columns: df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce', dayfirst=True)
 
-    # 🔥 1. Data Health & Integrity Inspector 🔥
+    # 🔥 1. Health Inspector المحدث 🔥
     total_rows = len(df)
     missing_dates = df['Date ( test)'].isnull().sum() if 'Date ( test)' in df.columns else 0
     missing_status = df['sample status'].isnull().sum() if 'sample status' in df.columns else 0
     duplicate_serials = df['serial'].duplicated().sum() if 'serial' in df.columns else 0
     
     total_errors = missing_dates + missing_status + duplicate_serials
-    health_score = max(0, 100 - (total_errors / total_rows * 100)) if total_rows > 0 else 0
+    health_score = max(0, 100 - (total_errors / (total_rows+1) * 100)) if total_rows > 0 else 0
     
     health_color = "#2ecc71" if health_score >= 95 else ("#f1c40f" if health_score >= 80 else "#e74c3c")
     health_icon = "✅" if health_score >= 95 else ("⚠️" if health_score >= 80 else "🚨")
@@ -290,7 +248,8 @@ if uploaded_file is not None:
     if missing_status > 0: error_details.append(f"{missing_status} Missing Status")
     if duplicate_serials > 0: error_details.append(f"{duplicate_serials} Duplicate Serials")
     
-    error_str = " | ".join(error_details) if error_details else "Data is 100% clean and structured."
+    scanned_msg = f"<span style='color:#00d2ff; font-weight:bold;'>Scanned {total_rows:,} Rows</span>"
+    error_str = f"{scanned_msg} ➔ " + " | ".join(error_details) if error_details else f"{scanned_msg} ➔ Data is 100% clean and structured."
     
     st.markdown(f"""
         <div class="health-card" style="border-left: 5px solid {health_color};">
@@ -304,13 +263,12 @@ if uploaded_file is not None:
         </div>
     """, unsafe_allow_html=True)
 
-    # 🔥 2. Global Smart Search Engine 🔥
+    # 🔥 2. Global Smart Search 🔥
     st.sidebar.divider()
     st.sidebar.markdown("### 🔍 Global Smart Search")
     global_search = st.sidebar.text_input("Search anything (Serial, Element, Date...):", placeholder="Type keyword...")
     
     if global_search:
-        # البحث في كل الأعمدة مع تجاهل حالة الأحرف
         mask = df.astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
         df = df[mask]
         st.sidebar.success(f"🎯 Found {len(df)} records matching '{global_search}'")
@@ -592,7 +550,6 @@ Project Quality Management Office"""
     st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
     st.info("💡 **CEO Feature:** Click the button below to download a styled HTML report. When opened, it can be easily saved as a perfectly formatted PDF for your Daily/Weekly Briefing!")
     
-    # HTML + CSS Template for PDF Generation
     html_report = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -657,7 +614,6 @@ Project Quality Management Office"""
     </html>
     """
     
-    # تحويل الـ HTML لـ Base64 لتمكين التحميل
     b64 = base64.b64encode(html_report.encode()).decode()
     href = f'<a href="data:text/html;base64,{b64}" download="Executive_Report_{datetime.now(EGYPT_TZ).strftime("%Y%m%d")}.html" style="background-color:#ffaa00; color:#1e3d59; padding:12px 24px; text-decoration:none; font-weight:bold; border-radius:8px; display:inline-block; transition:0.3s; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4);">📄 Download PDF-Ready Report</a>'
     st.markdown(href, unsafe_allow_html=True)
@@ -984,12 +940,7 @@ Project Quality Management Office"""
                 if 'Company Name' in bh_df.columns:
                     if 'Date ( test)' in bh_df.columns:
                         comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
-                        comp_details = []
-                        for _, r in comp_stats.iterrows():
-                            c_name = r['Company Name']
-                            s_date = r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'
-                            e_date = r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'
-                            comp_details.append(f"<span style='color:#2ecc71;'><b>{c_name}</b></span>: <span style='font-size:16px; color:#8da3b9;'>{s_date} ➡️ {e_date}</span>")
+                        comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:#8da3b9;'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
                         companies_str = "<br>".join(comp_details) if comp_details else "N/A"
                     else:
                         companies_worked = bh_df['Company Name'].dropna().unique()
