@@ -59,66 +59,119 @@ class HistoryManager:
         else: return f'<div class="delta-neutral">➖ No change</div>'
 
 # ==========================================
-# 2. Page Config & Premium UI Sytling
+# 2. Page Config & ULTIMATE UI Branding 💎
 # ==========================================
 st.set_page_config(page_title="Infrastructure BI Dashboard", layout="wide")
 
 st.markdown("""
     <style>
-    /* Premium Glassmorphism UI */
-    .metric-card { 
-        background: rgba(30, 61, 89, 0.45); 
-        backdrop-filter: blur(12px); 
-        -webkit-backdrop-filter: blur(12px);
-        padding: 20px; 
-        border-radius: 15px; 
-        text-align: center; 
-        border: 1px solid rgba(255, 255, 255, 0.1); 
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-        margin-bottom: 10px; 
-        transition: transform 0.3s ease;
+    /* استدعاء خطوط احترافية */
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&family=Tajawal:wght@400;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Montserrat', 'Tajawal', sans-serif !important;
     }
-    .metric-card:hover { transform: translateY(-5px); }
-    .metric-label { color: #d1d5da; font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;}
-    .metric-value { color: #ffffff !important; font-size: 34px; font-weight: 800; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);}
+
+    /* خلفية متدرجة عميقة وراقية */
+    [data-testid="stAppViewContainer"] {
+        background: radial-gradient(circle at top right, #0b1a2e, #050a11) !important;
+    }
     
-    .stDataFrame { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; }
-    .delta-up { color: #2ecc71; font-size: 14px; font-weight: bold; margin-top: 8px; }
-    .delta-down { color: #e74c3c; font-size: 14px; font-weight: bold; margin-top: 8px; }
+    [data-testid="stSidebar"] {
+        background-color: rgba(5, 10, 17, 0.95) !important;
+        border-right: 1px solid rgba(255, 170, 0, 0.1);
+    }
+
+    /* تصميم الكروت المستقبلي والمبهر */
+    .metric-card { 
+        background: linear-gradient(145deg, rgba(20, 35, 54, 0.6), rgba(10, 20, 33, 0.9));
+        backdrop-filter: blur(15px); 
+        -webkit-backdrop-filter: blur(15px);
+        padding: 25px; 
+        border-radius: 20px; 
+        text-align: center; 
+        border: 1px solid rgba(255, 170, 0, 0.15); 
+        border-left: 4px solid #ffaa00;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        margin-bottom: 15px; 
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .metric-card:hover { 
+        transform: translateY(-8px) scale(1.02); 
+        border-left: 4px solid #2ecc71;
+        box-shadow: 0 15px 35px rgba(255, 170, 0, 0.25);
+    }
+    
+    .metric-label { 
+        color: #8da3b9; 
+        font-size: 14px; 
+        font-weight: 500; 
+        margin-bottom: 5px; 
+        text-transform: uppercase; 
+        letter-spacing: 1.5px;
+    }
+    
+    .metric-value { 
+        color: #ffffff !important; 
+        font-size: 38px; 
+        font-weight: 800; 
+        background: -webkit-linear-gradient(#ffffff, #a0aec0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .stDataFrame { border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; overflow: hidden; }
+    .delta-up { color: #2ecc71; font-size: 14px; font-weight: bold; margin-top: 8px; text-shadow: 0 0 10px rgba(46, 204, 113, 0.4);}
+    .delta-down { color: #e74c3c; font-size: 14px; font-weight: bold; margin-top: 8px; text-shadow: 0 0 10px rgba(231, 76, 60, 0.4);}
     .delta-neutral { color: #95a5a6; font-size: 14px; font-weight: bold; margin-top: 8px; }
     
-    .bi-title { color: #ffaa00; font-size: 26px; font-weight: bold; border-bottom: 2px solid rgba(255, 170, 0, 0.3); padding-bottom: 8px; margin-top: 40px; margin-bottom: 20px;}
+    .bi-title { 
+        color: #ffaa00; 
+        font-size: 28px; 
+        font-weight: 800; 
+        margin-top: 40px; 
+        margin-bottom: 20px;
+        text-shadow: 0px 0px 15px rgba(255, 170, 0, 0.3);
+    }
     
-    /* 🌟 الفواصل الزجاجية المضيئة المحدثة */
+    /* الفواصل المضيئة الأنيقة */
     .gradient-divider {
         height: 2px;
-        background: linear-gradient(90deg, rgba(30,61,89,0) 0%, rgba(30,61,89,1) 25%, rgba(255,170,0,1) 50%, rgba(30,61,89,1) 75%, rgba(30,61,89,0) 100%);
-        margin-top: 35px;
-        margin-bottom: 35px;
+        background: linear-gradient(90deg, transparent 0%, rgba(255,170,0,0.8) 50%, transparent 100%);
+        margin-top: 40px;
+        margin-bottom: 40px;
         border: none;
+        opacity: 0.6;
     }
     
     .simulator-card { 
-        background: linear-gradient(135deg, rgba(14, 36, 57, 0.8), rgba(46, 204, 113, 0.15));
-        backdrop-filter: blur(10px);
-        padding: 20px; border-radius: 15px; border: 1px solid rgba(46, 204, 113, 0.3); text-align: center; margin-top: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        background: linear-gradient(135deg, rgba(14, 36, 57, 0.7), rgba(46, 204, 113, 0.1));
+        backdrop-filter: blur(12px);
+        padding: 25px; border-radius: 20px; border: 1px solid rgba(46, 204, 113, 0.4); text-align: center; margin-top: 15px;
+        box-shadow: 0 8px 25px rgba(46, 204, 113, 0.15);
     }
     
     .leaderboard-card {
-        background: rgba(20, 20, 20, 0.5); padding: 20px; border-radius: 15px; border-left: 5px solid; margin-bottom: 15px;
+        background: rgba(10, 20, 33, 0.7); padding: 25px; border-radius: 20px; border-left: 5px solid; margin-bottom: 15px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     }
     
+    /* تجميل الـ Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #050a11; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 170, 0, 0.5); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 170, 0, 0.8); }
+
     /* Optimized PDF Print CSS */
     @media print {
         [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { display: none !important; }
         .main .block-container { max-width: 100% !important; padding: 10mm !important; margin: 0 !important; }
-        .bi-title { page-break-before: always !important; color: #1e3d59 !important; border-bottom: 2px solid #1e3d59 !important; padding-top: 10mm !important; }
+        .bi-title { page-break-before: always !important; color: #1e3d59 !important; padding-top: 10mm !important; text-shadow: none !important;}
         .metric-card, .element-container, div[data-testid="stPlotlyChart"], .stDataFrame, .simulator-card { page-break-inside: avoid !important; margin-bottom: 5mm !important; }
         h1, h2, h3, p, .metric-label { color: #000000 !important; }
-        .metric-card { background-color: #f0f4f8 !important; border: 1px solid #1e3d59 !important; box-shadow: none !important; }
-        .simulator-card { background-color: #ebf7ee !important; border: 2px solid #2ecc71 !important; }
-        .metric-value { color: #1e3d59 !important; text-shadow: none !important; }
+        .metric-card { background: #f0f4f8 !important; border: 1px solid #1e3d59 !important; box-shadow: none !important; }
+        .simulator-card { background: #ebf7ee !important; border: 2px solid #2ecc71 !important; }
+        .metric-value { color: #1e3d59 !important; -webkit-text-fill-color: #1e3d59 !important;}
         .gradient-divider { display: none !important; }
     }
     </style>
@@ -288,13 +341,13 @@ if uploaded_file is not None:
             title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': 'white'}},
             number={'suffix': "%", 'font': {'size': 40, 'color': 'white'}},
             gauge={
-                'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
-                'bar': {'color': "#ffffff", 'thickness': 0.2},
-                'bgcolor': "rgba(255,255,255,0.1)",
+                'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
+                'bar': {'color': "#ffffff", 'thickness': 0.25},
+                'bgcolor': "rgba(255,255,255,0.05)",
                 'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}],
             }
         ))
-        fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20))
+        fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20), font={'family': 'Montserrat'})
         st.plotly_chart(fig_gauge, use_container_width=True)
 
     with s_col:
@@ -302,16 +355,16 @@ if uploaded_file is not None:
             total_time_recovered = sim_days_saved * total_requests_count
             st.markdown(f"""
                 <div class="simulator-card">
-                    <h4 style="color: #2ecc71; margin: 0;">✨ Simulated Optimization Impact</h4>
-                    <p style="font-size: 24px; font-weight: bold; color: #ffffff; margin: 5px 0;">{total_time_recovered:,} Total Project Days Saved</p>
-                    <p style="font-size: 14px; color: #d1d5da; margin: 0;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
+                    <h4 style="color: #2ecc71; margin: 0; text-transform: uppercase; font-size: 16px; letter-spacing: 1px;">✨ Simulated Optimization Impact</h4>
+                    <p style="font-size: 38px; font-weight: 800; color: #ffffff; margin: 5px 0;">{total_time_recovered:,} <span style="font-size:16px; color:#d1d5da; font-weight:500;">Project Days Saved</span></p>
+                    <p style="font-size: 14px; color: #a0aec0; margin: 0; line-height: 1.6;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
             st.markdown("""
-                <div class="simulator-card" style="border-color: rgba(255,255,255,0.1); background: rgba(30,61,89,0.3);">
-                    <h4 style="color: #d1d5da; margin: 0; font-size: 20px;">🎛️ Optimization Simulator Inactive</h4>
-                    <p style="font-size: 15px; color: #d1d5da; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
+                <div class="simulator-card" style="border-color: rgba(255,255,255,0.1); background: rgba(10, 20, 33, 0.5);">
+                    <h4 style="color: #8da3b9; margin: 0; font-size: 18px;">🎛️ Optimization Simulator Inactive</h4>
+                    <p style="font-size: 14px; color: #8da3b9; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -330,8 +383,10 @@ if uploaded_file is not None:
         
         fig_vol = px.bar(monthly_summary, x='Month', y='Volume', color='Test Type', barmode='group',
                          title="Testing Intensity & Production Coverage per Month",
-                         color_discrete_sequence=px.colors.qualitative.Bold)
-        fig_vol.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                         color_discrete_sequence=px.colors.qualitative.Pastel)
+        fig_vol.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+        fig_vol.update_xaxes(showgrid=False)
+        fig_vol.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
         
         ch_col, txt_col = st.columns([0.7, 0.3])
         ch_col.plotly_chart(fig_vol, use_container_width=True)
@@ -399,9 +454,9 @@ Project Quality Management Office"""
             
             st.code(memo_text, language="markdown")
             
-            st.markdown(f"#### 📋 Isolated Audit Trail: All Log Records for [{worst_office_name}]")
-            worst_office_data = filtered_df[filtered_df['Done BY'] == worst_office_name]
-            st.dataframe(worst_office_data, use_container_width=True)
+            with st.expander(f"📋 View Audit Trail: All Log Records for [{worst_office_name}]"):
+                worst_office_data = filtered_df[filtered_df['Done BY'] == worst_office_name]
+                st.dataframe(worst_office_data, use_container_width=True)
 
     # ==========================================
     # BI MODULE 2: AI Predictive Analytics
@@ -414,7 +469,9 @@ Project Quality Management Office"""
         fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], 
                            title="Duration Forecasting & Trendline Tracking",
                            color_discrete_sequence=['rgba(255,170,0,0.3)', '#e74c3c'])
-        fig_pred.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig_pred.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+        fig_pred.update_xaxes(showgrid=False)
+        fig_pred.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
         
         latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
         
@@ -442,7 +499,8 @@ Project Quality Management Office"""
                               title="Project Hierarchy Breakdown (Click to Drill Down)",
                               color='sample status',
                               color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
-        fig_tree.update_traces(root_color="lightgrey")
+        fig_tree.update_traces(root_color="rgba(255,255,255,0.05)")
+        fig_tree.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat"))
         st.plotly_chart(fig_tree, use_container_width=True)
 
     # ==========================================
@@ -473,7 +531,6 @@ Project Data File: {uploaded_file.name}
         mime="text/plain"
     )
 
-    # 🌟 استبدال st.divider بالفواصل المضيئة
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
@@ -499,14 +556,18 @@ Project Data File: {uploaded_file.name}
                 fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', 
                                    title="Daily Added Submittals Trend",
                                    text_auto=True, color_discrete_sequence=['#ffaa00'])
-                fig_added.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                fig_added.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                fig_added.update_xaxes(showgrid=False)
+                fig_added.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
                 st.plotly_chart(fig_added, use_container_width=True)
                 
             with col_t2:
                 fig_rate = px.line(file_trend_df.iloc[1:], x='Date_Time', y='Growth_Rate_%', 
                                    title="Growth Rate Trend Percentage (%)",
                                    markers=True, color_discrete_sequence=['#2ecc71'])
-                fig_rate.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                fig_rate.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                fig_rate.update_xaxes(showgrid=False)
+                fig_rate.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
                 st.plotly_chart(fig_rate, use_container_width=True)
                 
             with st.expander("🖨️ View & Export History Log for this File"):
@@ -544,9 +605,11 @@ Project Data File: {uploaded_file.name}
                 marginal='box', 
                 title="Statistical Distribution & Outlier Detection for Test Values",
                 nbins=30,
-                color_discrete_sequence=px.colors.qualitative.Set2
+                color_discrete_sequence=px.colors.qualitative.Pastel
             )
-            fig_dpl.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_dpl.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+            fig_dpl.update_xaxes(showgrid=False)
+            fig_dpl.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
             st.plotly_chart(fig_dpl, use_container_width=True)
             
             st.info("💡 **AI Quality Insight:** Use the box plot above the histogram to visually identify any isolated dots (outliers). A tight, bell-shaped distribution indicates high consistency in contractor materials and execution.")
@@ -568,24 +631,28 @@ Project Data File: {uploaded_file.name}
     with chart_col1:
         if 'Company Name' in filtered_df.columns:
             fig_c1 = px.bar(filtered_df, x='Company Name', color='Test Type', title="Workload per Contractor 🏢")
-            fig_c1.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_c1.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+            fig_c1.update_xaxes(showgrid=False)
+            fig_c1.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
             st.plotly_chart(fig_c1, use_container_width=True)
         if 'Done BY' in filtered_df.columns:
             fig_c2 = px.bar(filtered_df, x='Done BY', color='Test Type', title="Office Performance Analysis (Done BY) 👨‍💼")
-            fig_c2.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_c2.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+            fig_c2.update_xaxes(showgrid=False)
+            fig_c2.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
             st.plotly_chart(fig_c2, use_container_width=True)
 
     with chart_col2:
         if 'sample status' in filtered_df.columns:
-            fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴")
-            fig_p1.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+            fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴", color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
+            fig_p1.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
             st.plotly_chart(fig_p1, use_container_width=True)
         
         if 'Classification' in filtered_df.columns:
             class_df = filtered_df.dropna(subset=['Classification']).copy()
             if not class_df.empty:
                 fig_p2 = px.pie(class_df, names='Classification', title="Sample Classification Distribution 📑")
-                fig_p2.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+                fig_p2.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
                 st.plotly_chart(fig_p2, use_container_width=True)
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -613,16 +680,16 @@ Project Data File: {uploaded_file.name}
             l_col1, l_col2 = st.columns(2)
             l_col1.markdown(f"""
                 <div class="leaderboard-card" style="border-left-color: #2ecc71;">
-                    <h4 style="margin:0; color:#2ecc71;">🏆 Top Performer Contractor</h4>
-                    <h2 style="margin:5px 0; color:white;">{best_comp['Company']}</h2>
-                    <span style="color:#d1d5da;">Approval Rate: <b>{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
+                    <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
+                    <h2 style="margin:8px 0; color:white; font-size: 28px;">{best_comp['Company']}</h2>
+                    <span style="color:#8da3b9;">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
                 </div>
             """, unsafe_allow_html=True)
             l_col2.markdown(f"""
                 <div class="leaderboard-card" style="border-left-color: #e74c3c;">
-                    <h4 style="margin:0; color:#e74c3c;">⚠️ Needs Attention</h4>
-                    <h2 style="margin:5px 0; color:white;">{worst_comp['Company']}</h2>
-                    <span style="color:#d1d5da;">Approval Rate: <b>{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
+                    <h4 style="margin:0; color:#e74c3c; text-transform: uppercase; font-size: 14px;">⚠️ Needs Attention</h4>
+                    <h2 style="margin:8px 0; color:white; font-size: 28px;">{worst_comp['Company']}</h2>
+                    <span style="color:#8da3b9;">Approval Rate: <b style="color:#e74c3c; font-size: 18px;">{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -672,7 +739,7 @@ Project Data File: {uploaded_file.name}
                 stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)']
                 if 'Classification' in stock_df.columns and not stock_df.empty:
                     fig_class = px.pie(stock_df, names='Classification', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
-                    fig_class.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+                    fig_class.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
                     st.plotly_chart(fig_class, use_container_width=True)
                 else:
                     st.info(f"No Stockpile classification data logged for {selected_comp}.")
@@ -682,7 +749,7 @@ Project Data File: {uploaded_file.name}
                     fig_status = px.pie(comp_df, names='sample status', title=f"Overall Approval/Rejection Rate for {selected_comp}", hole=0.3,
                                         color='sample status',
                                         color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#e74c3c', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#3498db'})
-                    fig_status.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+                    fig_status.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
                     st.plotly_chart(fig_status, use_container_width=True)
                 else:
                     st.info(f"No status data logged for {selected_comp}.")
@@ -702,7 +769,9 @@ Project Data File: {uploaded_file.name}
             filtered_df['Month_Plot'] = filtered_df['Date ( test)'].dt.to_period('M').astype(str)
             monthly_data = filtered_df.groupby('Month_Plot').size().reset_index(name='Count')
             fig_m = px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅")
-            fig_m.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_m.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+            fig_m.update_xaxes(showgrid=False)
+            fig_m.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
             st.plotly_chart(fig_m, use_container_width=True)
 
     with time_col2:
@@ -735,7 +804,9 @@ Project Data File: {uploaded_file.name}
                 },
                 title="Monthly Quality Yield (Based on Submission Date) 🎯"
             )
-            fig_gap.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_gap.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+            fig_gap.update_xaxes(showgrid=False)
+            fig_gap.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
             st.plotly_chart(fig_gap, use_container_width=True)
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -757,14 +828,12 @@ Project Data File: {uploaded_file.name}
             if selected_bh != "-- Select Element --":
                 bh_df = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
                 
-                # --- ترتيب الطبقات بشكل منطقي (1, 2, 3...) ---
                 if 'layer' in bh_df.columns:
                     bh_df['Layer_Num'] = bh_df['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
                     bh_df = bh_df.sort_values(['Layer_Num', 'Date ( test)'])
                 
                 st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
                 
-                # --- حسابات الكروت العلوية (فصل Submittals عن Tests وتحديد التواريخ) ---
                 bh_total_submittals = len(bh_df) 
                 
                 num_tests_col_bh = next((c for c in bh_df.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
@@ -792,7 +861,6 @@ Project Data File: {uploaded_file.name}
                 create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
                 create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
 
-                # --- كارت الشركات وتواريخ عملها ---
                 if 'Company Name' in bh_df.columns:
                     if 'Date ( test)' in bh_df.columns:
                         comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
@@ -801,7 +869,7 @@ Project Data File: {uploaded_file.name}
                             c_name = r['Company Name']
                             s_date = r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'
                             e_date = r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'
-                            comp_details.append(f"<span style='color:#2ecc71;'><b>{c_name}</b></span>: <span style='font-size:16px;'>{s_date} ➡️ {e_date}</span>")
+                            comp_details.append(f"<span style='color:#2ecc71;'><b>{c_name}</b></span>: <span style='font-size:16px; color:#8da3b9;'>{s_date} ➡️ {e_date}</span>")
                         companies_str = "<br>".join(comp_details) if comp_details else "N/A"
                     else:
                         companies_worked = bh_df['Company Name'].dropna().unique()
@@ -810,12 +878,11 @@ Project Data File: {uploaded_file.name}
                     c9 = st.columns(1)[0]
                     c9.markdown(f"""
                         <div class="metric-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
-                            <div class="metric-label" style="color:#ffaa00; text-align: center; margin-bottom: 10px;">Contractors Timeline on this Element (التسلسل الزمني للشركات)</div>
-                            <div class="metric-value" style="font-size: 18px; line-height: 1.8;">{companies_str}</div>
+                            <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element (التسلسل الزمني للشركات)</div>
+                            <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500;">{companies_str}</div>
                         </div>
                         """, unsafe_allow_html=True)
 
-                # --- إنذار الطبقات المعلقة (Unresolved Failures) ---
                 if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
                     rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
                     approved_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
@@ -839,9 +906,9 @@ Project Data File: {uploaded_file.name}
                         for idx, alert in enumerate(unresolved_alerts[:8]): 
                             l, t_type, ser = alert
                             alert_cols[idx % 4].markdown(f"""
-                                <div style="background-color: #4a1c1c; padding: 15px; border-radius: 10px; border: 2px solid #e74c3c; margin-bottom: 10px;">
+                                <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
                                     <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
-                                    <div style="color: #ffffff; font-size: 14px; line-height: 1.5;">
+                                    <div style="color: #ffffff; font-size: 14px; line-height: 1.6;">
                                         <b>Layer:</b> {l}<br>
                                         <b>Test:</b> {t_type}<br>
                                         <b>Serial No:</b> {ser}<br>
@@ -852,7 +919,6 @@ Project Data File: {uploaded_file.name}
                 
                 st.divider()
 
-                # --- تحليل قاع الحفر والتربة (Sampling Location) ---
                 if 'Sampling Location' in bh_df.columns:
                     st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
                     boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
@@ -863,14 +929,15 @@ Project Data File: {uploaded_file.name}
                             class_counts = boe_df['Classification'].value_counts().reset_index()
                             class_counts.columns = ['Classification', 'Count']
                             fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True)
-                            fig_sc.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                            fig_sc.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                            fig_sc.update_xaxes(showgrid=False)
+                            fig_sc.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
                             st.plotly_chart(fig_sc, use_container_width=True)
                     else:
                         st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
 
                 st.divider()
 
-                # --- خريطة المهام (Test Type & Done BY) ---
                 st.markdown("#### 👨‍🔧 Office & Execution Matrix")
                 if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
                     bh_df['Execution_Node'] = np.where(bh_df['layer'].astype(str).str.contains(r'\d'), bh_df['layer'], bh_df['Sampling Location'])
@@ -880,17 +947,16 @@ Project Data File: {uploaded_file.name}
                                           title=f"Who did What & Where in {selected_bh}",
                                           color='Done BY', color_discrete_sequence=px.colors.qualitative.Pastel)
                     fig_matrix.update_traces(textinfo="label+value")
-                    fig_matrix.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+                    fig_matrix.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat"))
                     st.plotly_chart(fig_matrix, use_container_width=True)
 
                 st.divider()
 
-                # --- الشارتات للـ Element ---
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
                     if 'sample status' in bh_df.columns:
                         fig_ep = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-                        fig_ep.update_layout(paper_bgcolor="rgba(0,0,0,0)")
+                        fig_ep.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
                         st.plotly_chart(fig_ep, use_container_width=True)
                 
                 with b_col2:
@@ -899,18 +965,22 @@ Project Data File: {uploaded_file.name}
                         layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
                         layer_reqs = layer_reqs.sort_values('Layer_Num')
                         fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True)
-                        fig_eb.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                        fig_eb.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                        fig_eb.update_xaxes(showgrid=False)
+                        fig_eb.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
                         st.plotly_chart(fig_eb, use_container_width=True)
 
                 if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
                     trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
                     if not trend_df.empty:
                         fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}")
-                        fig_el.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                        fig_el.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(family="Montserrat", color="#8da3b9"))
+                        fig_el.update_xaxes(showgrid=False)
+                        fig_el.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
                         st.plotly_chart(fig_el, use_container_width=True)
                 
-                st.markdown(f"**Detailed Audit Log for `{selected_bh}`:**")
-                st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
+                with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
+                    st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
     else:
         st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
@@ -919,8 +989,8 @@ Project Data File: {uploaded_file.name}
     # ==========================================
     # 13. Complete Operational Records
     # ==========================================
-    st.markdown("### 📋 Complete Operational Records")
-    st.dataframe(filtered_df, use_container_width=True)
+    with st.expander("📂 View Complete Operational Records (Raw Data)"):
+        st.dataframe(filtered_df, use_container_width=True)
 
 else:
-    st.info("👈 Please connect a Data Source or Upload a CSV to activate the BI Engine.")
+    st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
