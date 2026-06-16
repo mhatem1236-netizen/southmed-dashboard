@@ -552,7 +552,7 @@ Project Data File: {uploaded_file.name}
     st.divider()
 
     # ==========================================
-    # 10. Contractor Materials & Sourcing Analysis (القسم الجديد)
+    # 10. Contractor Materials & Sourcing Analysis
     # ==========================================
     st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
     
@@ -560,7 +560,6 @@ Project Data File: {uploaded_file.name}
         mat_df = filtered_df.copy()
         mat_df['Sampling_Lower'] = mat_df['Sampling Location'].astype(str).str.lower()
         
-        # دالة تصنيف مكان العينة بناءً على الكلمات المفتاحية
         def categorize_location(loc):
             if 'stock' in loc or 'مشون' in loc: return 'Stockpile (مشاون)'
             elif 'bottom' in loc or 'قاع' in loc: return 'Bottom of Excavation (قاع حفر)'
@@ -569,12 +568,10 @@ Project Data File: {uploaded_file.name}
             
         mat_df['Loc_Category'] = mat_df['Sampling_Lower'].apply(categorize_location)
         
-        # --- 1. الجدول المجمع للطباعة ---
         st.markdown("#### 📑 Consolidated Contractors Summary (Ready for Print)")
         st.info("💡 You can print this summary as PDF directly by pressing `Ctrl+P`.")
         
         summary_pivot = pd.crosstab(mat_df['Company Name'], mat_df['Loc_Category'], margins=True, margins_name="Total")
-        # ترتيب الأعمدة ليكون شكلها منطقي
         cols_order = ['Stockpile (مشاون)', 'Bottom of Excavation (قاع حفر)', 'Fill (ردم)', 'Other (أخرى)', 'Total']
         existing_cols = [c for c in cols_order if c in summary_pivot.columns]
         summary_pivot = summary_pivot[existing_cols]
@@ -583,7 +580,6 @@ Project Data File: {uploaded_file.name}
         
         st.divider()
         
-        # --- 2. تفاصيل كل مقاول (Interactive) ---
         st.markdown("#### 🏢 Individual Contractor Deep Dive")
         comp_list = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
         
@@ -591,7 +587,6 @@ Project Data File: {uploaded_file.name}
             selected_comp = st.selectbox("Select a Contractor to Analyze:", comp_list)
             comp_df = mat_df[mat_df['Company Name'] == selected_comp]
             
-            # حساب الكروت
             stock_count = len(comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)'])
             bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation (قاع حفر)'])
             fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill (ردم)'])
@@ -601,11 +596,9 @@ Project Data File: {uploaded_file.name}
             create_card(cc2, "Bottom Excavation (قاع حفر)", bottom_count)
             create_card(cc3, "Fill Samples (ردم)", fill_count)
             
-            # الشارتات الخاصة بالمقاول
             ch_col1, ch_col2 = st.columns(2)
             
             with ch_col1:
-                # نسب تصنيف الستوك بيل
                 stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)']
                 if 'Classification' in stock_df.columns and not stock_df.empty:
                     fig_class = px.pie(stock_df, names='Classification', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
@@ -614,7 +607,6 @@ Project Data File: {uploaded_file.name}
                     st.info(f"No Stockpile classification data logged for {selected_comp}.")
                     
             with ch_col2:
-                # نسب القبول والرفض للمقاول
                 if 'sample status' in comp_df.columns and not comp_df.empty:
                     fig_status = px.pie(comp_df, names='sample status', title=f"Overall Approval/Rejection Rate for {selected_comp}", hole=0.3,
                                         color='sample status',
@@ -724,6 +716,19 @@ Project Data File: {uploaded_file.name}
                 create_card(c6, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
                 create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
                 create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
+
+                # --- كارت الشركات التي عملت في الجسة (الإضافة الجديدة) ---
+                if 'Company Name' in bh_df.columns:
+                    companies_worked = bh_df['Company Name'].dropna().unique()
+                    companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
+                    
+                    c9 = st.columns(1)[0]
+                    c9.markdown(f"""
+                        <div class="metric-card" style="margin-top: 5px;">
+                            <div class="metric-label" style="color:#ffaa00;">Contractors Involved (الشركات المنفذة)</div>
+                            <div class="metric-value" style="font-size: 22px; white-space: normal; word-wrap: break-word;">{companies_str}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
                 # --- إنذار الطبقات المعلقة (Unresolved Failures) ---
                 if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
