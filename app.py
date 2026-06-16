@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import os
 from datetime import datetime
 import pytz
+import base64  # تم إضافته لإنشاء التقرير الذكي
 
 # تعريف توقيت القاهرة لاستخدامه في كل أنحاء الداشبورد
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
@@ -186,6 +187,20 @@ st.markdown("""
         background: rgba(10, 20, 33, 0.7); padding: 25px; border-radius: 20px; border-left: 5px solid; margin-bottom: 15px;
         box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     }
+
+    /* 🩺 Health Inspector Styling */
+    .health-card { 
+        background: rgba(10, 20, 33, 0.8); 
+        backdrop-filter: blur(10px); 
+        padding: 15px 25px; 
+        border-radius: 15px; 
+        border: 1px solid rgba(255, 255, 255, 0.1); 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        margin-bottom: 25px; 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
     
     /* تجميل الـ Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -198,7 +213,7 @@ st.markdown("""
         [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { display: none !important; }
         .main .block-container { max-width: 100% !important; padding: 10mm !important; margin: 0 !important; }
         .bi-title { page-break-before: always !important; color: #1e3d59 !important; padding-top: 10mm !important; text-shadow: none !important;}
-        .metric-card, .element-container, div[data-testid="stPlotlyChart"], .stDataFrame, .simulator-card { page-break-inside: avoid !important; margin-bottom: 5mm !important; }
+        .metric-card, .element-container, div[data-testid="stPlotlyChart"], .stDataFrame, .simulator-card, .health-card { page-break-inside: avoid !important; margin-bottom: 5mm !important; }
         h1, h2, h3, p, .metric-label { color: #000000 !important; }
         .metric-card { background: #f0f4f8 !important; border: 1px solid #1e3d59 !important; box-shadow: none !important; }
         .simulator-card { background: #ebf7ee !important; border: 2px solid #2ecc71 !important; }
@@ -257,6 +272,48 @@ if uploaded_file is not None:
     if 'Test Type' in df.columns: df['Test Type'] = df['Test Type'].str.strip().str.upper()
     if 'Date ( test)' in df.columns: df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
     if 'Date( SUB)' in df.columns: df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce', dayfirst=True)
+
+    # 🔥 1. Data Health & Integrity Inspector 🔥
+    total_rows = len(df)
+    missing_dates = df['Date ( test)'].isnull().sum() if 'Date ( test)' in df.columns else 0
+    missing_status = df['sample status'].isnull().sum() if 'sample status' in df.columns else 0
+    duplicate_serials = df['serial'].duplicated().sum() if 'serial' in df.columns else 0
+    
+    total_errors = missing_dates + missing_status + duplicate_serials
+    health_score = max(0, 100 - (total_errors / total_rows * 100)) if total_rows > 0 else 0
+    
+    health_color = "#2ecc71" if health_score >= 95 else ("#f1c40f" if health_score >= 80 else "#e74c3c")
+    health_icon = "✅" if health_score >= 95 else ("⚠️" if health_score >= 80 else "🚨")
+    
+    error_details = []
+    if missing_dates > 0: error_details.append(f"{missing_dates} Missing Dates")
+    if missing_status > 0: error_details.append(f"{missing_status} Missing Status")
+    if duplicate_serials > 0: error_details.append(f"{duplicate_serials} Duplicate Serials")
+    
+    error_str = " | ".join(error_details) if error_details else "Data is 100% clean and structured."
+    
+    st.markdown(f"""
+        <div class="health-card" style="border-left: 5px solid {health_color};">
+            <div>
+                <h4 style="margin: 0; color: #d1d5da; font-size: 14px; text-transform: uppercase;">{health_icon} Data Integrity Inspector</h4>
+                <p style="margin: 5px 0 0 0; color: #8da3b9; font-size: 13px;">{error_str}</p>
+            </div>
+            <div>
+                <h2 style="margin: 0; color: {health_color}; text-shadow: 0 0 10px {health_color};">{health_score:.1f}%</h2>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 🔥 2. Global Smart Search Engine 🔥
+    st.sidebar.divider()
+    st.sidebar.markdown("### 🔍 Global Smart Search")
+    global_search = st.sidebar.text_input("Search anything (Serial, Element, Date...):", placeholder="Type keyword...")
+    
+    if global_search:
+        # البحث في كل الأعمدة مع تجاهل حالة الأحرف
+        mask = df.astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
+        df = df[mask]
+        st.sidebar.success(f"🎯 Found {len(df)} records matching '{global_search}'")
 
     st.sidebar.divider()
     st.sidebar.header("🎯 BI Filters & AI Chat")
@@ -530,32 +587,80 @@ Project Quality Management Office"""
         st.plotly_chart(fig_tree, use_container_width=True)
 
     # ==========================================
-    # BI MODULE 4: Automated Executive Report
+    # 🔥 4. Automated Smart PDF Executive Report 🔥
     # ==========================================
-    st.markdown('<div class="bi-title">🖨️ Automated Executive Report</div>', unsafe_allow_html=True)
+    st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
+    st.info("💡 **CEO Feature:** Click the button below to download a styled HTML report. When opened, it can be easily saved as a perfectly formatted PDF for your Daily/Weekly Briefing!")
     
-    report_text = f"""# Executive BI Summary Report
-Date Generated: {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M")}
-Project Data File: {uploaded_file.name}
+    # HTML + CSS Template for PDF Generation
+    html_report = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Executive Report - {uploaded_file.name}</title>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; }}
+            .header {{ border-bottom: 3px solid #1e3d59; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }}
+            .header h1 {{ color: #1e3d59; margin: 0; font-size: 32px; text-transform: uppercase; }}
+            .header p {{ margin: 5px 0 0 0; color: #7f8c8d; }}
+            .score-card {{ background: #f8f9fa; border-left: 5px solid #2ecc71; padding: 20px; margin-bottom: 30px; border-radius: 5px; }}
+            .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }}
+            .box {{ border: 1px solid #ecf0f1; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
+            .box h3 {{ margin-top: 0; color: #e67e22; border-bottom: 1px solid #ecf0f1; padding-bottom: 10px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+            th, td {{ padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }}
+            th {{ background-color: #1e3d59; color: white; }}
+        </style>
+    </head>
+    <body onload="window.print()">
+        <div class="header">
+            <div>
+                <h1>Executive Intelligence Briefing</h1>
+                <p><strong>System:</strong> Mega Infrastructure BI Portal</p>
+                <p><strong>Dataset:</strong> {uploaded_file.name}</p>
+                <p><strong>Generated On:</strong> {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d at %I:%M %p")}</p>
+            </div>
+            <div style="font-size: 50px;">🏛️</div>
+        </div>
 
-## 1. Overall Performance Overview
-- Total Submittals Processed: {current_metrics["Total_Requests"]}
-- Total Tests Conducted: {current_metrics["Total_Tests"]}
-- Project Average Duration: {current_metrics["Avg_Duration"]} Days
-- Quality Alert: {rejected_count} submittals are currently flagged as REJECTED or REVISE.
+        <div class="score-card">
+            <h2 style="margin:0; color: #2c3e50;">Project Health Index: {overall_rate:.1f}% Approval Rate</h2>
+            <p style="margin:5px 0 0 0;">Evaluating {total_requests_count} total submittals to date.</p>
+        </div>
 
-## 2. Delay & Bottleneck Analysis
-- Critical Warning: The office/entity [{worst_office_name}] is experiencing the highest turnaround times, averaging {worst_office_delay} days per submittal.
-- Recommendation: Immediate review of workflow and staffing at [{worst_office_name}] is required to prevent downstream project delays.
-"""
+        <div class="grid">
+            <div class="box">
+                <h3>📊 Key Performance Metrics</h3>
+                <table>
+                    <tr><td>Total Submittals</td><td><strong>{current_metrics["Total_Requests"]}</strong></td></tr>
+                    <tr><td>Total Field Tests</td><td><strong>{current_metrics["Total_Tests"]}</strong></td></tr>
+                    <tr><td>Average Duration</td><td><strong>{current_metrics["Avg_Duration"]} Days</strong></td></tr>
+                    <tr><td>Average DPL Score</td><td><strong>{current_metrics["Avg_DPL"]}</strong></td></tr>
+                    <tr><td>Total Paperwork Pages</td><td><strong>{current_metrics["Total_Paperwork"]}</strong></td></tr>
+                </table>
+            </div>
+            
+            <div class="box">
+                <h3>⚠️ Risk & Bottleneck Analysis</h3>
+                <table>
+                    <tr><td>Rejected/Revise Count</td><td><strong style="color: #e74c3c;">{rejected_count} Submittals</strong></td></tr>
+                    <tr><td>Critical Bottleneck Node</td><td><strong>{worst_office_name}</strong></td></tr>
+                    <tr><td>Max Department Delay</td><td><strong style="color: #e74c3c;">{worst_office_delay} Days Average</strong></td></tr>
+                    <tr><td>Data Integrity Score</td><td><strong>{health_score:.1f}%</strong></td></tr>
+                </table>
+            </div>
+        </div>
+        
+        <p style="text-align: center; color: #95a5a6; font-size: 12px; margin-top: 50px;">Confidential Document - Generated Automatically by the AI BI Framework</p>
+    </body>
+    </html>
+    """
     
-    st.markdown(report_text)
-    st.download_button(
-        label="📄 Download Executive Report (TXT)",
-        data=report_text,
-        file_name=f"Executive_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.txt",
-        mime="text/plain"
-    )
+    # تحويل الـ HTML لـ Base64 لتمكين التحميل
+    b64 = base64.b64encode(html_report.encode()).decode()
+    href = f'<a href="data:text/html;base64,{b64}" download="Executive_Report_{datetime.now(EGYPT_TZ).strftime("%Y%m%d")}.html" style="background-color:#ffaa00; color:#1e3d59; padding:12px 24px; text-decoration:none; font-weight:bold; border-radius:8px; display:inline-block; transition:0.3s; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4);">📄 Download PDF-Ready Report</a>'
+    st.markdown(href, unsafe_allow_html=True)
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -647,7 +752,6 @@ Project Data File: {uploaded_file.name}
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-    # 🔥 تم حل مشكلة الألوان هنا بتجميع الداتا قبل الرسم 🔥
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
         if 'Company Name' in filtered_df.columns and 'Test Type' in filtered_df.columns:
