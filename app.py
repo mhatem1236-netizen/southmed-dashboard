@@ -666,9 +666,9 @@ Project Data File: {uploaded_file.name}
     st.divider()
 
     # ==========================================
-    # 🔥 12. ADVANCED Borehole (BH) Quality Auditor
+    # 🔥 12. ADVANCED Element Quality Auditor
     # ==========================================
-    st.markdown('<div class="bi-title">🔍 Advanced Borehole (BH) Quality Auditor</div>', unsafe_allow_html=True)
+    st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
     
     bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
 
@@ -677,9 +677,9 @@ Project Data File: {uploaded_file.name}
         bh_list = [bh for bh in filtered_df[bh_col_name].unique() if str(bh).upper() != 'NAN' and str(bh) != '']
         
         if len(bh_list) > 0:
-            selected_bh = st.selectbox(f"Select a Location ({bh_col_name}) to investigate:", ["-- Select Location --"] + sorted(bh_list))
+            selected_bh = st.selectbox(f"Select an Element ({bh_col_name}) to investigate:", ["-- Select Element --"] + sorted(bh_list))
             
-            if selected_bh != "-- Select Location --":
+            if selected_bh != "-- Select Element --":
                 bh_df = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
                 
                 # --- ترتيب الطبقات بشكل منطقي (1, 2, 3...) ---
@@ -717,16 +717,26 @@ Project Data File: {uploaded_file.name}
                 create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
                 create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
 
-                # --- كارت الشركات التي عملت في الجسة (الإضافة الجديدة) ---
+                # --- كارت الشركات وتواريخ عملها (الإضافة الجديدة) ---
                 if 'Company Name' in bh_df.columns:
-                    companies_worked = bh_df['Company Name'].dropna().unique()
-                    companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
+                    if 'Date ( test)' in bh_df.columns:
+                        comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
+                        comp_details = []
+                        for _, r in comp_stats.iterrows():
+                            c_name = r['Company Name']
+                            s_date = r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'
+                            e_date = r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'
+                            comp_details.append(f"<span style='color:#2ecc71;'><b>{c_name}</b></span>: <span style='font-size:16px;'>{s_date} ➡️ {e_date}</span>")
+                        companies_str = "<br>".join(comp_details) if comp_details else "N/A"
+                    else:
+                        companies_worked = bh_df['Company Name'].dropna().unique()
+                        companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
                     
                     c9 = st.columns(1)[0]
                     c9.markdown(f"""
-                        <div class="metric-card" style="margin-top: 5px;">
-                            <div class="metric-label" style="color:#ffaa00;">Contractors Involved (الشركات المنفذة)</div>
-                            <div class="metric-value" style="font-size: 22px; white-space: normal; word-wrap: break-word;">{companies_str}</div>
+                        <div class="metric-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
+                            <div class="metric-label" style="color:#ffaa00; text-align: center; margin-bottom: 10px;">Contractors Timeline on this Element (التسلسل الزمني للشركات)</div>
+                            <div class="metric-value" style="font-size: 18px; line-height: 1.8;">{companies_str}</div>
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -773,13 +783,13 @@ Project Data File: {uploaded_file.name}
                     boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
                     if not boe_df.empty:
                         boe_count = len(boe_df)
-                        st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this BH.")
+                        st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
                         if 'Classification' in boe_df.columns:
                             class_counts = boe_df['Classification'].value_counts().reset_index()
                             class_counts.columns = ['Classification', 'Count']
                             st.plotly_chart(px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True), use_container_width=True)
                     else:
-                        st.success("No 'Bottom of Excavation' specific issues or tests logged for this BH.")
+                        st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
 
                 st.divider()
 
@@ -797,7 +807,7 @@ Project Data File: {uploaded_file.name}
 
                 st.divider()
 
-                # --- الشارتات للـ BH ---
+                # --- الشارتات للـ Element ---
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
                     if 'sample status' in bh_df.columns:
@@ -818,7 +828,7 @@ Project Data File: {uploaded_file.name}
                 st.markdown(f"**Detailed Audit Log for `{selected_bh}`:**")
                 st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
     else:
-        st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' or 'BH' column in your uploaded file to enable Deep Dive Analysis.")
+        st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
     st.divider()
 
