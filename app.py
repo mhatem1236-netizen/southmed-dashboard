@@ -9,13 +9,13 @@ import pytz
 import base64
 
 # ==========================================
-# إعدادات التوقيت والألوان النيون
+# Timezone and Colors Configuration
 # ==========================================
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
 
 # ==========================================
-# دالة سحرية لجعل الرسوم البيانية زجاجية 3D
+# 3D Glassy Chart Styling Function
 # ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
     fig.update_layout(
@@ -27,13 +27,11 @@ def style_3d_glassy(fig, chart_type="bar"):
     )
     
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
-        # تطبيق تأثير الإزاز: شفافية 85% مع إطار أبيض خفيف
         fig.update_traces(
             marker=dict(line=dict(color='rgba(255, 255, 255, 0.4)', width=1.5)),
             opacity=0.85
         )
     elif chart_type == "line":
-        # زيادة سمك الخطوط وإضافة نقط مضيئة
         fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=1.5)))
         
     fig.update_xaxes(showgrid=False)
@@ -41,7 +39,7 @@ def style_3d_glassy(fig, chart_type="bar"):
     return fig
 
 # ==========================================
-# مدير البيانات والتاريخ (History Manager)
+# History Manager
 # ==========================================
 class HistoryManager:
     FILE_NAME = "project_history_log.csv"
@@ -89,7 +87,7 @@ class HistoryManager:
         else: return f'<div class="delta-neutral">➖ No change</div>'
 
 # ==========================================
-# إعداد الصفحة وتصميم الـ CSS المتقدم
+# Page Config & Advanced CSS Styling
 # ==========================================
 st.set_page_config(page_title="Infrastructure BI Dashboard", layout="wide")
 
@@ -150,7 +148,7 @@ st.markdown("""
     ::-webkit-scrollbar-thumb { background: rgba(255, 170, 0, 0.5); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255, 170, 0, 0.8); }
 
-    /* 🔥 CSS للطباعة الاحترافية كـ PDF (Ctrl+P) 🔥 */
+    /* Print CSS for Professional PDF Export (Ctrl+P) */
     @media print {
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         body, [data-testid="stAppViewContainer"] { background: #050a11 !important; }
@@ -183,7 +181,7 @@ def ai_assistant(query, data_summary):
         return "I am here to assist. Ask me about project logs, contractor performance, or quality control metrics."
 
 # ==========================================
-# الهيدر والتصميم العلوي
+# App Header
 # ==========================================
 try: st.image("5.jpg", use_container_width=True)
 except: pass
@@ -195,7 +193,7 @@ with col_h2:
     except: pass
 
 # ==========================================
-# 3. Sidebar: Database, Filters & Simulator
+# Sidebar: Database, Filters & Simulator
 # ==========================================
 try:
     st.sidebar.image("شششششششش.JPG", use_container_width=True)
@@ -278,14 +276,10 @@ if uploaded_file is not None:
     statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
     selected_statuses = st.sidebar.multiselect("Sample Status:", options=statuses, default=statuses)
 
-    # What-If Simulator
     st.sidebar.divider()
     st.sidebar.header("🎛️ What-If Optimization Simulator")
     sim_days_saved = st.sidebar.slider("Simulate Admin Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
 
-    # ==========================================
-    # 🗄️ Backup & Restore
-    # ==========================================
     st.sidebar.divider()
     with st.sidebar.expander("🗄️ History Database Backup"):
         st.markdown("<span style='font-size:12px; color:#d1d5da;'>Because cloud servers reset daily, save your history before leaving and restore it tomorrow.</span>", unsafe_allow_html=True)
@@ -764,10 +758,10 @@ Project Quality Management Office"""
         mat_df['Sampling_Lower'] = mat_df['Sampling Location'].astype(str).str.lower()
         
         def categorize_location(loc):
-            if 'stock' in loc or 'مشون' in loc: return 'Stockpile (مشاون)'
-            elif 'bottom' in loc or 'قاع' in loc: return 'Bottom of Excavation (قاع حفر)'
-            elif 'fill' in loc or 'ردم' in loc: return 'Fill (ردم)'
-            else: return 'Other (أخرى)'
+            if 'stock' in loc or 'مشون' in loc: return 'Stockpile'
+            elif 'bottom' in loc or 'قاع' in loc: return 'Bottom of Excavation'
+            elif 'fill' in loc or 'ردم' in loc: return 'Fill'
+            else: return 'Other'
             
         mat_df['Loc_Category'] = mat_df['Sampling_Lower'].apply(categorize_location)
         
@@ -775,7 +769,7 @@ Project Quality Management Office"""
         st.info("💡 You can print this summary as PDF directly by pressing `Ctrl+P`.")
         
         summary_pivot = pd.crosstab(mat_df['Company Name'], mat_df['Loc_Category'], margins=True, margins_name="Total")
-        cols_order = ['Stockpile (مشاون)', 'Bottom of Excavation (قاع حفر)', 'Fill (ردم)', 'Other (أخرى)', 'Total']
+        cols_order = ['Stockpile', 'Bottom of Excavation', 'Fill', 'Other', 'Total']
         existing_cols = [c for c in cols_order if c in summary_pivot.columns]
         summary_pivot = summary_pivot[existing_cols]
         
@@ -790,19 +784,19 @@ Project Quality Management Office"""
             selected_comp = st.selectbox("Select a Contractor to Analyze:", comp_list)
             comp_df = mat_df[mat_df['Company Name'] == selected_comp]
             
-            stock_count = len(comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)'])
-            bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation (قاع حفر)'])
-            fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill (ردم)'])
+            stock_count = len(comp_df[comp_df['Loc_Category'] == 'Stockpile'])
+            bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'])
+            fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill'])
             
             cc1, cc2, cc3 = st.columns(3)
-            create_card(cc1, "Stockpile Samples (مشاون)", stock_count)
-            create_card(cc2, "Bottom Excavation (قاع حفر)", bottom_count)
-            create_card(cc3, "Fill Samples (ردم)", fill_count)
+            create_card(cc1, "Stockpile Samples", stock_count)
+            create_card(cc2, "Bottom Excavation", bottom_count)
+            create_card(cc3, "Fill Samples", fill_count)
             
             ch_col1, ch_col2 = st.columns(2)
             
             with ch_col1:
-                stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile (مشاون)']
+                stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile']
                 if 'Classification' in stock_df.columns and not stock_df.empty:
                     fig_class = px.pie(stock_df, names='Classification', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
                     fig_class = style_3d_glassy(fig_class, chart_type="pie")
@@ -874,7 +868,7 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 🔥 12. ADVANCED Element Quality Auditor (معدلة للفصل بين Zones) 🔥
+    # 🔥 12. ADVANCED Element Quality Auditor 🔥
     # ==========================================
     st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
     
@@ -892,11 +886,11 @@ Project Quality Management Office"""
                 bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
                 bh_df = None
                 
-                # الفلتر الذكي: إذا كان الـ Element متكرر في أكثر من Zone
+                # Smart Zone Filter
                 if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
                     available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
-                    st.warning(f"⚠️ **انتباه:** العنصر `{selected_bh}` متكرر في قطاعات/مناطق مختلفة. يرجى تحديد الـ Zone المطلوب:")
-                    selected_zone = st.radio("📍 اختر المنطقة (Zone):", available_zones, horizontal=True)
+                    st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
+                    selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
                     
                     if selected_zone:
                         bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
@@ -935,7 +929,6 @@ Project Quality Management Office"""
                     if 'Company Name' in bh_df.columns:
                         if 'Date ( test)' in bh_df.columns:
                             comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
-                            # استخدام كود السهم الواضح الملون &rarr;
                             comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:#8da3b9;'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
                             companies_str = "<br>".join(comp_details) if comp_details else "N/A"
                         else:
@@ -944,7 +937,7 @@ Project Quality Management Office"""
                         
                         st.markdown(f"""
                             <div class="metric-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
-                                <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element (التسلسل الزمني للشركات)</div>
+                                <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element</div>
                                 <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500;">{companies_str}</div>
                             </div>
                             """, unsafe_allow_html=True)
