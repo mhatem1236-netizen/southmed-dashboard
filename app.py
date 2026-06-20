@@ -1,10 +1,3 @@
-معاك حق 100% يا هندسة، بعتذر لك جداً على الاختصار في الرد اللي فات. السيستم كبر وموديولاته كترت، ولازم الكود يكون "قطعة واحدة" عشان يشتغل معاك فوراً من غير ما يحصل أي Error في الدمج.
-
-جمعتلك **كل الأسطر البرمجية**، من أول سطر لآخر سطر (بما فيها خريطة الـ 3D Site Navigator، والفلاتر الذكية للـ Zones، والطباعة، واللغة الإنجليزية الكاملة، ومفتش الداتا).
-
-انسخ **الكود المستقر النهائي (Master Code V22 - Enterprise Full Edition)** بالكامل من هنا:
-
-```python
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -1052,5 +1045,3 @@ Project Quality Management Office"""
 
 else:
     st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
-
-```
