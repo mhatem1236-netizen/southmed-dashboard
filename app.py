@@ -280,7 +280,6 @@ def render_dashboard():
                             new_u = pd.DataFrame([{"Email": new_email, "Password": new_pass, "Name": new_name, "Role": new_role, "Status": "Active"}])
                             pd.concat([users_df, new_u], ignore_index=True).to_csv(USERS_DB_FILE, index=False)
                             st.success("User Added Successfully!")
-                            # Clear form keys to reset inputs on rerun
                             for key in ["add_email", "add_pass", "add_name", "add_role"]:
                                 if key in st.session_state:
                                     del st.session_state[key]
@@ -292,7 +291,6 @@ def render_dashboard():
                     target_idx = users_df.index[users_df['Email'] == target_email].tolist()[0]
                     user_to_edit = users_df.iloc[target_idx]
                     
-                    # Dynamic Keys prevent Streamlit from caching old state
                     edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key=f"edit_name_{target_email}")
                     edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key=f"edit_pass_{target_email}")
                     
@@ -309,7 +307,6 @@ def render_dashboard():
                         users_df.at[target_idx, 'Status'] = edit_status
                         users_df.to_csv(USERS_DB_FILE, index=False)
                         
-                        # Sync current active session if Admin modifies their own profile
                         if st.session_state["current_user"]["Email"] == target_email:
                             st.session_state["current_user"]["Name"] = edit_name
                             st.session_state["current_user"]["Role"] = edit_role
@@ -323,9 +320,33 @@ def render_dashboard():
             
     st.sidebar.divider()
 
-    # Sidebar: Database Connection
+    # ==========================================
+    # 🔥 ALWAYS VISIBLE BACKUP SECTION 🔥
+    # ==========================================
     st.sidebar.markdown("### 🔌 Data Source Connection")
     data_source = st.sidebar.selectbox("Connection Type:", ["Local CSV Upload", "Live SQL Database (Pending)"])
+
+    # Backup & Restore moved outside of the file upload check
+    with st.sidebar.expander("🗄️ History Database Backup"):
+        st.markdown("<span style='font-size:12px; color:#d1d5da;'>Because cloud servers reset daily, save your history before leaving and restore it tomorrow.</span>", unsafe_allow_html=True)
+        
+        history_upload = st.file_uploader("1. Restore History Log", type="csv")
+        if history_upload is not None:
+            restored_df = pd.read_csv(history_upload)
+            restored_df.to_csv(HistoryManager.FILE_NAME, index=False)
+            st.success("✅ History Restored!")
+            
+        if os.path.exists(HistoryManager.FILE_NAME):
+            with open(HistoryManager.FILE_NAME, "rb") as f:
+                st.download_button(
+                    label="2. Download Backup 💾",
+                    data=f,
+                    file_name=f"history_backup_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+    
+    st.sidebar.divider()
 
     uploaded_file = None
     if data_source == "Local CSV Upload":
@@ -404,27 +425,6 @@ def render_dashboard():
         st.sidebar.divider()
         st.sidebar.header("🎛️ What-If Optimization Simulator")
         sim_days_saved = st.sidebar.slider("Simulate Admin Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
-
-        # Backup & Restore
-        st.sidebar.divider()
-        with st.sidebar.expander("🗄️ History Database Backup"):
-            st.markdown("<span style='font-size:12px; color:#d1d5da;'>Because cloud servers reset daily, save your history before leaving and restore it tomorrow.</span>", unsafe_allow_html=True)
-            
-            history_upload = st.file_uploader("1. Restore History Log", type="csv")
-            if history_upload is not None:
-                restored_df = pd.read_csv(history_upload)
-                restored_df.to_csv(HistoryManager.FILE_NAME, index=False)
-                st.success("✅ History Restored!")
-                
-            if os.path.exists(HistoryManager.FILE_NAME):
-                with open(HistoryManager.FILE_NAME, "rb") as f:
-                    st.download_button(
-                        label="2. Download Backup 💾",
-                        data=f,
-                        file_name=f"history_backup_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
 
         filtered_df = df.copy()
         if len(companies) > 0: filtered_df = filtered_df[filtered_df['Company Name'].isin(selected_companies)]
