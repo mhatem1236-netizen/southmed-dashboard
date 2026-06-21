@@ -261,32 +261,44 @@ if uploaded_file is not None:
     statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
     selected_statuses = st.sidebar.multiselect("Sample Status:", options=statuses, default=statuses)
 
-    # Simulator
+    # What-If Simulator
     st.sidebar.divider()
     st.sidebar.header("🎛️ What-If Optimization Simulator")
     sim_days_saved = st.sidebar.slider("Simulate Admin Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
 
-    # Backup
+    # Backup & Restore
     st.sidebar.divider()
     with st.sidebar.expander("🗄️ History Database Backup"):
-        st.markdown("<span style='font-size:12px; color:#d1d5da;'>Save your history before leaving to restore tomorrow.</span>", unsafe_allow_html=True)
+        st.markdown("<span style='font-size:12px; color:#d1d5da;'>Because cloud servers reset daily, save your history before leaving and restore it tomorrow.</span>", unsafe_allow_html=True)
+        
         history_upload = st.file_uploader("1. Restore History Log", type="csv")
         if history_upload is not None:
             restored_df = pd.read_csv(history_upload)
             restored_df.to_csv(HistoryManager.FILE_NAME, index=False)
             st.success("✅ History Restored!")
+            
         if os.path.exists(HistoryManager.FILE_NAME):
             with open(HistoryManager.FILE_NAME, "rb") as f:
-                st.download_button(label="2. Download Backup 💾", data=f, file_name=f"history_backup.csv", mime="text/csv", use_container_width=True)
+                st.download_button(
+                    label="2. Download Backup 💾",
+                    data=f,
+                    file_name=f"history_backup_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
 
     filtered_df = df.copy()
     if len(companies) > 0: filtered_df = filtered_df[filtered_df['Company Name'].isin(selected_companies)]
     if len(statuses) > 0: filtered_df = filtered_df[filtered_df['sample status'].isin(selected_statuses)]
 
     num_tests_col = next((c for c in filtered_df.columns if 'NUM' in c.upper() and 'TEST' in c.upper()), None)
-    if num_tests_col: filtered_df[num_tests_col] = pd.to_numeric(filtered_df[num_tests_col], errors='coerce').fillna(0)
-    if 'DURATION' in filtered_df.columns: filtered_df['DURATION'] = pd.to_numeric(filtered_df['DURATION'], errors='coerce')
+    if num_tests_col:
+        filtered_df[num_tests_col] = pd.to_numeric(filtered_df[num_tests_col], errors='coerce').fillna(0)
+    
+    if 'DURATION' in filtered_df.columns:
+        filtered_df['DURATION'] = pd.to_numeric(filtered_df['DURATION'], errors='coerce')
 
+    # Data Calculations
     total_requests_count = len(filtered_df)
     total_tests_count = int(filtered_df[num_tests_col].sum() if num_tests_col else 0)
     avg_dpl_value = round(pd.to_numeric(filtered_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in filtered_df.columns else 0, 2)
@@ -294,8 +306,12 @@ if uploaded_file is not None:
     total_paperwork_pages = int(filtered_df[next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)].sum() if next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None) else 0)
 
     current_metrics = {
-        "File_Name": uploaded_file.name, "Total_Requests": total_requests_count, "Total_Tests": total_tests_count,
-        "Avg_DPL": avg_dpl_value, "Avg_Duration": avg_duration_value, "Total_Paperwork": total_paperwork_pages
+        "File_Name": uploaded_file.name, 
+        "Total_Requests": total_requests_count,
+        "Total_Tests": total_tests_count,
+        "Avg_DPL": avg_dpl_value,
+        "Avg_Duration": avg_duration_value,
+        "Total_Paperwork": total_paperwork_pages
     }
 
     st.markdown(f"**📂 Active Data Source:** `{uploaded_file.name}`")
@@ -311,20 +327,38 @@ if uploaded_file is not None:
     # ==========================================
     st.markdown("### 📊 Executive Key Performance Indicators")
     col1, col2, col3, col4, col5 = st.columns(5)
-    create_card(col1, "Total Submittals", current_metrics["Total_Requests"], HistoryManager.get_delta_html(current_metrics["Total_Requests"], "Total_Requests", uploaded_file.name))
-    create_card(col2, "Total Tests", current_metrics["Total_Tests"], HistoryManager.get_delta_html(current_metrics["Total_Tests"], "Total_Tests", uploaded_file.name))
-    create_card(col3, "Avg DPL Value", current_metrics["Avg_DPL"], HistoryManager.get_delta_html(current_metrics["Avg_DPL"], "Avg_DPL", uploaded_file.name))
-    create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], HistoryManager.get_delta_html(current_metrics["Avg_Duration"], "Avg_Duration", uploaded_file.name))
-    create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name))
+    
+    d1 = HistoryManager.get_delta_html(current_metrics["Total_Requests"], "Total_Requests", uploaded_file.name)
+    create_card(col1, "Total Submittals", current_metrics["Total_Requests"], delta_html=d1)
+    
+    d2 = HistoryManager.get_delta_html(current_metrics["Total_Tests"], "Total_Tests", uploaded_file.name)
+    create_card(col2, "Total Tests", current_metrics["Total_Tests"], delta_html=d2)
+    
+    d3 = HistoryManager.get_delta_html(current_metrics["Avg_DPL"], "Avg_DPL", uploaded_file.name)
+    create_card(col3, "Avg DPL Value", current_metrics["Avg_DPL"], delta_html=d3)
 
+    d4 = HistoryManager.get_delta_html(current_metrics["Avg_Duration"], "Avg_Duration", uploaded_file.name)
+    create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4)
+    
+    d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
+    create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
+
+    # --- Speedometer & Simulator Row ---
     g_col, s_col = st.columns([0.4, 0.6])
     with g_col:
         overall_acc = len(filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in filtered_df.columns else 0
         overall_rate = (overall_acc / total_requests_count * 100) if total_requests_count > 0 else 0
+        
         fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number", value=overall_rate, title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': 'white'}},
+            mode="gauge+number", value=overall_rate,
+            title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': 'white'}},
             number={'suffix': "%", 'font': {'size': 40, 'color': 'white'}},
-            gauge={'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"}, 'bar': {'color': "#ffffff", 'thickness': 0.25}, 'bgcolor': "rgba(255,255,255,0.05)", 'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}]}
+            gauge={
+                'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
+                'bar': {'color': "#ffffff", 'thickness': 0.25},
+                'bgcolor': "rgba(255,255,255,0.05)",
+                'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}],
+            }
         ))
         fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20), font={'family': 'Montserrat'})
         st.plotly_chart(fig_gauge, use_container_width=True)
@@ -332,93 +366,23 @@ if uploaded_file is not None:
     with s_col:
         if sim_days_saved > 0:
             total_time_recovered = sim_days_saved * total_requests_count
-            st.markdown(f"""<div class="simulator-card"><h4 style="color: #2ecc71; margin: 0; text-transform: uppercase;">✨ Simulated Optimization Impact</h4><p style="font-size: 38px; font-weight: 800; color: #ffffff; margin: 5px 0;">{total_time_recovered:,} <span style="font-size:16px; color:#d1d5da;">Project Days Saved</span></p></div>""", unsafe_allow_html=True)
+            st.markdown(f"""
+                <div class="simulator-card">
+                    <h4 style="color: #2ecc71; margin: 0; text-transform: uppercase; font-size: 16px; letter-spacing: 1px;">✨ Simulated Optimization Impact</h4>
+                    <p style="font-size: 38px; font-weight: 800; color: #ffffff; margin: 5px 0;">{total_time_recovered:,} <span style="font-size:16px; color:#d1d5da; font-weight:500;">Project Days Saved</span></p>
+                    <p style="font-size: 14px; color: #a0aec0; margin: 0; line-height: 1.6;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
+                </div>
+                """, unsafe_allow_html=True)
         else:
-            st.markdown("""<div class="simulator-card" style="background: rgba(10, 20, 33, 0.5);"><h4 style="color: #8da3b9; margin: 0;">🎛️ Optimization Simulator Inactive</h4></div>""", unsafe_allow_html=True)
-
-    # Monthly Volume
-    st.markdown('<div class="bi-title">🧪 Monthly Test Volume & Deficit Analysis</div>', unsafe_allow_html=True)
-    if 'Date ( test)' in filtered_df.columns and 'Test Type' in filtered_df.columns:
-        v_df = filtered_df.dropna(subset=['Date ( test)', 'Test Type']).copy()
-        v_df['Month_Sort'] = v_df['Date ( test)'].dt.to_period('M')
-        v_df['Month'] = v_df['Date ( test)'].dt.strftime('%b %Y')
-        monthly_summary = v_df.groupby(['Month_Sort', 'Month', 'Test Type']).size().reset_index(name='Volume').sort_values('Month_Sort')
-        fig_vol = px.bar(monthly_summary, x='Month', y='Volume', color='Test Type', barmode='group', title="Testing Intensity per Month", color_discrete_sequence=NEON_COLORS)
-        st.plotly_chart(style_3d_glassy(fig_vol, chart_type="bar"), use_container_width=True)
-
-    # Charts
-    st.markdown('<div class="bi-title">📊 Visual Analytics</div>', unsafe_allow_html=True)
-    chart_col1, chart_col2 = st.columns(2)
-    with chart_col1:
-        if 'Company Name' in filtered_df.columns and 'Test Type' in filtered_df.columns:
-            c1_df = filtered_df.groupby(['Company Name', 'Test Type']).size().reset_index(name='Count')
-            st.plotly_chart(style_3d_glassy(px.bar(c1_df, x='Company Name', y='Count', color='Test Type', title="Workload per Contractor", color_discrete_sequence=NEON_COLORS), "bar"), use_container_width=True)
-    with chart_col2:
-        if 'sample status' in filtered_df.columns:
-            st.plotly_chart(style_3d_glassy(px.pie(filtered_df, names='sample status', hole=0.4, title="Status Distribution", color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'}), "pie"), use_container_width=True)
-    
-    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+            st.markdown("""
+                <div class="simulator-card" style="border-color: rgba(255,255,255,0.1); background: rgba(10, 20, 33, 0.5);">
+                    <h4 style="color: #8da3b9; margin: 0; font-size: 18px;">🎛️ Optimization Simulator Inactive</h4>
+                    <p style="font-size: 14px; color: #8da3b9; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
+                </div>
+                """, unsafe_allow_html=True)
 
     # ==========================================
-    # 🔥 8. NEW: VISUAL SITE NAVIGATOR (3D View Prototype) 🔥
-    # ==========================================
-    st.markdown('<div class="bi-title">🗺️ Visual Site Navigator (Interactive Layout)</div>', unsafe_allow_html=True)
-    
-    col_map, col_info = st.columns([0.7, 0.3])
-    
-    with col_map:
-        st.markdown('<div class="visual-frame">', unsafe_allow_html=True)
-        
-        bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
-        
-        if bh_col_name:
-            unique_elements = filtered_df[bh_col_name].dropna().unique()
-            map_data = pd.DataFrame({
-                'Element': unique_elements,
-                'x': np.random.uniform(10, 90, size=len(unique_elements)),
-                'y': np.random.uniform(10, 90, size=len(unique_elements))
-            })
-
-            fig_map = go.Figure()
-
-            fig_map.add_trace(go.Scatter(
-                x=map_data['x'], y=map_data['y'],
-                mode='markers+text',
-                marker=dict(size=15, color='#ffaa00', symbol='hexagon', line=dict(color='white', width=2)),
-                text=map_data['Element'],
-                textposition="top center",
-                hovertemplate="<b>Element:</b> %{text}<br>Click to filter dashboard<extra></extra>"
-            ))
-
-            fig_map.update_layout(
-                title="Interactive Project Layout (Prototype)",
-                xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[0, 100]),
-                yaxis=dict(showgrid=False, zeroline=False, visible=False, range=[0, 100]),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                height=400,
-                margin=dict(l=0, r=0, t=40, b=0)
-            )
-            
-            st.plotly_chart(fig_map, use_container_width=True)
-        else:
-            st.info("Element/Location column not found to generate the map.")
-            
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col_info:
-        st.info("💡 **Instructions:** This map represents your site layout. Clicking a node will instantly focus the analytics on that specific villa/element (Coming Soon).")
-        st.markdown("""
-        **Map Legends:**
-        - 🟠 Hexagon: Active Element
-        - 🟢 Green Glow: Approved Status
-        - 🔴 Red Glow: Pending/Rejected
-        """)
-
-    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-    # ==========================================
-    # 9. Monthly Volume & Deficit Analysis
+    # 8. Monthly Volume & Deficit Analysis
     # ==========================================
     st.markdown('<div class="bi-title">🧪 Monthly Test Volume & Deficit Analysis</div>', unsafe_allow_html=True)
     if 'Date ( test)' in filtered_df.columns and 'Test Type' in filtered_df.columns:
@@ -463,7 +427,7 @@ if uploaded_file is not None:
                 st.text("No data available for tracking.")
 
     # ==========================================
-    # 10. Workflow & Delay Risk Analysis
+    # 9. Workflow & Delay Risk Analysis
     # ==========================================
     st.markdown('<div class="bi-title">⏱️ Workflow & Delay Risk Analysis</div>', unsafe_allow_html=True)
     
@@ -506,7 +470,7 @@ Project Quality Management Office"""
                 st.dataframe(worst_office_data, use_container_width=True)
 
     # ==========================================
-    # 11. AI Predictive Analytics & Geospatial
+    # 10. AI Predictive Analytics & Geospatial
     # ==========================================
     st.markdown('<div class="bi-title">🤖 Predictive Risk Forecasting</div>', unsafe_allow_html=True)
     if 'Date ( test)' in filtered_df.columns and 'DURATION' in filtered_df.columns:
@@ -541,7 +505,7 @@ Project Quality Management Office"""
         st.plotly_chart(fig_tree, use_container_width=True)
 
     # ==========================================
-    # 🔥 12. Automated Smart PDF Executive Report 🔥
+    # 🔥 11. Automated Smart PDF Executive Report 🔥
     # ==========================================
     st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
     st.info("💡 **CEO Feature:** Click the button below to download a styled HTML report. When opened, it can be easily saved as a perfectly formatted PDF for your Daily/Weekly Briefing!")
@@ -615,7 +579,7 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 13. KPI Trend Tracker (Historical Growth)
+    # 12. KPI Trend Tracker (Historical Growth)
     # ==========================================
     global_history_df = HistoryManager.load_history()
     if not global_history_df.empty:
@@ -649,7 +613,7 @@ Project Quality Management Office"""
             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 14. Test Type Breakdown & Quality Distributions
+    # 13. Test Type Breakdown & Quality Distributions
     # ==========================================
     if num_tests_col and 'Test Type' in filtered_df.columns:
         st.markdown("### 🧪 Detailed Test Counts by Type")
@@ -672,9 +636,9 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 15. Strategic Insights & Recommendation Charts
+    # 14. Strategic Insights & Visual Analytics
     # ==========================================
-    st.markdown("### 💡 Strategic Insights & Recommendations")
+    st.markdown("### 💡 Strategic Insights & Visual Analytics")
     ins_col1, ins_col2 = st.columns(2)
     with ins_col1:
         st.success("✅ **Quality Improvement:**\n* Maintain tight oversight on duration KPIs.\n* Stable DPL curves confirm materials testing compliance.")
@@ -713,7 +677,7 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 16. Contractor Materials & Sourcing Analysis
+    # 15. Contractor Materials & Sourcing Analysis
     # ==========================================
     st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
     
@@ -811,7 +775,7 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 17. Timeline Analysis
+    # 16. Timeline Analysis
     # ==========================================
     st.markdown("### 📈 Timeline Analysis")
     time_col1, time_col2 = st.columns(2)
@@ -850,7 +814,7 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 🔥 18. ADVANCED Element Quality Auditor (Zone-Aware & AI Inspector) 🔥
+    # 🔥 17. ADVANCED Element Quality Auditor (Zone-Aware & AI Inspector) 🔥
     # ==========================================
     st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
     
@@ -862,7 +826,7 @@ Project Quality Management Office"""
         bh_list = [bh for bh in filtered_df[bh_col_name].unique() if str(bh).upper() != 'NAN' and str(bh) != '']
         
         if len(bh_list) > 0:
-            selected_bh = st.selectbox("Select an Element to investigate:", ["-- Select Element --"] + sorted(bh_list))
+            selected_bh = st.selectbox(f"Select an Element ({bh_col_name}) to investigate:", ["-- Select Element --"] + sorted(bh_list))
             
             if selected_bh != "-- Select Element --":
                 bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
@@ -1031,7 +995,7 @@ Project Quality Management Office"""
                         bh_df['Execution_Node'] = bh_df['Execution_Node'].fillna('General Location')
                         
                         fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], 
-                                              title="Who did What & Where",
+                                              title=f"Who did What & Where in {selected_bh}",
                                               color='Done BY', color_discrete_sequence=NEON_COLORS)
                         fig_matrix.update_traces(textinfo="label+value")
                         fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
@@ -1042,7 +1006,7 @@ Project Quality Management Office"""
                     b_col1, b_col2 = st.columns(2)
                     with b_col1:
                         if 'sample status' in bh_df.columns:
-                            fig_ep = px.pie(bh_df, names='sample status', title="Status Breakdown", hole=0.4, color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                            fig_ep = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
                             fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
                             st.plotly_chart(fig_ep, use_container_width=True)
                     
@@ -1051,14 +1015,14 @@ Project Quality Management Office"""
                             layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
                             layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
                             layer_reqs = layer_reqs.sort_values('Layer_Num')
-                            fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
+                            fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
                             fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
                             st.plotly_chart(fig_eb, use_container_width=True)
 
                     if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
                         trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
                         if not trend_df.empty:
-                            fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title="DPL Values Trend across Layers over time", color_discrete_sequence=NEON_COLORS)
+                            fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}", color_discrete_sequence=NEON_COLORS)
                             fig_el = style_3d_glassy(fig_el, chart_type="line")
                             st.plotly_chart(fig_el, use_container_width=True)
                     
@@ -1070,7 +1034,7 @@ Project Quality Management Office"""
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 19. Complete Operational Records
+    # 18. Complete Operational Records
     # ==========================================
     with st.expander("📂 View Complete Operational Records (Raw Data)"):
         st.dataframe(filtered_df, use_container_width=True)
