@@ -9,7 +9,7 @@ import pytz
 import base64
 
 # ==========================================
-# 1. Timezone and Colors Configuration
+# 1. System Configuration & Constants
 # ==========================================
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
@@ -271,6 +271,7 @@ def render_dashboard():
                 new_pass = st.text_input("New Password", type="password", key="add_pass")
                 new_name = st.text_input("Full Name", key="add_name")
                 new_role = st.selectbox("Assign Role", ["User", "Admin"], key="add_role")
+                
                 if st.button("Create Account"):
                     if new_email and new_pass:
                         if new_email.lower() in users_df['Email'].str.lower().values:
@@ -279,6 +280,10 @@ def render_dashboard():
                             new_u = pd.DataFrame([{"Email": new_email, "Password": new_pass, "Name": new_name, "Role": new_role, "Status": "Active"}])
                             pd.concat([users_df, new_u], ignore_index=True).to_csv(USERS_DB_FILE, index=False)
                             st.success("User Added Successfully!")
+                            # Clear form keys to reset inputs on rerun
+                            for key in ["add_email", "add_pass", "add_name", "add_role"]:
+                                if key in st.session_state:
+                                    del st.session_state[key]
                             st.rerun()
             
             with tab_edit:
@@ -287,21 +292,28 @@ def render_dashboard():
                     target_idx = users_df.index[users_df['Email'] == target_email].tolist()[0]
                     user_to_edit = users_df.iloc[target_idx]
                     
-                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key="edit_name")
-                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key="edit_pass")
+                    # Dynamic Keys prevent Streamlit from caching old state
+                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key=f"edit_name_{target_email}")
+                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key=f"edit_pass_{target_email}")
                     
                     role_index = 0 if user_to_edit['Role'] == "User" else 1
-                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=role_index, key="edit_role")
+                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=role_index, key=f"edit_role_{target_email}")
                     
                     status_index = 0 if user_to_edit['Status'] == "Active" else 1
-                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=status_index, key="edit_status")
+                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=status_index, key=f"edit_status_{target_email}")
                     
-                    if st.button("Update User Profile"):
+                    if st.button("Update User Profile", key=f"update_btn_{target_email}"):
                         users_df.at[target_idx, 'Name'] = edit_name
                         users_df.at[target_idx, 'Password'] = edit_pass
                         users_df.at[target_idx, 'Role'] = edit_role
                         users_df.at[target_idx, 'Status'] = edit_status
                         users_df.to_csv(USERS_DB_FILE, index=False)
+                        
+                        # Sync current active session if Admin modifies their own profile
+                        if st.session_state["current_user"]["Email"] == target_email:
+                            st.session_state["current_user"]["Name"] = edit_name
+                            st.session_state["current_user"]["Role"] = edit_role
+                            
                         st.success(f"Account for {target_email} updated successfully!")
                         st.rerun()
 
@@ -930,6 +942,7 @@ Project Quality Management Office"""
                     bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
                     bh_df = None
                     
+                    # Smart Zone Filter (Radio Buttons)
                     if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
                         available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
                         st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
