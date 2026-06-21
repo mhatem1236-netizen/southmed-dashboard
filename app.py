@@ -9,7 +9,7 @@ import pytz
 import base64
 
 # ==========================================
-# 1. System Configuration & Constants
+# 1. Timezone and Colors Configuration
 # ==========================================
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
@@ -133,13 +133,9 @@ st.markdown("""
 
     html, body, [class*="css"] { font-family: 'Montserrat', sans-serif !important; }
 
-    /* Login Page Styling */
-    .login-container {
-        display: flex; justify-content: center; align-items: center; min-height: 80vh;
-    }
+    .login-container { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
     .login-title { color: #1e3d59; font-weight: 800; text-align: center; margin-bottom: 20px; font-size: 24px; letter-spacing: 1px;}
 
-    /* Dashboard Styling */
     [data-testid="stAppViewContainer"] { background: radial-gradient(circle at top right, #0b1a2e, #050a11) !important; }
     [data-testid="stSidebar"] { background-color: rgba(5, 10, 17, 0.95) !important; border-right: 1px solid rgba(255, 170, 0, 0.1); }
 
@@ -259,25 +255,56 @@ def render_dashboard():
             st.session_state["authenticated"] = False
             st.rerun()
 
-    # Admin Control Panel
+    # ==========================================
+    # 🔥 ADVANCED ADMIN CONTROL PANEL (ADD/EDIT USERS) 🔥
+    # ==========================================
     if user["Role"] == "Admin":
         with st.sidebar.expander("🔐 Admin Control Panel", expanded=False):
             st.markdown("#### User Management")
             users_df = pd.read_csv(USERS_DB_FILE)
             st.dataframe(users_df[["Name", "Email", "Role", "Status"]], use_container_width=True)
             
-            st.markdown("#### Add New User")
-            new_email = st.text_input("New User Email")
-            new_pass = st.text_input("New Password", type="password")
-            new_name = st.text_input("Full Name")
-            new_role = st.selectbox("Assign Role", ["User", "Admin"])
-            if st.button("Create Account"):
-                if new_email and new_pass:
-                    new_u = pd.DataFrame([{"Email": new_email, "Password": new_pass, "Name": new_name, "Role": new_role, "Status": "Active"}])
-                    pd.concat([users_df, new_u], ignore_index=True).to_csv(USERS_DB_FILE, index=False)
-                    st.success("User Added Successfully!")
-                    st.rerun()
+            tab_add, tab_edit = st.tabs(["➕ Add User", "✏️ Edit User"])
+            
+            with tab_add:
+                new_email = st.text_input("New User Email", key="add_email")
+                new_pass = st.text_input("New Password", type="password", key="add_pass")
+                new_name = st.text_input("Full Name", key="add_name")
+                new_role = st.selectbox("Assign Role", ["User", "Admin"], key="add_role")
+                if st.button("Create Account"):
+                    if new_email and new_pass:
+                        if new_email.lower() in users_df['Email'].str.lower().values:
+                            st.error("Email already exists!")
+                        else:
+                            new_u = pd.DataFrame([{"Email": new_email, "Password": new_pass, "Name": new_name, "Role": new_role, "Status": "Active"}])
+                            pd.concat([users_df, new_u], ignore_index=True).to_csv(USERS_DB_FILE, index=False)
+                            st.success("User Added Successfully!")
+                            st.rerun()
+            
+            with tab_edit:
+                target_email = st.selectbox("Select User to Edit", users_df['Email'].tolist(), key="edit_select")
+                if target_email:
+                    target_idx = users_df.index[users_df['Email'] == target_email].tolist()[0]
+                    user_to_edit = users_df.iloc[target_idx]
                     
+                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key="edit_name")
+                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key="edit_pass")
+                    
+                    role_index = 0 if user_to_edit['Role'] == "User" else 1
+                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=role_index, key="edit_role")
+                    
+                    status_index = 0 if user_to_edit['Status'] == "Active" else 1
+                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=status_index, key="edit_status")
+                    
+                    if st.button("Update User Profile"):
+                        users_df.at[target_idx, 'Name'] = edit_name
+                        users_df.at[target_idx, 'Password'] = edit_pass
+                        users_df.at[target_idx, 'Role'] = edit_role
+                        users_df.at[target_idx, 'Status'] = edit_status
+                        users_df.to_csv(USERS_DB_FILE, index=False)
+                        st.success(f"Account for {target_email} updated successfully!")
+                        st.rerun()
+
             st.markdown("#### System Access Logs")
             logs_df = pd.read_csv(LOGIN_LOGS_FILE)
             st.dataframe(logs_df.tail(10), use_container_width=True)
@@ -903,7 +930,6 @@ Project Quality Management Office"""
                     bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
                     bh_df = None
                     
-                    # Smart Zone Filter (Radio Buttons)
                     if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
                         available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
                         st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
@@ -983,9 +1009,7 @@ Project Quality Management Office"""
                         
                         st.divider()
 
-                        # ==========================================
-                        # 🔥 AI Engineering Sequence Inspector 🔥
-                        # ==========================================
+                        # AI Engineering Sequence Inspector
                         if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
                             st.markdown("#### 🧠 AI Engineering Sequence Inspector")
                             
