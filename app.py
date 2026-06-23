@@ -264,7 +264,7 @@ def render_dashboard():
             users_df = pd.read_csv(USERS_DB_FILE)
             st.dataframe(users_df[["Name", "Email", "Role", "Status"]], use_container_width=True)
             
-            tab_add, tab_edit = st.tabs(["➕ Add User", "✏️ Edit User"])
+            tab_add, tab_edit, tab_backup = st.tabs(["➕ Add User", "✏️ Edit/Delete User", "💾 Backup DB"])
             
             with tab_add:
                 new_email = st.text_input("New User Email", key="add_email")
@@ -286,33 +286,50 @@ def render_dashboard():
                             st.rerun()
             
             with tab_edit:
-                target_email = st.selectbox("Select User to Edit", users_df['Email'].tolist(), key="edit_select")
+                target_email = st.selectbox("Select User", users_df['Email'].tolist(), key="edit_select")
                 if target_email:
                     target_idx = users_df.index[users_df['Email'] == target_email].tolist()[0]
                     user_to_edit = users_df.iloc[target_idx]
                     
-                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key=f"edit_name_{target_email}")
-                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key=f"edit_pass_{target_email}")
+                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key=f"en_{target_email}")
+                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key=f"ep_{target_email}")
+                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=0 if user_to_edit['Role'] == "User" else 1, key=f"er_{target_email}")
+                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=0 if user_to_edit['Status'] == "Active" else 1, key=f"es_{target_email}")
                     
-                    role_index = 0 if user_to_edit['Role'] == "User" else 1
-                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=role_index, key=f"edit_role_{target_email}")
-                    
-                    status_index = 0 if user_to_edit['Status'] == "Active" else 1
-                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=status_index, key=f"edit_status_{target_email}")
-                    
-                    if st.button("Update User Profile", key=f"update_btn_{target_email}"):
+                    col_upd, col_del = st.columns(2)
+                    if col_upd.button("Update User", key=f"upd_{target_email}"):
                         users_df.at[target_idx, 'Name'] = edit_name
                         users_df.at[target_idx, 'Password'] = edit_pass
                         users_df.at[target_idx, 'Role'] = edit_role
                         users_df.at[target_idx, 'Status'] = edit_status
                         users_df.to_csv(USERS_DB_FILE, index=False)
-                        
                         if st.session_state["current_user"]["Email"] == target_email:
                             st.session_state["current_user"]["Name"] = edit_name
                             st.session_state["current_user"]["Role"] = edit_role
-                            
-                        st.success(f"Account for {target_email} updated successfully!")
+                        st.success("Updated successfully!")
                         st.rerun()
+                        
+                    if col_del.button("🗑️ Delete User", key=f"del_{target_email}"):
+                        if target_email.lower() == "mohamedhatem@kk.com":
+                            st.error("Cannot delete the Super Admin!")
+                        else:
+                            users_df = users_df.drop(target_idx)
+                            users_df.to_csv(USERS_DB_FILE, index=False)
+                            st.success("User Deleted!")
+                            st.rerun()
+
+            with tab_backup:
+                st.info("Cloud servers reset dynamically. Backup your Users DB often.")
+                if os.path.exists(USERS_DB_FILE):
+                    with open(USERS_DB_FILE, "rb") as f:
+                        st.download_button("📥 Download Users DB", data=f, file_name="users_db_backup.csv", mime="text/csv", use_container_width=True)
+                
+                uploaded_db = st.file_uploader("📤 Restore Users DB", type="csv")
+                if uploaded_db is not None:
+                    restored_df = pd.read_csv(uploaded_db)
+                    restored_df.to_csv(USERS_DB_FILE, index=False)
+                    st.success("Users Restored!")
+                    st.rerun()
 
             st.markdown("#### System Access Logs")
             logs_df = pd.read_csv(LOGIN_LOGS_FILE)
@@ -1022,11 +1039,16 @@ Project Quality Management Office"""
                         
                         st.divider()
 
-                        # AI Engineering Sequence Inspector
+                        # ==========================================
+                        # 🔥 AI Engineering Sequence Inspector (Compaction Only) 🔥
+                        # ==========================================
                         if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
-                            st.markdown("#### 🧠 AI Engineering Sequence Inspector")
+                            st.markdown("#### 🧠 AI Engineering Sequence Inspector (Compaction Only)")
                             
                             seq_df = bh_df.dropna(subset=['Date ( test)']).copy()
+                            if 'Test Type' in seq_df.columns:
+                                seq_df = seq_df[seq_df['Test Type'].astype(str).str.contains('SANDCONE|SAND CONE|DPL', case=False, na=False)]
+                            
                             seq_df['Layer_Int'] = seq_df['layer'].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
                             seq_df = seq_df[seq_df['Layer_Int'] > 0]
                             
@@ -1056,7 +1078,7 @@ Project Quality Management Office"""
                                     st.markdown("""
                                     <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                                         <h5 style="color: #2ecc71; margin: 0;">✅ Sequence Verified</h5>
-                                        <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">All layers are chronologically correct with no missing intermediate layers.</p>
+                                        <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">All compaction layers are chronologically correct with no missing intermediate layers.</p>
                                     </div>
                                     """, unsafe_allow_html=True)
                                 else:
@@ -1064,7 +1086,7 @@ Project Quality Management Office"""
                                         missing_str = ", ".join([f"Layer {l}" for l in missing_layers])
                                         st.markdown(f"""
                                         <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-                                            <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Layers Detected</h5>
+                                            <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5>
                                             <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:white;">{missing_str}</b></p>
                                         </div>
                                         """, unsafe_allow_html=True)
@@ -1075,9 +1097,10 @@ Project Quality Management Office"""
                                         <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                                             <h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5>
                                             <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px; line-height:1.8;">{errors_html}</p>
-                                            <p style="font-size: 12px; color: #ffcccc; margin-top: 8px;">* Physical impossibility: Lower layers cannot be tested after upper layers.</p>
                                         </div>
                                         """, unsafe_allow_html=True)
+                            else:
+                                st.info("No compaction tests (SANDCONE or DPL) found to evaluate sequence.")
 
                         st.divider()
 
