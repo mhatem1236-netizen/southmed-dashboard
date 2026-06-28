@@ -264,7 +264,7 @@ def render_dashboard():
             users_df = pd.read_csv(USERS_DB_FILE)
             st.dataframe(users_df[["Name", "Email", "Role", "Status"]], use_container_width=True)
             
-            tab_add, tab_edit, tab_backup = st.tabs(["➕ Add User", "✏️ Edit/Delete User", "💾 Backup DB"])
+            tab_add, tab_edit, tab_backup = st.tabs(["➕ Add User", "✏️ Edit/Delete", "💾 Backup DB"])
             
             with tab_add:
                 new_email = st.text_input("New User Email", key="add_email")
@@ -286,36 +286,42 @@ def render_dashboard():
                             st.rerun()
             
             with tab_edit:
-                target_email = st.selectbox("Select User", users_df['Email'].tolist(), key="edit_select")
+                target_email = st.selectbox("Select User to Edit", users_df['Email'].tolist(), key="edit_select")
                 if target_email:
                     target_idx = users_df.index[users_df['Email'] == target_email].tolist()[0]
                     user_to_edit = users_df.iloc[target_idx]
                     
-                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key=f"en_{target_email}")
-                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key=f"ep_{target_email}")
-                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=0 if user_to_edit['Role'] == "User" else 1, key=f"er_{target_email}")
-                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=0 if user_to_edit['Status'] == "Active" else 1, key=f"es_{target_email}")
+                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key=f"edit_name_{target_email}")
+                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key=f"edit_pass_{target_email}")
+                    
+                    role_index = 0 if user_to_edit['Role'] == "User" else 1
+                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=role_index, key=f"edit_role_{target_email}")
+                    
+                    status_index = 0 if user_to_edit['Status'] == "Active" else 1
+                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=status_index, key=f"edit_status_{target_email}")
                     
                     col_upd, col_del = st.columns(2)
-                    if col_upd.button("Update User", key=f"upd_{target_email}"):
+                    if col_upd.button("Update User Profile", key=f"update_btn_{target_email}"):
                         users_df.at[target_idx, 'Name'] = edit_name
                         users_df.at[target_idx, 'Password'] = edit_pass
                         users_df.at[target_idx, 'Role'] = edit_role
                         users_df.at[target_idx, 'Status'] = edit_status
                         users_df.to_csv(USERS_DB_FILE, index=False)
+                        
                         if st.session_state["current_user"]["Email"] == target_email:
                             st.session_state["current_user"]["Name"] = edit_name
                             st.session_state["current_user"]["Role"] = edit_role
-                        st.success("Updated successfully!")
+                            
+                        st.success(f"Account for {target_email} updated successfully!")
                         st.rerun()
                         
-                    if col_del.button("🗑️ Delete User", key=f"del_{target_email}"):
+                    if col_del.button("🗑️ Delete User", key=f"del_btn_{target_email}"):
                         if target_email.lower() == "mohamedhatem@kk.com":
-                            st.error("Cannot delete the Super Admin!")
+                            st.error("Cannot delete the Super Admin account!")
                         else:
                             users_df = users_df.drop(target_idx)
                             users_df.to_csv(USERS_DB_FILE, index=False)
-                            st.success("User Deleted!")
+                            st.success(f"User {target_email} deleted permanently!")
                             st.rerun()
 
             with tab_backup:
@@ -328,7 +334,7 @@ def render_dashboard():
                 if uploaded_db is not None:
                     restored_df = pd.read_csv(uploaded_db)
                     restored_df.to_csv(USERS_DB_FILE, index=False)
-                    st.success("Users Restored!")
+                    st.success("Users Restored Successfully!")
                     st.rerun()
 
             st.markdown("#### System Access Logs")
@@ -454,12 +460,14 @@ def render_dashboard():
         if 'DURATION' in filtered_df.columns:
             filtered_df['DURATION'] = pd.to_numeric(filtered_df['DURATION'], errors='coerce')
 
-        # Data Calculations
+        # Data Calculations 🚨 SAFE Fix for ValueError (Total Paperwork) 🚨
         total_requests_count = len(filtered_df)
         total_tests_count = int(filtered_df[num_tests_col].sum() if num_tests_col else 0)
         avg_dpl_value = round(pd.to_numeric(filtered_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in filtered_df.columns else 0, 2)
         avg_duration_value = round(filtered_df['DURATION'].mean(), 1) if 'DURATION' in filtered_df.columns else 0
-        total_paperwork_pages = int(filtered_df[next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)].sum() if next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None) else 0)
+        
+        page_col_name = next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)
+        total_paperwork_pages = int(pd.to_numeric(filtered_df[page_col_name], errors='coerce').fillna(0).sum()) if page_col_name else 0
 
         current_metrics = {
             "File_Name": uploaded_file.name, 
@@ -1040,7 +1048,7 @@ Project Quality Management Office"""
                         st.divider()
 
                         # ==========================================
-                        # 🔥 AI Engineering Sequence Inspector (Compaction Only) 🔥
+                        # 🧠 AI Engineering Sequence Inspector (Filtered by Sandcone/DPL)
                         # ==========================================
                         if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
                             st.markdown("#### 🧠 AI Engineering Sequence Inspector (Compaction Only)")
@@ -1121,9 +1129,13 @@ Project Quality Management Office"""
 
                         st.divider()
 
+                        # 🚨 SAFE TREEMAP (Fixes KeyError for layer/Sampling Location) 🚨
                         if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
-                            bh_df['Execution_Node'] = np.where(bh_df['layer'].astype(str).str.contains(r'\d'), bh_df['layer'], bh_df['Sampling Location'])
-                            bh_df['Execution_Node'] = bh_df['Execution_Node'].fillna('General Location')
+                            layer_col = bh_df['layer'] if 'layer' in bh_df.columns else pd.Series([''] * len(bh_df), index=bh_df.index)
+                            samp_loc = bh_df['Sampling Location'] if 'Sampling Location' in bh_df.columns else pd.Series(['General Location'] * len(bh_df), index=bh_df.index)
+                            
+                            bh_df['Execution_Node'] = np.where(layer_col.astype(str).str.contains(r'\d'), layer_col, samp_loc)
+                            bh_df['Execution_Node'] = bh_df['Execution_Node'].replace(r'^\s*$', 'General Location', regex=True).fillna('General Location')
                             
                             fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], 
                                                   title=f"Who did What & Where in {selected_bh}",
@@ -1163,10 +1175,6 @@ Project Quality Management Office"""
             st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-        # ==========================================
-        # 19. Complete Operational Records
-        # ==========================================
         with st.expander("📂 View Complete Operational Records (Raw Data)"):
             st.dataframe(filtered_df, use_container_width=True)
 
