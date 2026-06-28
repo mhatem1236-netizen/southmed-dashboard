@@ -459,7 +459,10 @@ def render_dashboard():
         total_tests_count = int(filtered_df[num_tests_col].sum() if num_tests_col else 0)
         avg_dpl_value = round(pd.to_numeric(filtered_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in filtered_df.columns else 0, 2)
         avg_duration_value = round(filtered_df['DURATION'].mean(), 1) if 'DURATION' in filtered_df.columns else 0
-        total_paperwork_pages = int(filtered_df[next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)].sum() if next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None) else 0)
+        
+        # 🚨 Safe Calculation for Total Paperwork Pages
+        page_col_name = next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)
+        total_paperwork_pages = int(pd.to_numeric(filtered_df[page_col_name], errors='coerce').fillna(0).sum()) if page_col_name else 0
 
         current_metrics = {
             "File_Name": uploaded_file.name, 
@@ -954,17 +957,14 @@ Project Quality Management Office"""
             
             if len(bh_list) > 0:
                 selected_bh = st.selectbox(f"Select an Element ({bh_col_name}) to investigate:", ["-- Select Element --"] + sorted(bh_list))
-                
                 if selected_bh != "-- Select Element --":
                     bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
                     bh_df = None
                     
-                    # Smart Zone Filter (Radio Buttons)
                     if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
                         available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
-                        st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
+                        st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select Zone:")
                         selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
-                        
                         if selected_zone:
                             bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
                             st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
@@ -1040,24 +1040,20 @@ Project Quality Management Office"""
                         st.divider()
 
                         # ==========================================
-                        # 🔥 AI Engineering Sequence Inspector (Compaction Only) 🔥
+                        # 🧠 AI Engineering Sequence Inspector (Filtered by Sandcone/DPL)
                         # ==========================================
-                        if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
+                        if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns and 'Test Type' in bh_df.columns:
                             st.markdown("#### 🧠 AI Engineering Sequence Inspector (Compaction Only)")
                             
                             seq_df = bh_df.dropna(subset=['Date ( test)']).copy()
-                            if 'Test Type' in seq_df.columns:
-                                seq_df = seq_df[seq_df['Test Type'].astype(str).str.contains('SANDCONE|SAND CONE|DPL', case=False, na=False)]
+                            seq_df = seq_df[seq_df['Test Type'].astype(str).str.contains('SANDCONE|SAND CONE|DPL', case=False, na=False)]
                             
                             seq_df['Layer_Int'] = seq_df['layer'].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
                             seq_df = seq_df[seq_df['Layer_Int'] > 0]
                             
                             if not seq_df.empty:
-                                layer_timeline = seq_df.groupby('Layer_Int')['Date ( test)'].min().reset_index()
-                                layer_timeline = layer_timeline.sort_values('Layer_Int')
-                                
-                                logic_errors = []
-                                missing_layers = []
+                                layer_timeline = seq_df.groupby('Layer_Int')['Date ( test)'].min().reset_index().sort_values('Layer_Int')
+                                logic_errors, missing_layers = [], []
                                 
                                 min_layer = layer_timeline['Layer_Int'].min()
                                 max_layer = layer_timeline['Layer_Int'].max()
@@ -1066,39 +1062,19 @@ Project Quality Management Office"""
                                 missing_layers = sorted(list(expected_layers - actual_layers))
                                 
                                 for i in range(len(layer_timeline) - 1):
-                                    curr_L = layer_timeline.iloc[i]['Layer_Int']
-                                    next_L = layer_timeline.iloc[i+1]['Layer_Int']
                                     curr_D = layer_timeline.iloc[i]['Date ( test)']
                                     next_D = layer_timeline.iloc[i+1]['Date ( test)']
-                                    
-                                    if curr_D > next_D:
-                                        logic_errors.append(f"<b>Layer {curr_L}</b> was tested on <span style='color:#ffaa00;'>{curr_D.date()}</span>, which is AFTER <b>Layer {next_L}</b> tested on <span style='color:#ffaa00;'>{next_D.date()}</span>.")
+                                    if curr_D > next_D: logic_errors.append(f"<b>Layer {layer_timeline.iloc[i]['Layer_Int']}</b> tested AFTER <b>Layer {layer_timeline.iloc[i+1]['Layer_Int']}</b>.")
                                 
                                 if not missing_layers and not logic_errors:
-                                    st.markdown("""
-                                    <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                                        <h5 style="color: #2ecc71; margin: 0;">✅ Sequence Verified</h5>
-                                        <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">All compaction layers are chronologically correct with no missing intermediate layers.</p>
-                                    </div>
-                                    """, unsafe_allow_html=True)
+                                    st.markdown('<div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;"><h5 style="color: #2ecc71; margin: 0;">✅ Sequence Verified</h5><p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">All compaction layers are chronologically correct with no gaps.</p></div>', unsafe_allow_html=True)
                                 else:
                                     if missing_layers:
                                         missing_str = ", ".join([f"Layer {l}" for l in missing_layers])
-                                        st.markdown(f"""
-                                        <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-                                            <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5>
-                                            <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:white;">{missing_str}</b></p>
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                    
+                                        st.markdown(f'<div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;"><h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5><p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:white;">{missing_str}</b></p></div>', unsafe_allow_html=True)
                                     if logic_errors:
                                         errors_html = "<br>".join([f"🚨 {err}" for err in logic_errors])
-                                        st.markdown(f"""
-                                        <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                                            <h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5>
-                                            <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px; line-height:1.8;">{errors_html}</p>
-                                        </div>
-                                        """, unsafe_allow_html=True)
+                                        st.markdown(f'<div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;"><h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5><p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px; line-height:1.8;">{errors_html}</p></div>', unsafe_allow_html=True)
                             else:
                                 st.info("No compaction tests (SANDCONE or DPL) found to evaluate sequence.")
 
@@ -1121,9 +1097,13 @@ Project Quality Management Office"""
 
                         st.divider()
 
+                        # 🚨 Safe Fallback for Treemap (Fixes KeyError for layer/Sampling Location) 🚨
                         if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
-                            bh_df['Execution_Node'] = np.where(bh_df['layer'].astype(str).str.contains(r'\d'), bh_df['layer'], bh_df['Sampling Location'])
-                            bh_df['Execution_Node'] = bh_df['Execution_Node'].fillna('General Location')
+                            layer_col = bh_df['layer'] if 'layer' in bh_df.columns else pd.Series([''] * len(bh_df), index=bh_df.index)
+                            samp_loc = bh_df['Sampling Location'] if 'Sampling Location' in bh_df.columns else pd.Series(['General Location'] * len(bh_df), index=bh_df.index)
+                            
+                            bh_df['Execution_Node'] = np.where(layer_col.astype(str).str.contains(r'\d'), layer_col, samp_loc)
+                            bh_df['Execution_Node'] = bh_df['Execution_Node'].replace(r'^\s*$', 'General Location', regex=True).fillna('General Location')
                             
                             fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], 
                                                   title=f"Who did What & Where in {selected_bh}",
@@ -1163,10 +1143,6 @@ Project Quality Management Office"""
             st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-        # ==========================================
-        # 19. Complete Operational Records
-        # ==========================================
         with st.expander("📂 View Complete Operational Records (Raw Data)"):
             st.dataframe(filtered_df, use_container_width=True)
 
