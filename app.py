@@ -125,11 +125,11 @@ class HistoryManager:
 # ==========================================
 # 5. Page Config & CSS Styling
 # ==========================================
-st.set_page_config(page_title="Infrastructure BI Dashboard", layout="wide")
+st.set_page_config(page_title="Command Center BI Dashboard", layout="wide")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&family=Tajawal:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&display=swap');
 
     html, body, [class*="css"] { font-family: 'Montserrat', sans-serif !important; }
 
@@ -152,6 +152,9 @@ st.markdown("""
     .metric-label { color: #8da3b9; font-size: 14px; font-weight: 500; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1.5px;}
     .metric-value { color: #ffffff !important; font-size: 38px; font-weight: 800; background: -webkit-linear-gradient(#ffffff, #a0aec0); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
     
+    .prog-bg { width: 100%; background: rgba(255,255,255,0.1); border-radius: 5px; margin-top: 15px; height: 6px; overflow: hidden;}
+    .prog-fill { height: 100%; border-radius: 5px; transition: width 1s ease-in-out;}
+
     .stDataFrame { border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; overflow: hidden; }
     .delta-up { color: #2ecc71; font-size: 14px; font-weight: bold; margin-top: 8px; text-shadow: 0 0 10px rgba(46, 204, 113, 0.4);}
     .delta-down { color: #e74c3c; font-size: 14px; font-weight: bold; margin-top: 8px; text-shadow: 0 0 10px rgba(231, 76, 60, 0.4);}
@@ -159,6 +162,8 @@ st.markdown("""
     
     .bi-title { color: #ffaa00; font-size: 28px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; text-shadow: 0px 0px 15px rgba(255, 170, 0, 0.3);}
     .gradient-divider { height: 2px; background: linear-gradient(90deg, transparent 0%, rgba(255,170,0,0.8) 50%, transparent 100%); margin-top: 40px; margin-bottom: 40px; border: none; opacity: 0.6;}
+    
+    .alert-banner { background: linear-gradient(90deg, rgba(231,76,60,0.9), rgba(192,57,43,0.9)); padding: 20px; border-radius: 15px; color: white; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(231,76,60,0.3); border-left: 5px solid #ffaa00;}
     
     .simulator-card { background: linear-gradient(135deg, rgba(14, 36, 57, 0.7), rgba(46, 204, 113, 0.1)); backdrop-filter: blur(12px); padding: 25px; border-radius: 20px; border: 1px solid rgba(46, 204, 113, 0.4); text-align: center; margin-top: 15px; box-shadow: 0 8px 25px rgba(46, 204, 113, 0.15);}
     .leaderboard-card { background: rgba(10, 20, 33, 0.7); padding: 25px; border-radius: 20px; border-left: 5px solid; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.3);}
@@ -176,7 +181,7 @@ st.markdown("""
         body, [data-testid="stAppViewContainer"] { background: #050a11 !important; }
         [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { display: none !important; }
         .main .block-container { max-width: 100% !important; padding: 5mm !important; margin: 0 !important; }
-        .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"] { page-break-inside: avoid !important; background: #0b1a2e !important; border: 1px solid rgba(255, 170, 0, 0.4) !important; }
+        .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"], .alert-banner { page-break-inside: avoid !important; background: #0b1a2e !important; border: 1px solid rgba(255, 170, 0, 0.4) !important; }
         .metric-value, .bi-title { -webkit-text-fill-color: white !important; color: white !important; }
         h1, h2, h3, h4, p, span, .metric-label { color: #d1d5da !important; }
         .gradient-divider { display: none !important; }
@@ -184,12 +189,19 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-def create_card(column, label, value, delta_html=""):
+def create_card(column, label, value, delta_html="", progress=None):
+    if progress is not None:
+        prog_color = "#2ecc71" if progress > 80 else ("#f1c40f" if progress > 50 else "#e74c3c")
+        prog_html = f'<div class="prog-bg"><div class="prog-fill" style="width: {progress}%; background: {prog_color};"></div></div>'
+    else:
+        prog_html = ""
+        
     column.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">{label}</div>
             <div class="metric-value">{value}</div>
             {delta_html}
+            {prog_html}
         </div>
         """, unsafe_allow_html=True)
 
@@ -214,7 +226,7 @@ def render_login_screen():
             <div style="background: white; padding: 50px; border-radius: 15px; box-shadow: 0px 10px 40px rgba(0,0,0,0.7);">
                 <div style="text-align:center; margin-bottom: 20px;">
                     <h1 style="color: #1e3d59; font-weight: 800; margin:0; letter-spacing: 2px;">KK ENGINEERING</h1>
-                    <p style="color: #7f8c8d; font-size: 16px; margin:0;">Consulting Office Secure Portal</p>
+                    <p style="color: #7f8c8d; font-size: 16px; margin:0;">Command Center Portal</p>
                 </div>
                 <hr style="border: 0.5px solid #eee; margin-bottom: 30px;">
         """, unsafe_allow_html=True)
@@ -248,7 +260,7 @@ def render_dashboard():
     except: pass
 
     col_h1, col_h2 = st.columns([0.8, 0.2])
-    with col_h1: st.title("Mega Infrastructure BI & Intelligence System 🏗️🧠")
+    with col_h1: st.title("Mega Infrastructure Command Center 🏗️⚡")
     with col_h2:
         st.markdown(f"<div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center;'><span style='color:#d1d5da; font-size:12px;'>Logged in as</span><br><b style='color:#ffaa00;'>{user['Name']}</b><br><span style='color:#2ecc71; font-size:12px;'>{user['Role']} Account</span></div>", unsafe_allow_html=True)
         if st.button("Logout", use_container_width=True):
@@ -286,19 +298,15 @@ def render_dashboard():
                             st.rerun()
             
             with tab_edit:
-                target_email = st.selectbox("Select User to Edit", users_df['Email'].tolist(), key="edit_select")
+                target_email = st.selectbox("Select User", users_df['Email'].tolist(), key="edit_select")
                 if target_email:
                     target_idx = users_df.index[users_df['Email'] == target_email].tolist()[0]
                     user_to_edit = users_df.iloc[target_idx]
                     
-                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key=f"edit_name_{target_email}")
-                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key=f"edit_pass_{target_email}")
-                    
-                    role_index = 0 if user_to_edit['Role'] == "User" else 1
-                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=role_index, key=f"edit_role_{target_email}")
-                    
-                    status_index = 0 if user_to_edit['Status'] == "Active" else 1
-                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=status_index, key=f"edit_status_{target_email}")
+                    edit_name = st.text_input("Edit Name", value=user_to_edit['Name'], key=f"en_{target_email}")
+                    edit_pass = st.text_input("Edit Password", value=user_to_edit['Password'], type="password", key=f"ep_{target_email}")
+                    edit_role = st.selectbox("Edit Role", ["User", "Admin"], index=0 if user_to_edit['Role'] == "User" else 1, key=f"er_{target_email}")
+                    edit_status = st.selectbox("Status", ["Active", "Suspended"], index=0 if user_to_edit['Status'] == "Active" else 1, key=f"es_{target_email}")
                     
                     col_upd, col_del = st.columns(2)
                     if col_upd.button("Update User Profile", key=f"update_btn_{target_email}"):
@@ -307,12 +315,10 @@ def render_dashboard():
                         users_df.at[target_idx, 'Role'] = edit_role
                         users_df.at[target_idx, 'Status'] = edit_status
                         users_df.to_csv(USERS_DB_FILE, index=False)
-                        
                         if st.session_state["current_user"]["Email"] == target_email:
                             st.session_state["current_user"]["Name"] = edit_name
                             st.session_state["current_user"]["Role"] = edit_role
-                            
-                        st.success(f"Account for {target_email} updated successfully!")
+                        st.success(f"Account updated successfully!")
                         st.rerun()
                         
                     if col_del.button("🗑️ Delete User", key=f"del_btn_{target_email}"):
@@ -321,7 +327,7 @@ def render_dashboard():
                         else:
                             users_df = users_df.drop(target_idx)
                             users_df.to_csv(USERS_DB_FILE, index=False)
-                            st.success(f"User {target_email} deleted permanently!")
+                            st.success(f"User deleted permanently!")
                             st.rerun()
 
             with tab_backup:
@@ -344,9 +350,9 @@ def render_dashboard():
     st.sidebar.divider()
 
     # ==========================================
-    # 🔥 ALWAYS VISIBLE BACKUP SECTION 🔥
+    # 🔥 SIDEBAR REVAMP: DATA SOURCE & BACKUP 🔥
     # ==========================================
-    st.sidebar.markdown("### 🔌 Data Source Connection")
+    st.sidebar.markdown("### 📁 1. Data Source")
     data_source = st.sidebar.selectbox("Connection Type:", ["Local CSV Upload", "Live SQL Database (Pending)"])
 
     # Backup & Restore moved outside of the file upload check
@@ -415,57 +421,51 @@ def render_dashboard():
             </div>
         """, unsafe_allow_html=True)
 
-        # Global Smart Search
-        st.sidebar.divider()
-        st.sidebar.markdown("### 🔍 Global Smart Search")
-        global_search = st.sidebar.text_input("Search (Serial, Element, Date...):", placeholder="Type keyword to filter all...")
-        
+        # ==========================================
+        # 🔥 SIDEBAR REVAMP: SMART FILTERS 🔥
+        # ==========================================
+        st.sidebar.markdown("### 🎯 2. Smart Filters")
+        global_search = st.sidebar.text_input("🔍 Global Search:", placeholder="Keyword (Serial, Date)...")
         if global_search:
             mask = df.astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
             df = df[mask]
             st.sidebar.success(f"🎯 Found {len(df)} records matching '{global_search}'")
+            
+        companies = df['Company Name'].dropna().unique() if 'Company Name' in df.columns else []
+        selected_companies = st.sidebar.multiselect("🏢 Select Contractor:", options=companies, default=companies)
+        
+        statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
+        selected_statuses = st.sidebar.multiselect("📊 Sample Status:", options=statuses, default=statuses)
 
-        st.sidebar.divider()
-        st.sidebar.header("🎯 BI Filters & AI Chat")
+        # ==========================================
+        # 🔥 SIDEBAR REVAMP: AI & SIMULATION 🔥
+        # ==========================================
+        st.sidebar.markdown("### 🧠 3. AI & Simulation")
+        sim_days_saved = st.sidebar.slider("🎛️ Simulate Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
         
         curr_avg_dpl = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in df.columns else 0
         curr_avg_dur = pd.to_numeric(df['DURATION'], errors='coerce').mean() if 'DURATION' in df.columns else 0
         
-        user_question = st.sidebar.text_input("Ask AI about any log issue:")
+        user_question = st.sidebar.text_input("🤖 Ask AI about any log issue:")
         if user_question:
             summary = {"avg_dpl": round(curr_avg_dpl, 2), "avg_duration": round(curr_avg_dur, 1)}
             st.sidebar.info(f"AI Response: {ai_assistant(user_question, summary)}")
-        
-        st.sidebar.divider()
-        
-        companies = df['Company Name'].dropna().unique() if 'Company Name' in df.columns else []
-        selected_companies = st.sidebar.multiselect("Select Contractor:", options=companies, default=companies)
-        
-        statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
-        selected_statuses = st.sidebar.multiselect("Sample Status:", options=statuses, default=statuses)
 
-        # What-If Simulator
-        st.sidebar.divider()
-        st.sidebar.header("🎛️ What-If Optimization Simulator")
-        sim_days_saved = st.sidebar.slider("Simulate Admin Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
-
+        # Data Calculations
         filtered_df = df.copy()
         if len(companies) > 0: filtered_df = filtered_df[filtered_df['Company Name'].isin(selected_companies)]
         if len(statuses) > 0: filtered_df = filtered_df[filtered_df['sample status'].isin(selected_statuses)]
 
         num_tests_col = next((c for c in filtered_df.columns if 'NUM' in c.upper() and 'TEST' in c.upper()), None)
-        if num_tests_col:
-            filtered_df[num_tests_col] = pd.to_numeric(filtered_df[num_tests_col], errors='coerce').fillna(0)
-        
-        if 'DURATION' in filtered_df.columns:
-            filtered_df['DURATION'] = pd.to_numeric(filtered_df['DURATION'], errors='coerce')
+        if num_tests_col: filtered_df[num_tests_col] = pd.to_numeric(filtered_df[num_tests_col], errors='coerce').fillna(0)
+        if 'DURATION' in filtered_df.columns: filtered_df['DURATION'] = pd.to_numeric(filtered_df['DURATION'], errors='coerce')
 
-        # Data Calculations 🚨 SAFE Fix for ValueError (Total Paperwork) 🚨
         total_requests_count = len(filtered_df)
         total_tests_count = int(filtered_df[num_tests_col].sum() if num_tests_col else 0)
         avg_dpl_value = round(pd.to_numeric(filtered_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in filtered_df.columns else 0, 2)
         avg_duration_value = round(filtered_df['DURATION'].mean(), 1) if 'DURATION' in filtered_df.columns else 0
         
+        # 🚨 Safe Calculation for Total Paperwork Pages
         page_col_name = next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)
         total_paperwork_pages = int(pd.to_numeric(filtered_df[page_col_name], errors='coerce').fillna(0).sum()) if page_col_name else 0
 
@@ -478,6 +478,33 @@ def render_dashboard():
             "Total_Paperwork": total_paperwork_pages
         }
 
+        # ==========================================
+        # 🚨 SMART ALERT BANNER (COMMAND CENTER) 🚨
+        # ==========================================
+        rejected_count = len(filtered_df[filtered_df['sample status'].isin(['REJECTED', 'REVISE'])]) if 'sample status' in filtered_df.columns else 0
+        worst_office_name = "N/A"
+        worst_office_delay = 0
+
+        if 'Done BY' in filtered_df.columns and 'DURATION' in filtered_df.columns:
+            office_delays = filtered_df.dropna(subset=['DURATION']).groupby('Done BY')['DURATION'].mean().reset_index()
+            if not office_delays.empty:
+                worst_office = office_delays.loc[office_delays['DURATION'].idxmax()]
+                worst_office_name = worst_office['Done BY']
+                worst_office_delay = round(worst_office['DURATION'], 1)
+
+        st.markdown(f"""
+            <div class="alert-banner">
+                <div>
+                    <h3 style="margin:0; font-size:22px;">🚨 Command Center Live Alerts</h3>
+                    <p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">Top issues requiring immediate management attention today.</p>
+                </div>
+                <div style="text-align:right;">
+                    <div style="background:rgba(0,0,0,0.2); padding:8px 15px; border-radius:8px; margin-bottom:5px;"><b>Worst Delay Node:</b> {worst_office_name} ({worst_office_delay} Days)</div>
+                    <div style="background:rgba(0,0,0,0.2); padding:8px 15px; border-radius:8px;"><b>Critical Rejections:</b> {rejected_count} Submittals pending</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
         st.markdown(f"**📂 Active Data Source:** `{uploaded_file.name}`")
         col_btn, col_msg = st.columns([0.2, 0.8])
         with col_btn:
@@ -486,21 +513,27 @@ def render_dashboard():
                 st.success("✅ Logged Successfully!")
                 st.rerun() 
 
-        # Executive KPIs
+        # ==========================================
+        # 🔥 EXECUTIVE KPIs (WITH PROGRESS BARS) 🔥
+        # ==========================================
         st.markdown("### 📊 Executive Key Performance Indicators")
         col1, col2, col3, col4, col5 = st.columns(5)
         
+        # Simulated Targets for progress calculation
+        t_req = 1000; t_test = 5000; t_dpl = 20; t_dur = 10
+        
         d1 = HistoryManager.get_delta_html(current_metrics["Total_Requests"], "Total_Requests", uploaded_file.name)
-        create_card(col1, "Total Submittals", current_metrics["Total_Requests"], delta_html=d1)
+        create_card(col1, "Total Submittals", current_metrics["Total_Requests"], delta_html=d1, progress=min(100, (current_metrics["Total_Requests"]/t_req)*100 if current_metrics["Total_Requests"] else 0))
         
         d2 = HistoryManager.get_delta_html(current_metrics["Total_Tests"], "Total_Tests", uploaded_file.name)
-        create_card(col2, "Total Tests", current_metrics["Total_Tests"], delta_html=d2)
+        create_card(col2, "Total Tests", current_metrics["Total_Tests"], delta_html=d2, progress=min(100, (current_metrics["Total_Tests"]/t_test)*100 if current_metrics["Total_Tests"] else 0))
         
         d3 = HistoryManager.get_delta_html(current_metrics["Avg_DPL"], "Avg_DPL", uploaded_file.name)
-        create_card(col3, "Avg DPL Value", current_metrics["Avg_DPL"], delta_html=d3)
+        create_card(col3, "Avg DPL Value", current_metrics["Avg_DPL"], delta_html=d3, progress=min(100, (current_metrics["Avg_DPL"]/t_dpl)*100 if current_metrics["Avg_DPL"] else 0))
 
         d4 = HistoryManager.get_delta_html(current_metrics["Avg_Duration"], "Avg_Duration", uploaded_file.name)
-        create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4)
+        dur_prog = max(0, 100 - (current_metrics["Avg_Duration"]/t_dur * 100)) if current_metrics["Avg_Duration"] else 100
+        create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog) # Reverse progress (lower duration = better)
         
         d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
         create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
@@ -542,6 +575,40 @@ def render_dashboard():
                         <p style="font-size: 14px; color: #8da3b9; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
                     </div>
                     """, unsafe_allow_html=True)
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        # ==========================================
+        # ⚔️ HEAD-TO-HEAD: CONTRACTOR COMPARISON ⚔️
+        # ==========================================
+        st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
+        if 'Company Name' in filtered_df.columns and len(companies) >= 2:
+            cc1, cc2 = st.columns(2)
+            c_a = cc1.selectbox("Select Contractor A", companies, index=0)
+            c_b = cc2.selectbox("Select Contractor B", companies, index=1 if len(companies)>1 else 0)
+            
+            def get_c_stats(c_name):
+                d = filtered_df[filtered_df['Company Name']==c_name]
+                tot = len(d)
+                acc = len(d[d['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in d.columns else 0
+                rate = (acc/tot*100) if tot>0 else 0
+                dur = round(d['DURATION'].mean(), 1) if 'DURATION' in d.columns else 0
+                return tot, rate, dur
+            
+            tot_a, r_a, d_a = get_c_stats(c_a)
+            tot_b, r_b, d_b = get_c_stats(c_b)
+            
+            st.markdown(f"""
+            <div style="display:flex; justify-content:space-between; text-align:center; background:rgba(10,20,33,0.8); padding:20px; border-radius:15px; border:1px solid #ffaa00; box-shadow: 0 5px 15px rgba(0,0,0,0.4);">
+                <div style="width:45%; border-right:1px solid rgba(255,255,255,0.1);"><h3 style="color:#00d2ff; margin-top:0;">{c_a}</h3><p style="font-size:32px; font-weight:800; color:white; margin:0;">{r_a:.1f}% Yield</p><p style="color:#8da3b9; font-size:14px; margin-top:5px;">{tot_a} Submittals | {d_a} Days Avg Delay</p></div>
+                <div style="width:10%; align-self:center; font-size:30px; font-weight:900; color:#ffaa00; text-shadow: 0 0 10px rgba(255,170,0,0.5);">VS</div>
+                <div style="width:45%; border-left:1px solid rgba(255,255,255,0.1);"><h3 style="color:#e74c3c; margin-top:0;">{c_b}</h3><p style="font-size:32px; font-weight:800; color:white; margin:0;">{r_b:.1f}% Yield</p><p style="color:#8da3b9; font-size:14px; margin-top:5px;">{tot_b} Submittals | {d_b} Days Avg Delay</p></div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.info("Requires 'Company Name' column and at least 2 contractors to enable Head-to-Head comparison.")
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         # Monthly Volume & Deficit Analysis
         st.markdown('<div class="bi-title">🧪 Monthly Test Volume & Deficit Analysis</div>', unsafe_allow_html=True)
@@ -585,17 +652,6 @@ def render_dashboard():
 
         # Workflow & Delay Risk Analysis
         st.markdown('<div class="bi-title">⏱️ Workflow & Delay Risk Analysis</div>', unsafe_allow_html=True)
-        rejected_count = len(filtered_df[filtered_df['sample status'].isin(['REJECTED', 'REVISE'])]) if 'sample status' in filtered_df.columns else 0
-        worst_office_name = "N/A"
-        worst_office_delay = 0
-
-        if 'Done BY' in filtered_df.columns and 'DURATION' in filtered_df.columns:
-            office_delays = filtered_df.dropna(subset=['DURATION']).groupby('Done BY')['DURATION'].mean().reset_index()
-            if not office_delays.empty:
-                worst_office = office_delays.loc[office_delays['DURATION'].idxmax()]
-                worst_office_name = worst_office['Done BY']
-                worst_office_delay = round(worst_office['DURATION'], 1)
-
         r1, r2, r3 = st.columns(3)
         r1.error(f"**Rejected/Revise Samples:** {rejected_count} submittals")
         r2.warning(f"**Highest Delay Office:** {worst_office_name}")
@@ -621,7 +677,7 @@ Project Quality Management Office"""
                     worst_office_data = filtered_df[filtered_df['Done BY'] == worst_office_name]
                     st.dataframe(worst_office_data, use_container_width=True)
 
-        # AI Predictive Analytics & Geospatial
+        # AI Predictive Analytics & Geospatial Heat Map
         st.markdown('<div class="bi-title">🤖 Predictive Risk Forecasting</div>', unsafe_allow_html=True)
         if 'Date ( test)' in filtered_df.columns and 'DURATION' in filtered_df.columns:
             pred_df = filtered_df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
@@ -643,14 +699,22 @@ Project Quality Management Office"""
                 else:
                     st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
 
-        st.markdown('<div class="bi-title">🗺️ Sector / Zone Performance Map</div>', unsafe_allow_html=True)
+        # ==========================================
+        # 🔥 PERFORMANCE HEAT MAP (Zone Tracking) 🔥
+        # ==========================================
+        st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
         if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             tree_df = filtered_df.copy()
             tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
+            
+            # Map statuses to numeric Heat Scores for coloring
+            status_weights = {'ACCEPTED': 100, 'APPROVED AS NOTED': 80, 'REVISE': 40, 'REJECTED': 0, 'Unknown': 50}
+            tree_df['Heat_Score'] = tree_df['sample status'].map(status_weights).fillna(50)
+            
             fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], 
-                                  title="Project Hierarchy Breakdown (Click to Drill Down)",
-                                  color='sample status',
-                                  color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                                  color='Heat_Score',
+                                  color_continuous_scale='RdYlGn',
+                                  title="Project Hierarchy Heat Map (Green = High Approval, Red = Bottleneck/Rejections)")
             fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
             st.plotly_chart(fig_tree, use_container_width=True)
 
