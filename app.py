@@ -70,6 +70,7 @@ def style_3d_glassy(fig, chart_type="bar"):
         margin=dict(t=50, b=20, l=20, r=20)
     )
     
+    # 🚨 التعديل الجذري: تطبيق خصائص الماركر فقط على الشارتات اللي بتدعمها (تجاهل Heatmap)
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
         fig.update_traces(
             marker=dict(line=dict(color='rgba(255, 255, 255, 0.4)', width=1.5)),
@@ -170,6 +171,13 @@ st.markdown("""
     
     .health-card { background: rgba(10, 20, 33, 0.8); backdrop-filter: blur(10px); padding: 15px 25px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);}
 
+    /* 🔥 LIVE TICKER CSS 🔥 */
+    .ticker-wrap { width: 100%; overflow: hidden; background: linear-gradient(90deg, rgba(0, 210, 255, 0.1), rgba(0,0,0,0)); border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff;}
+    .ticker { display: inline-block; white-space: nowrap; padding-right: 100%; animation-iteration-count: infinite; animation-timing-function: linear; animation-name: ticker; animation-duration: 35s;}
+    @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+    .ticker-item { display: inline-block; padding: 0 2rem; font-weight: 500; color: #d1d5da; font-size: 14px;}
+    .ticker-item span { color: #ffaa00; font-weight: bold; }
+
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #050a11; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 170, 0, 0.5); border-radius: 10px; }
@@ -179,7 +187,7 @@ st.markdown("""
     @media print {
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         body, [data-testid="stAppViewContainer"] { background: #050a11 !important; }
-        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"], .ticker-wrap { display: none !important; }
         .main .block-container { max-width: 100% !important; padding: 5mm !important; margin: 0 !important; }
         .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"], .alert-banner { page-break-inside: avoid !important; background: #0b1a2e !important; border: 1px solid rgba(255, 170, 0, 0.4) !important; }
         .metric-value, .bi-title { -webkit-text-fill-color: white !important; color: white !important; }
@@ -465,7 +473,6 @@ def render_dashboard():
         avg_dpl_value = round(pd.to_numeric(filtered_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in filtered_df.columns else 0, 2)
         avg_duration_value = round(filtered_df['DURATION'].mean(), 1) if 'DURATION' in filtered_df.columns else 0
         
-        # 🚨 Safe Calculation for Total Paperwork Pages
         page_col_name = next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)
         total_paperwork_pages = int(pd.to_numeric(filtered_df[page_col_name], errors='coerce').fillna(0).sum()) if page_col_name else 0
 
@@ -477,11 +484,31 @@ def render_dashboard():
             "Avg_Duration": avg_duration_value,
             "Total_Paperwork": total_paperwork_pages
         }
+        
+        overall_acc = len(filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in filtered_df.columns else 0
+        overall_rate = (overall_acc / total_requests_count * 100) if total_requests_count > 0 else 0
+
+        # ==========================================
+        # 🚨 LIVE TICKER BAR 🚨
+        # ==========================================
+        rejected_count = len(filtered_df[filtered_df['sample status'].isin(['REJECTED', 'REVISE'])]) if 'sample status' in filtered_df.columns else 0
+        
+        ticker_html = f"""
+        <div class="ticker-wrap">
+            <div class="ticker">
+                <div class="ticker-item">🚀 <b>Total Logged Submittals:</b> <span>{total_requests_count:,}</span></div>
+                <div class="ticker-item">✅ <b>Current Global Yield:</b> <span>{overall_rate:.1f}%</span></div>
+                <div class="ticker-item">⏱️ <b>Sector Avg Delay:</b> <span>{avg_duration_value} Days</span></div>
+                <div class="ticker-item">🚨 <b>Pending Rejections:</b> <span>{rejected_count}</span></div>
+                <div class="ticker-item">🧪 <b>Total Field Tests:</b> <span>{total_tests_count:,}</span></div>
+            </div>
+        </div>
+        """
+        st.markdown(ticker_html, unsafe_allow_html=True)
 
         # ==========================================
         # 🚨 SMART ALERT BANNER (COMMAND CENTER) 🚨
         # ==========================================
-        rejected_count = len(filtered_df[filtered_df['sample status'].isin(['REJECTED', 'REVISE'])]) if 'sample status' in filtered_df.columns else 0
         worst_office_name = "N/A"
         worst_office_delay = 0
 
@@ -533,7 +560,7 @@ def render_dashboard():
 
         d4 = HistoryManager.get_delta_html(current_metrics["Avg_Duration"], "Avg_Duration", uploaded_file.name)
         dur_prog = max(0, 100 - (current_metrics["Avg_Duration"]/t_dur * 100)) if current_metrics["Avg_Duration"] else 100
-        create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog) # Reverse progress (lower duration = better)
+        create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog)
         
         d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
         create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
@@ -541,9 +568,6 @@ def render_dashboard():
         # Speedometer & Simulator Row
         g_col, s_col = st.columns([0.4, 0.6])
         with g_col:
-            overall_acc = len(filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in filtered_df.columns else 0
-            overall_rate = (overall_acc / total_requests_count * 100) if total_requests_count > 0 else 0
-            
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number", value=overall_rate,
                 title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': 'white'}},
@@ -575,6 +599,74 @@ def render_dashboard():
                         <p style="font-size: 14px; color: #8da3b9; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
                     </div>
                     """, unsafe_allow_html=True)
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        # ==========================================
+        # 🤖 AI AUTO-NARRATIVE SUMMARY 
+        # ==========================================
+        st.markdown("#### 📝 AI Executive Auto-Narrative")
+        narrative = f"The dataset encompasses <b>{total_requests_count:,}</b> submittals involving <b>{total_tests_count:,}</b> field tests. "
+        narrative += f"The current overall approval index stands at <b>{overall_rate:.1f}%</b>, with an average turnaround time of <b>{avg_duration_value} days</b>. "
+        if worst_office_name != "N/A":
+            narrative += f"Attention is required for <b>{worst_office_name}</b>, which currently flags the highest processing delays across the logged sectors."
+        st.markdown(f"<div style='font-size: 15px; color: #8da3b9; line-height: 1.6; background: rgba(0,210,255,0.05); padding: 20px; border-radius: 10px; border-left: 4px solid #00d2ff; margin-bottom: 25px;'>{narrative}</div>", unsafe_allow_html=True)
+
+        # ==========================================
+        # 🚨 LIVE ANOMALY & ROOT CAUSE DETECTOR 🚨
+        # ==========================================
+        st.markdown('<div class="bi-title">🤖 Live Anomaly & Root Cause Detector</div>', unsafe_allow_html=True)
+        anomalies = []
+        
+        # 1. Delay Anomaly Detection (Z-score basic equivalent: > avg + 5 days)
+        if 'Company Name' in filtered_df.columns and 'DURATION' in filtered_df.columns:
+            comp_dur = filtered_df.groupby('Company Name')['DURATION'].mean()
+            for comp, dur in comp_dur.items():
+                if dur > avg_duration_value + 5:
+                    anomalies.append(f"⚠️ <b>Anomaly Detected:</b> <b>{comp}</b> is showing severe delays ({dur:.1f} days) compared to the global average ({avg_duration_value:.1f} days).")
+        
+        # 2. Root Cause for Rejections
+        if 'sample status' in filtered_df.columns and 'Test Type' in filtered_df.columns:
+            rejections_df = filtered_df[filtered_df['sample status'].isin(['REJECTED', 'REVISE'])]
+            if not rejections_df.empty:
+                top_fail_test = rejections_df['Test Type'].value_counts().idxmax()
+                top_fail_comp = rejections_df['Company Name'].value_counts().idxmax() if 'Company Name' in rejections_df.columns else "Unknown"
+                fail_pct = (len(rejections_df) / total_requests_count * 100) if total_requests_count > 0 else 0
+                if fail_pct > 10:
+                    anomalies.append(f"🔍 <b>Root Cause Insight:</b> Global rejection rate is high ({fail_pct:.1f}%). The primary contributor is the <b>{top_fail_test}</b> test, most frequently failing under contractor <b>{top_fail_comp}</b>.")
+        
+        if anomalies:
+            for anomaly in anomalies:
+                st.markdown(f'<div style="background: rgba(231,76,60,0.1); border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: #d1d5da;">{anomaly}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: #d1d5da;">✅ No severe workflow anomalies or critical bottlenecks detected in the current data scope.</div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        # ==========================================
+        # 🏆 BENCHMARK ENGINE 
+        # ==========================================
+        st.markdown('<div class="bi-title">🏆 Benchmark Engine</div>', unsafe_allow_html=True)
+        if 'Company Name' in filtered_df.columns:
+            bm_comp = st.selectbox("Select Contractor for Benchmarking against Global Averages:", companies, key="bm_engine")
+            if bm_comp:
+                bm_df = filtered_df[filtered_df['Company Name'] == bm_comp]
+                bm_acc = len(bm_df[bm_df['sample status'].isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bm_df.columns else 0
+                bm_yield = (bm_acc / len(bm_df) * 100) if len(bm_df) > 0 else 0
+                bm_dur = bm_df['DURATION'].mean() if 'DURATION' in bm_df.columns else 0
+                
+                b1, b2 = st.columns(2)
+                y_diff = bm_yield - overall_rate
+                y_color = "#2ecc71" if y_diff >= 0 else "#e74c3c"
+                y_icon = "▲" if y_diff >= 0 else "▼"
+                b1.markdown(f"<div class='metric-card'><h4>Yield vs Sector Avg</h4><h2 style='color:white;'>{bm_yield:.1f}%</h2><p style='color:{y_color}; font-weight:bold;'>{y_icon} {abs(y_diff):.1f}% vs Global ({overall_rate:.1f}%)</p></div>", unsafe_allow_html=True)
+                
+                d_diff = bm_dur - avg_duration_value
+                d_color = "#e74c3c" if d_diff > 0 else "#2ecc71" # higher delay is worse
+                d_icon = "▲" if d_diff > 0 else "▼"
+                b2.markdown(f"<div class='metric-card'><h4>Delay vs Sector Avg</h4><h2 style='color:white;'>{bm_dur:.1f} Days</h2><p style='color:{d_color}; font-weight:bold;'>{d_icon} {abs(d_diff):.1f} Days vs Global ({avg_duration_value:.1f})</p></div>", unsafe_allow_html=True)
+        else:
+            st.info("Company Name column is required for benchmarking.")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -623,6 +715,8 @@ def render_dashboard():
             fig_vol = px.bar(monthly_summary, x='Month', y='Volume', color='Test Type', barmode='group',
                              title="Testing Intensity & Production Coverage per Month",
                              color_discrete_sequence=NEON_COLORS)
+            # Smart Tooltip upgrade
+            fig_vol.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Volume:</b> %{y} Submittals')
             fig_vol = style_3d_glassy(fig_vol, chart_type="bar")
             
             ch_col, txt_col = st.columns([0.7, 0.3])
@@ -650,34 +744,28 @@ def render_dashboard():
                 else:
                     st.text("No data available for tracking.")
 
-        # Workflow & Delay Risk Analysis
-        st.markdown('<div class="bi-title">⏱️ Workflow & Delay Risk Analysis</div>', unsafe_allow_html=True)
-        r1, r2, r3 = st.columns(3)
-        r1.error(f"**Rejected/Revise Samples:** {rejected_count} submittals")
-        r2.warning(f"**Highest Delay Office:** {worst_office_name}")
-        r3.warning(f"**Avg Delay for this Office:** {worst_office_delay} Days")
+        # ==========================================
+        # 🗓️ ACTIVITY HEATMAP CALENDAR
+        # ==========================================
+        if 'Date ( test)' in filtered_df.columns:
+            st.markdown('<div class="bi-title">🗓️ Activity Heatmap Calendar</div>', unsafe_allow_html=True)
+            cal_df = filtered_df.dropna(subset=['Date ( test)']).copy()
+            cal_df['Day'] = cal_df['Date ( test)'].dt.day
+            cal_df['Month_Name'] = cal_df['Date ( test)'].dt.strftime('%b %Y')
+            hm_data = cal_df.groupby(['Month_Name', 'Day']).size().reset_index(name='Submittals')
+            
+            fig_hm = px.density_heatmap(hm_data, x="Day", y="Month_Name", z="Submittals", 
+                                        color_continuous_scale="Viridis", 
+                                        title="Daily Activity Intensity (GitHub Style)",
+                                        labels={'Day': 'Day of Month', 'Month_Name': 'Month'})
+            fig_hm.update_traces(hovertemplate='<b>Date:</b> %{y} %{x}<br><b>Activity:</b> %{z} Tests Logged')
+            # 🚨 تطبيق الـ style بدون تعريفه كـ heatmap لتجنب الـ ValueError (دالة التجميل دلوقتي بتتعامل معاه بذكاء)
+            fig_hm = style_3d_glassy(fig_hm, chart_type="heatmap")
+            st.plotly_chart(fig_hm, use_container_width=True)
 
-        if worst_office_name != "N/A":
-            st.markdown("#### 📧 Administrative Action Center")
-            if st.button("Generate Official Warning Memo"):
-                memo_text = f"""SUBJECT: URGENT: Action Required - Escalating Turnaround Delays
-TO: Management Team of [{worst_office_name}]
-DATE: {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d")}
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-This is an automated notification from the Project Quality BI System.
-
-Our data analytics framework indicates a critical workflow bottleneck originating from your department. Currently, your average processing duration is [{worst_office_delay} Days], which significantly exceeds acceptable project execution constraints.
-
-Immediate corrective action is required to expedite all pending documentation. Please submit a mitigation and recovery schedule within 24 hours.
-
-Best Regards,
-Project Quality Management Office"""
-                st.code(memo_text, language="markdown")
-                with st.expander(f"📋 View Audit Trail: All Log Records for [{worst_office_name}]"):
-                    worst_office_data = filtered_df[filtered_df['Done BY'] == worst_office_name]
-                    st.dataframe(worst_office_data, use_container_width=True)
-
-        # AI Predictive Analytics & Geospatial Heat Map
+        # AI Predictive Analytics & Geospatial
         st.markdown('<div class="bi-title">🤖 Predictive Risk Forecasting</div>', unsafe_allow_html=True)
         if 'Date ( test)' in filtered_df.columns and 'DURATION' in filtered_df.columns:
             pred_df = filtered_df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
@@ -715,6 +803,7 @@ Project Quality Management Office"""
                                   color='Heat_Score',
                                   color_continuous_scale='RdYlGn',
                                   title="Project Hierarchy Heat Map (Green = High Approval, Red = Bottleneck/Rejections)")
+            fig_tree.update_traces(hovertemplate='<b>%{label}</b><br>Score: %{color:.1f}')
             fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
             st.plotly_chart(fig_tree, use_container_width=True)
 
@@ -855,18 +944,21 @@ Project Quality Management Office"""
             if 'Company Name' in filtered_df.columns and 'Test Type' in filtered_df.columns:
                 c1_df = filtered_df.groupby(['Company Name', 'Test Type']).size().reset_index(name='Count')
                 fig_c1 = px.bar(c1_df, x='Company Name', y='Count', color='Test Type', title="Workload per Contractor 🏢", color_discrete_sequence=NEON_COLORS)
+                fig_c1.update_traces(hovertemplate='<b>%{x}</b><br>Test: %{data.name}<br>Count: %{y}')
                 fig_c1 = style_3d_glassy(fig_c1, chart_type="bar")
                 st.plotly_chart(fig_c1, use_container_width=True)
                 
             if 'Done BY' in filtered_df.columns and 'Test Type' in filtered_df.columns:
                 c2_df = filtered_df.groupby(['Done BY', 'Test Type']).size().reset_index(name='Count')
                 fig_c2 = px.bar(c2_df, x='Done BY', y='Count', color='Test Type', title="Office Performance Analysis (Done BY) 👨‍💼", color_discrete_sequence=NEON_COLORS)
+                fig_c2.update_traces(hovertemplate='<b>Office:</b> %{x}<br>Count: %{y}')
                 fig_c2 = style_3d_glassy(fig_c2, chart_type="bar")
                 st.plotly_chart(fig_c2, use_container_width=True)
 
         with chart_col2:
             if 'sample status' in filtered_df.columns:
                 fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴", color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                fig_p1.update_traces(hovertemplate='<b>Status:</b> %{label}<br>Count: %{value} (%{percent})')
                 fig_p1 = style_3d_glassy(fig_p1, chart_type="pie")
                 st.plotly_chart(fig_p1, use_container_width=True)
             
@@ -972,43 +1064,6 @@ Project Quality Management Office"""
                         st.plotly_chart(fig_status, use_container_width=True)
                     else:
                         st.info(f"No status data logged for {selected_comp}.")
-
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-        # Timeline Analysis
-        st.markdown("### 📈 Timeline Analysis")
-        time_col1, time_col2 = st.columns(2)
-        
-        with time_col1:
-            if 'Date ( test)' in filtered_df.columns:
-                filtered_df['Month_Plot'] = filtered_df['Date ( test)'].dt.to_period('M').astype(str)
-                monthly_data = filtered_df.groupby('Month_Plot').size().reset_index(name='Count')
-                fig_m = px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅", color_discrete_sequence=['#00d2ff'])
-                fig_m = style_3d_glassy(fig_m, chart_type="line")
-                st.plotly_chart(fig_m, use_container_width=True)
-
-        with time_col2:
-            if 'Date( SUB)' in filtered_df.columns and 'sample status' in filtered_df.columns:
-                gap_df = filtered_df.dropna(subset=['Date( SUB)']).copy()
-                gap_df['Month_Plot'] = gap_df['Date( SUB)'].dt.to_period('M').astype(str)
-                
-                total_sub = gap_df.groupby('Month_Plot').size().reset_index(name='Total Submitted')
-                accepted_mask = gap_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                accepted_sub = gap_df[accepted_mask].groupby('Month_Plot').size().reset_index(name='Accepted')
-                rejected_mask = gap_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])
-                rejected_sub = gap_df[rejected_mask].groupby('Month_Plot').size().reset_index(name='Rejected')
-                
-                merged_gap = total_sub.merge(accepted_sub, on='Month_Plot', how='left').merge(rejected_sub, on='Month_Plot', how='left').fillna(0)
-                melted_gap = merged_gap.melt(id_vars='Month_Plot', value_vars=['Total Submitted', 'Accepted', 'Rejected'], var_name='Status', value_name='Count')
-                
-                fig_gap = px.bar(
-                    melted_gap.sort_values('Month_Plot'), 
-                    x='Month_Plot', y='Count', color='Status', barmode='group',
-                    color_discrete_map={'Total Submitted': '#00d2ff', 'Accepted': '#2ecc71', 'Rejected': '#ff007f'},
-                    title="Monthly Quality Yield (Based on Submission Date) 🎯"
-                )
-                fig_gap = style_3d_glassy(fig_gap, chart_type="bar")
-                st.plotly_chart(fig_gap, use_container_width=True)
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
