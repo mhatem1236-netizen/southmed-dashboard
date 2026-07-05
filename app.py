@@ -59,7 +59,7 @@ def authenticate_user(email, password):
     return False, "Invalid Email or Password."
 
 # ==========================================
-# 3. 3D Glassy Chart Styling Function
+# 3. 3D Glassy Chart Styling Function (Updated)
 # ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
     fig.update_layout(
@@ -70,6 +70,7 @@ def style_3d_glassy(fig, chart_type="bar"):
         margin=dict(t=50, b=20, l=20, r=20)
     )
     
+    # التعديل هنا: الـ Heatmap مش بيحتاج marker فمش هنمررله خصائص الماركر عشان ميعلقش
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
         fig.update_traces(
             marker=dict(line=dict(color='rgba(255, 255, 255, 0.4)', width=1.5)),
@@ -758,8 +759,9 @@ def render_dashboard():
                                         title="Daily Activity Intensity (GitHub Style)",
                                         labels={'Day': 'Day of Month', 'Month_Name': 'Month'})
             fig_hm.update_traces(hovertemplate='<b>Date:</b> %{y} %{x}<br><b>Activity:</b> %{z} Tests Logged')
-            fig_hm = style_3d_glassy(fig_hm, "histogram")
-            st.plotly_chart(fig_hm, use_container_width=True)
+            # في جزء الـ Heatmap
+            fig_hm = style_3d_glassy(fig_hm) # شيلنا "heatmap" خالص عشان نضمن إن الدالة مش هتحاول تطبق خصائص الـ marker عليه
+            st.plotly_chart(fig_hm, use_container_width=True)    
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
