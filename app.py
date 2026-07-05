@@ -743,7 +743,7 @@ def render_dashboard():
                 else:
                     st.text("No data available for tracking.")
 
-       { # ==========================================
+        # ==========================================
         # 🗓️ ACTIVITY HEATMAP CALENDAR
         # ==========================================
         if 'Date ( test)' in filtered_df.columns:
