@@ -1346,5 +1346,6 @@ def main():
         render_login_screen()
     else:
         render_dashboard()
+        
 if __name__ == "__main__":
     main()
