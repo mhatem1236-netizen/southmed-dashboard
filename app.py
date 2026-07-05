@@ -783,7 +783,7 @@ def render_dashboard():
                 if latest_trend > current_metrics["Avg_Duration"]:
                     st.error(f"🚨 **Warning:** The recent workflow trend is rising ({latest_trend:.1f} days) compared to the overall average. Bottlenecks are forming.")
                 else:
-                    st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")}
+                    st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
 
         # ==========================================
         # 🔥 PERFORMANCE HEAT MAP (Zone Tracking) 🔥
