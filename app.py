@@ -1301,6 +1301,41 @@ def render_dashboard():
         st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
 
 # ==========================================
+# Timeline Analysis
+        st.markdown("### 📈 Timeline Analysis")
+        time_col1, time_col2 = st.columns(2)
+        
+        with time_col1:
+            if 'Date ( test)' in filtered_df.columns:
+                filtered_df['Month_Plot'] = filtered_df['Date ( test)'].dt.to_period('M').astype(str)
+                monthly_data = filtered_df.groupby('Month_Plot').size().reset_index(name='Count')
+                fig_m = px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅", color_discrete_sequence=['#00d2ff'])
+                fig_m = style_3d_glassy(fig_m, chart_type="line")
+                st.plotly_chart(fig_m, use_container_width=True)
+
+        with time_col2:
+            if 'Date( SUB)' in filtered_df.columns and 'sample status' in filtered_df.columns:
+                gap_df = filtered_df.dropna(subset=['Date( SUB)']).copy()
+                gap_df['Month_Plot'] = gap_df['Date( SUB)'].dt.to_period('M').astype(str)
+                
+                total_sub = gap_df.groupby('Month_Plot').size().reset_index(name='Total Submitted')
+                accepted_mask = gap_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                accepted_sub = gap_df[accepted_mask].groupby('Month_Plot').size().reset_index(name='Accepted')
+                rejected_mask = gap_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])
+                rejected_sub = gap_df[rejected_mask].groupby('Month_Plot').size().reset_index(name='Rejected')
+                
+                merged_gap = total_sub.merge(accepted_sub, on='Month_Plot', how='left').merge(rejected_sub, on='Month_Plot', how='left').fillna(0)
+                melted_gap = merged_gap.melt(id_vars='Month_Plot', value_vars=['Total Submitted', 'Accepted', 'Rejected'], var_name='Status', value_name='Count')
+                
+                fig_gap = px.bar(
+                    melted_gap.sort_values('Month_Plot'), 
+                    x='Month_Plot', y='Count', color='Status', barmode='group',
+                    color_discrete_map={'Total Submitted': '#00d2ff', 'Accepted': '#2ecc71', 'Rejected': '#ff007f'},
+                    title="Monthly Quality Yield (Based on Submission Date) 🎯"
+                )
+                fig_gap = style_3d_glassy(fig_gap, chart_type="bar")
+                st.plotly_chart(fig_gap, use_container_width=True)
+# ==========================================               
 # 8. Main Application Execution
 # ==========================================
 def main():
