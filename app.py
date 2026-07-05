@@ -1304,7 +1304,6 @@ def render_dashboard():
 # Timeline Analysis
         st.markdown("### 📈 Timeline Analysis")
         time_col1, time_col2 = st.columns(2)
-        
         with time_col1:
             if 'Date ( test)' in filtered_df.columns:
                 filtered_df['Month_Plot'] = filtered_df['Date ( test)'].dt.to_period('M').astype(str)
@@ -1347,6 +1346,5 @@ def main():
         render_login_screen()
     else:
         render_dashboard()
-
 if __name__ == "__main__":
     main()
