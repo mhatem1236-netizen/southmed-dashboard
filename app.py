@@ -323,10 +323,6 @@ def render_dashboard():
         df = pd.read_csv(uploaded_file)
         df.columns = df.columns.str.strip() 
         
-        # Handle 'Company' vs 'Company Name' variation safely
-        if 'Company Name' not in df.columns and 'Company' in df.columns:
-            df.rename(columns={'Company': 'Company Name'}, inplace=True)
-            
         if 'Test Type' in df.columns: df['Test Type'] = df['Test Type'].str.strip().str.upper()
         if 'Date ( test)' in df.columns: df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
         if 'Date( SUB)' in df.columns: df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce', dayfirst=True)
@@ -803,10 +799,10 @@ def render_dashboard():
             if 'Company Name' in filtered_df.columns and 'Test Type' in filtered_df.columns:
                 if num_tests_col:
                     c1_df = filtered_df.groupby(['Company Name', 'Test Type'])[num_tests_col].sum().reset_index(name='Count')
-                    c1_title = "Workload per Contractor 🏢 (Total Test Points)"
+                    c1_title = "Workload per Contractor (Total Test Points)"
                 else:
                     c1_df = filtered_df.groupby(['Company Name', 'Test Type']).size().reset_index(name='Count')
-                    c1_title = "Workload per Contractor 🏢 (Total Submittals)"
+                    c1_title = "Workload per Contractor (Total Submittals)"
                     
                 fig_c1 = px.bar(c1_df, x='Company Name', y='Count', color='Test Type', title=c1_title, color_discrete_sequence=NEON_COLORS)
                 fig_c1.update_traces(hovertemplate='<b>%{x}</b><br>Test: %{data.name}<br>Count: %{y}')
@@ -816,10 +812,10 @@ def render_dashboard():
             if 'Done BY' in filtered_df.columns and 'Test Type' in filtered_df.columns:
                 if num_tests_col:
                     c2_df = filtered_df.groupby(['Done BY', 'Test Type'])[num_tests_col].sum().reset_index(name='Count')
-                    c2_title = "Office Performance Analysis (Done BY) 👨‍💼 (Total Test Points)"
+                    c2_title = "Office Performance Analysis (Total Test Points)"
                 else:
                     c2_df = filtered_df.groupby(['Done BY', 'Test Type']).size().reset_index(name='Count')
-                    c2_title = "Office Performance Analysis (Done BY) 👨‍💼 (Total Submittals)"
+                    c2_title = "Office Performance Analysis (Total Submittals)"
                     
                 fig_c2 = px.bar(c2_df, x='Done BY', y='Count', color='Test Type', title=c2_title, color_discrete_sequence=NEON_COLORS)
                 fig_c2.update_traces(hovertemplate='<b>Office:</b> %{x}<br>Test: %{data.name}<br>Count: %{y}')
@@ -828,14 +824,14 @@ def render_dashboard():
 
         with chart_col2:
             if 'sample status' in filtered_df.columns:
-                fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution 🟢🔴", color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution", color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
                 fig_p1.update_traces(hovertemplate='<b>Status:</b> %{label}<br>Count: %{value} (%{percent})')
                 fig_p1 = style_3d_glassy(fig_p1, chart_type="pie")
                 st.plotly_chart(fig_p1, use_container_width=True)
             if 'Classification' in filtered_df.columns:
                 class_df = filtered_df.dropna(subset=['Classification']).copy()
                 if not class_df.empty:
-                    fig_p2 = px.pie(class_df, names='Classification', title="Sample Classification Distribution 📑", color_discrete_sequence=NEON_COLORS)
+                    fig_p2 = px.pie(class_df, names='Classification', title="Sample Classification Distribution", color_discrete_sequence=NEON_COLORS)
                     fig_p2 = style_3d_glassy(fig_p2, chart_type="pie")
                     st.plotly_chart(fig_p2, use_container_width=True)
 
@@ -910,43 +906,53 @@ def render_dashboard():
                     bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'])
                     fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill'])
                 
-                # 4. Avg 200 for Stockpile ONLY
+                # 2. Avg 200 for Stockpile ONLY
                 avg_200 = pd.to_numeric(stock_df['#200'], errors='coerce').mean() if '#200' in stock_df.columns else np.nan
                 
-                # Remove Arabic
+                # Clean UI Text (English Only)
                 cc1, cc2, cc3, cc4 = st.columns(4)
                 create_card(cc1, "Stockpile Tests", stock_count)
                 create_card(cc2, "Bottom Excavation Tests", bottom_count)
                 create_card(cc3, "Fill Tests", fill_count)
                 create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
                 
-                # 2. Target vs Required & Overqualified Check
-                if 'Required Quantity' in comp_df.columns:
-                    req_qty = pd.to_numeric(comp_df['Required Quantity'], errors='coerce').max()
-                    if pd.notna(req_qty) and req_qty > 0:
-                        diff = stock_count - int(req_qty)
-                        if diff >= 0:
-                            status_msg = f"<span style='color: #2ecc71;'>Target Exceeded (+{diff} Tests)</span>"
-                            progress_pct = 100
-                            prog_color = "linear-gradient(90deg, #2ecc71, #27ae60)"
-                        else:
-                            status_msg = f"<span style='color: #ffaa00;'>Missing {abs(diff)} Tests</span>"
-                            progress_pct = min(100, (stock_count / int(req_qty)) * 100)
-                            prog_color = "linear-gradient(90deg, #00d2ff, #2ecc71)"
-                        
-                        st.markdown(f"""
-                        <div style="background: rgba(10, 20, 33, 0.8); padding: 20px; border-radius: 15px; border-left: 5px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 15px;">🎯 Stockpile Target Achievement</h4>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="color: #d1d5da; font-size: 15px;">Target Required: <b style="color: white; font-size: 18px;">{int(req_qty)}</b></span>
-                                <span style="color: #00d2ff; font-size: 15px;">Executed Tests: <b style="color: white; font-size: 18px;">{stock_count}</b></span>
-                                <span style="font-size: 15px; font-weight: bold;">Status: {status_msg}</span>
-                            </div>
-                            <div class="prog-bg" style="height: 10px; background: rgba(255,255,255,0.05);"><div class="prog-fill" style="width: {progress_pct}%; background: {prog_color};"></div></div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                # 3. Target vs Required & Overqualified Check
+                req_qty = np.nan
+                # Read from the original main 'df' where the lookup column 'Company' matches the selected_comp
+                if 'Company' in df.columns and 'Required Quantity' in df.columns:
+                    match_row = df[df['Company'].astype(str).str.strip() == selected_comp.strip()]
+                    if not match_row.empty:
+                        req_qty = pd.to_numeric(match_row['Required Quantity'], errors='coerce').max()
                 
-                # 3. AI Engineer Recommendation based on Fill/Stockpile timing
+                # Fallback if 'Company' lookup column is missing but Required Quantity exists in comp_df
+                if pd.isna(req_qty) and 'Required Quantity' in comp_df.columns:
+                    req_qty = pd.to_numeric(comp_df['Required Quantity'], errors='coerce').max()
+
+                if pd.notna(req_qty) and req_qty > 0:
+                    req_qty_int = int(req_qty)
+                    diff = stock_count - req_qty_int
+                    if diff >= 0:
+                        status_msg = f"<span style='color: #2ecc71;'>Target Exceeded (+{diff} Tests)</span>"
+                        progress_pct = 100
+                        prog_color = "linear-gradient(90deg, #2ecc71, #27ae60)"
+                    else:
+                        status_msg = f"<span style='color: #ffaa00;'>Missing {abs(diff)} Tests</span>"
+                        progress_pct = min(100, (stock_count / req_qty_int) * 100)
+                        prog_color = "linear-gradient(90deg, #00d2ff, #2ecc71)"
+                    
+                    st.markdown(f"""
+                    <div style="background: rgba(10, 20, 33, 0.8); padding: 20px; border-radius: 15px; border-left: 5px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                        <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 15px;">🎯 Stockpile Target Achievement</h4>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <span style="color: #d1d5da; font-size: 15px;">Target Required: <b style="color: white; font-size: 18px;">{req_qty_int}</b></span>
+                            <span style="color: #00d2ff; font-size: 15px;">Executed Tests: <b style="color: white; font-size: 18px;">{stock_count}</b></span>
+                            <span style="font-size: 15px; font-weight: bold;">Status: {status_msg}</span>
+                        </div>
+                        <div class="prog-bg" style="height: 10px; background: rgba(255,255,255,0.05);"><div class="prog-fill" style="width: {progress_pct}%; background: {prog_color};"></div></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # 4. AI Engineer Recommendation based on Fill/Stockpile timing
                 if 'Date ( test)' in comp_df.columns:
                     time_analysis_df = comp_df.dropna(subset=['Date ( test)']).copy()
                     time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
