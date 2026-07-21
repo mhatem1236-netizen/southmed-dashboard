@@ -889,6 +889,9 @@ def render_dashboard():
             st.dataframe(summary_pivot, use_container_width=True)
             st.divider()
             
+            # ==========================================
+            # 🔥 BI INDIVIDUAL CONTRACTOR DEEP DIVE 🔥
+            # ==========================================
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
             comp_list = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
             if comp_list:
@@ -896,46 +899,82 @@ def render_dashboard():
                 comp_df = mat_df[mat_df['Company Name'] == selected_comp]
                 
                 stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile']
-                stock_count = len(stock_df)
-                bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'])
-                fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill'])
                 
-                avg_200 = pd.to_numeric(comp_df['#200'], errors='coerce').mean() if '#200' in comp_df.columns else np.nan
+                # 1. Use NUMBER OF TESTS for accuracy
+                if num_tests_col:
+                    stock_count = int(pd.to_numeric(stock_df[num_tests_col], errors='coerce').fillna(0).sum())
+                    bottom_count = int(pd.to_numeric(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'][num_tests_col], errors='coerce').fillna(0).sum())
+                    fill_count = int(pd.to_numeric(comp_df[comp_df['Loc_Category'] == 'Fill'][num_tests_col], errors='coerce').fillna(0).sum())
+                else:
+                    stock_count = len(stock_df)
+                    bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'])
+                    fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill'])
                 
+                # 4. Avg 200 for Stockpile ONLY
+                avg_200 = pd.to_numeric(stock_df['#200'], errors='coerce').mean() if '#200' in stock_df.columns else np.nan
+                
+                # Remove Arabic
                 cc1, cc2, cc3, cc4 = st.columns(4)
-                create_card(cc1, "Stockpile (مشون)", stock_count)
-                create_card(cc2, "Bottom Excavation (قاع حفر)", bottom_count)
-                create_card(cc3, "Fill Samples (ردم)", fill_count)
-                create_card(cc4, "Avg Sieve #200 (متوسط منخل)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
+                create_card(cc1, "Stockpile Tests", stock_count)
+                create_card(cc2, "Bottom Excavation Tests", bottom_count)
+                create_card(cc3, "Fill Tests", fill_count)
+                create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
                 
-                # ==========================================
-                # 🔥 NEW KPI PROGRESS BAR: Required vs Executed 🔥
-                # ==========================================
+                # 2. Target vs Required & Overqualified Check
                 if 'Required Quantity' in comp_df.columns:
                     req_qty = pd.to_numeric(comp_df['Required Quantity'], errors='coerce').max()
                     if pd.notna(req_qty) and req_qty > 0:
-                        remaining_samples = max(0, int(req_qty) - stock_count)
-                        progress_pct = min(100, (stock_count / int(req_qty)) * 100)
+                        diff = stock_count - int(req_qty)
+                        if diff >= 0:
+                            status_msg = f"<span style='color: #2ecc71;'>Target Exceeded (+{diff} Tests)</span>"
+                            progress_pct = 100
+                            prog_color = "linear-gradient(90deg, #2ecc71, #27ae60)"
+                        else:
+                            status_msg = f"<span style='color: #ffaa00;'>Missing {abs(diff)} Tests</span>"
+                            progress_pct = min(100, (stock_count / int(req_qty)) * 100)
+                            prog_color = "linear-gradient(90deg, #00d2ff, #2ecc71)"
                         
                         st.markdown(f"""
                         <div style="background: rgba(10, 20, 33, 0.8); padding: 20px; border-radius: 15px; border-left: 5px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 15px;">🎯 Stockpile Target Achievement (إنجاز عينات المشون)</h4>
+                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 15px;">🎯 Stockpile Target Achievement</h4>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="color: #d1d5da; font-size: 15px;">Target Required (الكمية المطلوبة): <b style="color: white; font-size: 18px;">{int(req_qty)}</b></span>
-                                <span style="color: #2ecc71; font-size: 15px;">Executed (المنفذ): <b style="color: white; font-size: 18px;">{stock_count}</b></span>
-                                <span style="color: #ffaa00; font-size: 15px;">Remaining (المتبقي): <b style="color: white; font-size: 18px;">{remaining_samples}</b></span>
+                                <span style="color: #d1d5da; font-size: 15px;">Target Required: <b style="color: white; font-size: 18px;">{int(req_qty)}</b></span>
+                                <span style="color: #00d2ff; font-size: 15px;">Executed Tests: <b style="color: white; font-size: 18px;">{stock_count}</b></span>
+                                <span style="font-size: 15px; font-weight: bold;">Status: {status_msg}</span>
                             </div>
-                            <div class="prog-bg" style="height: 10px; background: rgba(255,255,255,0.05);"><div class="prog-fill" style="width: {progress_pct}%; background: linear-gradient(90deg, #00d2ff, #2ecc71);"></div></div>
+                            <div class="prog-bg" style="height: 10px; background: rgba(255,255,255,0.05);"><div class="prog-fill" style="width: {progress_pct}%; background: {prog_color};"></div></div>
                         </div>
                         """, unsafe_allow_html=True)
                 
+                # 3. AI Engineer Recommendation based on Fill/Stockpile timing
+                if 'Date ( test)' in comp_df.columns:
+                    time_analysis_df = comp_df.dropna(subset=['Date ( test)']).copy()
+                    time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
+                    fill_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Fill'].groupby('Month').size()
+                    stock_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Stockpile'].groupby('Month').size()
+
+                    if not fill_by_month.empty:
+                        peak_fill_month = fill_by_month.idxmax()
+                        peak_fill_val = fill_by_month.max()
+                        stock_in_peak = stock_by_month.get(peak_fill_month, 0)
+                        
+                        st.markdown(f"""
+                        <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                            <h4 style="color: #2ecc71; margin: 0 0 5px 0;">🤖 AI Engineer Recommendation</h4>
+                            <p style="color: #d1d5da; margin: 0; font-size: 14px; line-height: 1.6;">
+                            <b>Analysis:</b> High filling activity (DPL/Fill) detected in <b>{peak_fill_month}</b> ({peak_fill_val} submittals logged). Correlating Stockpile test volume during this period is {stock_in_peak}. <br>
+                            <b>Action:</b> Consider proactively scheduling more Stockpile source approvals ahead of such high-volume fill operations to maintain material quality buffers and prevent bottlenecks.
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
                 ch_col1, ch_col2 = st.columns(2)
                 with ch_col1:
                     if 'Classification' in stock_df.columns and not stock_df.empty:
                         class_counts = stock_df['Classification'].value_counts().reset_index()
                         class_counts.columns = ['Classification', 'Count']
                         fig_class = px.pie(class_counts, names='Classification', values='Count', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
-                        fig_class.update_traces(textinfo='label+value') # Show numbers instead of just percent
+                        fig_class.update_traces(textinfo='label+value')
                         fig_class = style_3d_glassy(fig_class, chart_type="pie")
                         st.plotly_chart(fig_class, use_container_width=True)
                     else:
@@ -943,7 +982,7 @@ def render_dashboard():
                         
                 with ch_col2:
                     if 'sample status' in stock_df.columns and not stock_df.empty:
-                        fig_stock_status = px.pie(stock_df, names='sample status', title=f"Stockpile Approval/Rejection Rate (عينات المشون)", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                        fig_stock_status = px.pie(stock_df, names='sample status', title=f"Stockpile Approval/Rejection Rate", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
                         fig_stock_status.update_traces(textinfo='label+value')
                         fig_stock_status = style_3d_glassy(fig_stock_status, chart_type="pie")
                         st.plotly_chart(fig_stock_status, use_container_width=True)
@@ -957,7 +996,7 @@ def render_dashboard():
                         time_df['Month'] = time_df['Date ( test)'].dt.strftime('%b %Y')
                         time_df['Month_Sort'] = time_df['Date ( test)'].dt.to_period('M')
                         monthly_stock = time_df.groupby(['Month_Sort', 'Month']).size().reset_index(name='Count').sort_values('Month_Sort')
-                        fig_timeline = px.bar(monthly_stock, x='Month', y='Count', title="Stockpile Tests Timeline (تواريخ مشاون الشركة)", text_auto=True, color_discrete_sequence=['#ffaa00'])
+                        fig_timeline = px.bar(monthly_stock, x='Month', y='Count', title="Stockpile Tests Timeline", text_auto=True, color_discrete_sequence=['#ffaa00'])
                         fig_timeline = style_3d_glassy(fig_timeline, chart_type="bar")
                         st.plotly_chart(fig_timeline, use_container_width=True)
                     else:
