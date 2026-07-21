@@ -322,6 +322,11 @@ def render_dashboard():
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
         df.columns = df.columns.str.strip() 
+        
+        # Handle 'Company' vs 'Company Name' variation safely
+        if 'Company Name' not in df.columns and 'Company' in df.columns:
+            df.rename(columns={'Company': 'Company Name'}, inplace=True)
+            
         if 'Test Type' in df.columns: df['Test Type'] = df['Test Type'].str.strip().str.upper()
         if 'Date ( test)' in df.columns: df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
         if 'Date( SUB)' in df.columns: df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce', dayfirst=True)
@@ -793,9 +798,6 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        # ==========================================
-        # 🔥 UPDATED: Workload Charts (Now counting TEST POINTS instead of Submittals) 🔥
-        # ==========================================
         chart_col1, chart_col2 = st.columns(2)
         with chart_col1:
             if 'Company Name' in filtered_df.columns and 'Test Type' in filtered_df.columns:
@@ -892,29 +894,83 @@ def render_dashboard():
             if comp_list:
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", comp_list)
                 comp_df = mat_df[mat_df['Company Name'] == selected_comp]
-                stock_count = len(comp_df[comp_df['Loc_Category'] == 'Stockpile'])
+                
+                stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile']
+                stock_count = len(stock_df)
                 bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'])
                 fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill'])
-                cc1, cc2, cc3 = st.columns(3)
-                create_card(cc1, "Stockpile Samples", stock_count)
-                create_card(cc2, "Bottom Excavation", bottom_count)
-                create_card(cc3, "Fill Samples", fill_count)
+                
+                avg_200 = pd.to_numeric(comp_df['#200'], errors='coerce').mean() if '#200' in comp_df.columns else np.nan
+                
+                cc1, cc2, cc3, cc4 = st.columns(4)
+                create_card(cc1, "Stockpile (مشون)", stock_count)
+                create_card(cc2, "Bottom Excavation (قاع حفر)", bottom_count)
+                create_card(cc3, "Fill Samples (ردم)", fill_count)
+                create_card(cc4, "Avg Sieve #200 (متوسط منخل)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
+                
+                # ==========================================
+                # 🔥 NEW KPI PROGRESS BAR: Required vs Executed 🔥
+                # ==========================================
+                if 'Required Quantity' in comp_df.columns:
+                    req_qty = pd.to_numeric(comp_df['Required Quantity'], errors='coerce').max()
+                    if pd.notna(req_qty) and req_qty > 0:
+                        remaining_samples = max(0, int(req_qty) - stock_count)
+                        progress_pct = min(100, (stock_count / int(req_qty)) * 100)
+                        
+                        st.markdown(f"""
+                        <div style="background: rgba(10, 20, 33, 0.8); padding: 20px; border-radius: 15px; border-left: 5px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 15px;">🎯 Stockpile Target Achievement (إنجاز عينات المشون)</h4>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <span style="color: #d1d5da; font-size: 15px;">Target Required (الكمية المطلوبة): <b style="color: white; font-size: 18px;">{int(req_qty)}</b></span>
+                                <span style="color: #2ecc71; font-size: 15px;">Executed (المنفذ): <b style="color: white; font-size: 18px;">{stock_count}</b></span>
+                                <span style="color: #ffaa00; font-size: 15px;">Remaining (المتبقي): <b style="color: white; font-size: 18px;">{remaining_samples}</b></span>
+                            </div>
+                            <div class="prog-bg" style="height: 10px; background: rgba(255,255,255,0.05);"><div class="prog-fill" style="width: {progress_pct}%; background: linear-gradient(90deg, #00d2ff, #2ecc71);"></div></div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
                 ch_col1, ch_col2 = st.columns(2)
                 with ch_col1:
-                    stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile']
                     if 'Classification' in stock_df.columns and not stock_df.empty:
-                        fig_class = px.pie(stock_df, names='Classification', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
+                        class_counts = stock_df['Classification'].value_counts().reset_index()
+                        class_counts.columns = ['Classification', 'Count']
+                        fig_class = px.pie(class_counts, names='Classification', values='Count', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
+                        fig_class.update_traces(textinfo='label+value') # Show numbers instead of just percent
                         fig_class = style_3d_glassy(fig_class, chart_type="pie")
                         st.plotly_chart(fig_class, use_container_width=True)
                     else:
                         st.info(f"No Stockpile classification data logged for {selected_comp}.")
+                        
                 with ch_col2:
+                    if 'sample status' in stock_df.columns and not stock_df.empty:
+                        fig_stock_status = px.pie(stock_df, names='sample status', title=f"Stockpile Approval/Rejection Rate (عينات المشون)", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                        fig_stock_status.update_traces(textinfo='label+value')
+                        fig_stock_status = style_3d_glassy(fig_stock_status, chart_type="pie")
+                        st.plotly_chart(fig_stock_status, use_container_width=True)
+                    else:
+                        st.info(f"No Stockpile status data logged for {selected_comp}.")
+
+                ch_col3, ch_col4 = st.columns(2)
+                with ch_col3:
+                    if 'Date ( test)' in stock_df.columns and not stock_df.empty:
+                        time_df = stock_df.dropna(subset=['Date ( test)']).copy()
+                        time_df['Month'] = time_df['Date ( test)'].dt.strftime('%b %Y')
+                        time_df['Month_Sort'] = time_df['Date ( test)'].dt.to_period('M')
+                        monthly_stock = time_df.groupby(['Month_Sort', 'Month']).size().reset_index(name='Count').sort_values('Month_Sort')
+                        fig_timeline = px.bar(monthly_stock, x='Month', y='Count', title="Stockpile Tests Timeline (تواريخ مشاون الشركة)", text_auto=True, color_discrete_sequence=['#ffaa00'])
+                        fig_timeline = style_3d_glassy(fig_timeline, chart_type="bar")
+                        st.plotly_chart(fig_timeline, use_container_width=True)
+                    else:
+                        st.info("No Date data available to show Stockpile timeline.")
+
+                with ch_col4:
                     if 'sample status' in comp_df.columns and not comp_df.empty:
-                        fig_status = px.pie(comp_df, names='sample status', title=f"Overall Approval/Rejection Rate for {selected_comp}", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                        fig_status = px.pie(comp_df, names='sample status', title=f"Overall Approval Rate (All Tests) for {selected_comp}", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                        fig_status.update_traces(textinfo='label+percent')
                         fig_status = style_3d_glassy(fig_status, chart_type="pie")
                         st.plotly_chart(fig_status, use_container_width=True)
                     else:
-                        st.info(f"No status data logged for {selected_comp}.")
+                        st.info(f"No overall status data logged for {selected_comp}.")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
