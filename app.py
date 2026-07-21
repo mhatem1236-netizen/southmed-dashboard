@@ -906,8 +906,22 @@ def render_dashboard():
                     bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'])
                     fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill'])
                 
-                # 2. Avg 200 for Stockpile ONLY
-                avg_200 = pd.to_numeric(stock_df['#200'], errors='coerce').mean() if '#200' in stock_df.columns else np.nan
+                # 2. Avg 200 for Stockpile ONLY (Smart Format Handling)
+                col_200 = next((c for c in stock_df.columns if '200' in str(c)), None)
+                if col_200 and not stock_df.empty:
+                    # 1. تحويل كل العمود لنصوص للتعامل مع أي صيغة
+                    clean_200 = stock_df[col_200].astype(str)
+                    
+                    # 2. مسح علامة % لو موجودة ومسح أي مسافات فاضية
+                    clean_200 = clean_200.str.replace('%', '', regex=False).str.strip()
+                    
+                    # 3. تحويل الداتا كلها لأرقام صافية، وتجاهل الخلايا الفاضية
+                    clean_200 = pd.to_numeric(clean_200, errors='coerce')
+                    
+                    # 4. حساب المتوسط الدقيق
+                    avg_200 = clean_200.mean()
+                else:
+                    avg_200 = np.nan
                 
                 # Clean UI Text (English Only)
                 cc1, cc2, cc3, cc4 = st.columns(4)
