@@ -416,6 +416,7 @@ def render_dashboard():
         </div>
         """
         st.markdown(ticker_html, unsafe_allow_html=True)
+
         worst_office_name = "N/A"
         worst_office_delay = 0
         if 'Done BY' in filtered_df.columns and 'DURATION' in filtered_df.columns:
@@ -884,14 +885,80 @@ def render_dashboard():
             summary_pivot = summary_pivot[existing_cols]
             st.dataframe(summary_pivot, use_container_width=True)
             st.divider()
+
+            # ==========================================
+            # 💡 SMART LOOKUP DICTIONARY (Fixes the mismatch issue)
+            # ==========================================
+            target_dict = {}
+            if 'Company' in df.columns and 'Required Quantity' in df.columns:
+                # فصلنا العمودين بتوع المرجع لوحدهم علشان الفلترة متبوظهمش
+                lookup_df = df[['Company', 'Required Quantity']].dropna(subset=['Company'])
+                for _, row in lookup_df.iterrows():
+                    c_key = str(row['Company']).strip()
+                    c_qty = pd.to_numeric(row['Required Quantity'], errors='coerce')
+                    if pd.notna(c_qty):
+                        target_dict[c_key] = c_qty
+
+            # ==========================================
+            # 📊 MASTER STOCKPILE REPORT (CSV EXPORT)
+            # ==========================================
+            st.markdown("#### 📥 Master Stockpile Targets Report (All Contractors)")
             
+            report_data = []
+            all_log_companies = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
+            
+            for c_name in all_log_companies:
+                c_name_clean = str(c_name).strip()
+                
+                # 1. حساب العينات المنفذة للمشون فقط
+                c_df_stock = mat_df[(mat_df['Company Name'] == c_name) & (mat_df['Loc_Category'] == 'Stockpile')]
+                if num_tests_col:
+                    exec_qty = pd.to_numeric(c_df_stock[num_tests_col], errors='coerce').fillna(0).sum()
+                else:
+                    exec_qty = len(c_df_stock)
+                exec_qty = int(exec_qty)
+                
+                # 2. جلب الكمية المطلوبة من القاموس الذكي
+                req_qty = target_dict.get(c_name_clean, 0)
+                req_qty = int(req_qty)
+                
+                # 3. حساب الفرق وتحديد الحالة
+                diff = exec_qty - req_qty
+                if req_qty > 0:
+                    status = "✅ Target Exceeded / Complete" if diff >= 0 else f"⚠️ Missing {abs(diff)} Tests"
+                else:
+                    status = "Not Defined in Target List"
+                
+                report_data.append({
+                    "Contractor Name": c_name_clean,
+                    "Executed Stockpile Tests": exec_qty,
+                    "Required Target": req_qty if req_qty > 0 else "N/A",
+                    "Difference (+/-)": diff if req_qty > 0 else "N/A",
+                    "Status": status
+                })
+                
+            report_df = pd.DataFrame(report_data)
+            
+            # عرض الجدول مع زرار التحميل
+            st.dataframe(report_df, use_container_width=True)
+            
+            csv_export = report_df.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label="📥 Download Stockpile Master Report (CSV)",
+                data=csv_export,
+                file_name=f"Stockpile_Targets_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                type="primary"
+            )
+            
+            st.divider()
+
             # ==========================================
             # 🔥 BI INDIVIDUAL CONTRACTOR DEEP DIVE 🔥
             # ==========================================
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
-            comp_list = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
-            if comp_list:
-                selected_comp = st.selectbox("Select a Contractor to Analyze:", comp_list)
+            if all_log_companies:
+                selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies)
                 comp_df = mat_df[mat_df['Company Name'] == selected_comp]
                 
                 stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile']
@@ -909,16 +976,8 @@ def render_dashboard():
                 # 2. Avg 200 for Stockpile ONLY (Smart Format Handling)
                 col_200 = next((c for c in stock_df.columns if '200' in str(c)), None)
                 if col_200 and not stock_df.empty:
-                    # 1. تحويل كل العمود لنصوص للتعامل مع أي صيغة
-                    clean_200 = stock_df[col_200].astype(str)
-                    
-                    # 2. مسح علامة % لو موجودة ومسح أي مسافات فاضية
-                    clean_200 = clean_200.str.replace('%', '', regex=False).str.strip()
-                    
-                    # 3. تحويل الداتا كلها لأرقام صافية، وتجاهل الخلايا الفاضية
+                    clean_200 = stock_df[col_200].astype(str).str.replace('%', '', regex=False).str.strip()
                     clean_200 = pd.to_numeric(clean_200, errors='coerce')
-                    
-                    # 4. حساب المتوسط الدقيق
                     avg_200 = clean_200.mean()
                 else:
                     avg_200 = np.nan
@@ -930,17 +989,8 @@ def render_dashboard():
                 create_card(cc3, "Fill Tests", fill_count)
                 create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
                 
-                # 3. Target vs Required & Overqualified Check
-                req_qty = np.nan
-                # Read from the original main 'df' where the lookup column 'Company' matches the selected_comp
-                if 'Company' in df.columns and 'Required Quantity' in df.columns:
-                    match_row = df[df['Company'].astype(str).str.strip() == selected_comp.strip()]
-                    if not match_row.empty:
-                        req_qty = pd.to_numeric(match_row['Required Quantity'], errors='coerce').max()
-                
-                # Fallback if 'Company' lookup column is missing but Required Quantity exists in comp_df
-                if pd.isna(req_qty) and 'Required Quantity' in comp_df.columns:
-                    req_qty = pd.to_numeric(comp_df['Required Quantity'], errors='coerce').max()
+                # 3. Target vs Required (Using the Smart Dictionary)
+                req_qty = target_dict.get(selected_comp.strip(), np.nan)
 
                 if pd.notna(req_qty) and req_qty > 0:
                     req_qty_int = int(req_qty)
