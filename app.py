@@ -323,6 +323,9 @@ def render_dashboard():
         df = pd.read_csv(uploaded_file)
         df.columns = df.columns.str.strip() 
         
+        if 'Company Name' not in df.columns and 'Company' in df.columns:
+            df.rename(columns={'Company': 'Company Name'}, inplace=True)
+            
         if 'Test Type' in df.columns: df['Test Type'] = df['Test Type'].str.strip().str.upper()
         if 'Date ( test)' in df.columns: df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
         if 'Date( SUB)' in df.columns: df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce', dayfirst=True)
@@ -416,7 +419,6 @@ def render_dashboard():
         </div>
         """
         st.markdown(ticker_html, unsafe_allow_html=True)
-
         worst_office_name = "N/A"
         worst_office_delay = 0
         if 'Done BY' in filtered_df.columns and 'DURATION' in filtered_df.columns:
@@ -947,6 +949,7 @@ def render_dashboard():
                     
                     battalion_col = next((c for c in comp_df.columns if 'BATTAL' in c.upper()), None)
                     zone_col = next((c for c in comp_df.columns if 'ZONE' in c.upper()), None)
+                    elment_col = next((c for c in comp_df.columns if 'ELMEN' in c.upper() or 'ELEMENT' in c.upper()), None)
                     
                     total_tests_360 = int(pd.to_numeric(comp_df[num_tests_col], errors='coerce').fillna(0).sum()) if num_tests_col else len(comp_df)
                     battalions_count = comp_df[battalion_col].nunique() if battalion_col else "N/A"
@@ -957,7 +960,7 @@ def render_dashboard():
                     create_card(c1, "Total Test Points", total_tests_360)
                     create_card(c2, "Active Battalions", battalions_count)
                     create_card(c3, "Active Zones", zones_count)
-                    create_card(c4, "Avg Delay (Days)", f"{avg_dur_360:.1f}" if isinstance(avg_dur_360, float) else "N/A")
+                    create_card(c4, "Avg Delay (Days)", f"{avg_dur_360:.1f}" if pd.notna(avg_dur_360) else "N/A")
                     
                     if battalion_col and zone_col:
                         st.markdown("#### 🗺️ Spatial Footprint (Battalion ➔ Zone)")
@@ -979,42 +982,72 @@ def render_dashboard():
                             st.plotly_chart(fig_qual, use_container_width=True)
                             
                     with col_q2:
-                        if 'layer' in comp_df.columns and zone_col:
-                            st.markdown("#### 📈 Layer Progression by Zone")
-                            layer_df = comp_df.copy()
-                            layer_df['Layer_Num'] = layer_df['layer'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
-                            layer_df = layer_df[layer_df['Layer_Num'] > 0]
-                            if not layer_df.empty:
-                                layer_df = layer_df.groupby([zone_col, 'layer']).size().reset_index(name='Count')
-                                fig_layer = px.bar(layer_df, x=zone_col, y='Count', color='layer', title="Layer Activity per Zone", color_discrete_sequence=NEON_COLORS)
-                                fig_layer = style_3d_glassy(fig_layer, chart_type="bar")
-                                st.plotly_chart(fig_layer, use_container_width=True)
-                            else:
-                                st.info("No numerical layer data found.")
+                        if elment_col:
+                            st.markdown("#### 🏗️ Workload by Element")
+                            el_df = comp_df.groupby(elment_col).size().reset_index(name='Count').sort_values('Count', ascending=False)
+                            fig_elment = px.bar(el_df.head(15), x=elment_col, y='Count', title="Top 15 Elements by Submittals", color=elment_col, color_discrete_sequence=NEON_COLORS)
+                            fig_elment = style_3d_glassy(fig_elment, chart_type="bar")
+                            st.plotly_chart(fig_elment, use_container_width=True)
+                        else:
+                            st.info("No Element column found for workload breakdown.")
                                 
                     col_d1, col_d2 = st.columns(2)
                     with col_d1:
-                        if 'Done BY' in comp_df.columns and 'DURATION' in comp_df.columns:
-                            st.markdown("#### ⏳ Delay Analysis by Review Office")
-                            delay_df = comp_df.groupby('Done BY')['DURATION'].mean().reset_index()
-                            fig_delay = px.bar(delay_df, x='Done BY', y='DURATION', title="Average Delay (Days) per Office", text_auto='.1f', color_discrete_sequence=['#ffaa00'])
-                            fig_delay = style_3d_glassy(fig_delay, chart_type="bar")
-                            st.plotly_chart(fig_delay, use_container_width=True)
+                        if 'Done BY' in comp_df.columns:
+                            st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
+                            off_df = comp_df.groupby('Done BY').size().reset_index(name='Count')
+                            fig_off = px.pie(off_df, names='Done BY', values='Count', hole=0.4, title="Submittal Volume per Review Office", color_discrete_sequence=NEON_COLORS)
+                            fig_off.update_traces(textinfo='label+value')
+                            fig_off = style_3d_glassy(fig_off, chart_type="pie")
+                            st.plotly_chart(fig_off, use_container_width=True)
                             
                     with col_d2:
-                        if 'sample status' in comp_df.columns and 'serial' in comp_df.columns:
-                            st.markdown("#### 🚨 Red Flags Radar (Pending Fixes)")
+                        if 'sample status' in comp_df.columns and 'layer' in comp_df.columns and elment_col:
+                            st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
+                            st.caption("Shows rejections ONLY IF the same Layer/Element wasn't approved later.")
+                            
                             rejected_mask = comp_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                            red_flags = comp_df[rejected_mask]
+                            accepted_mask = comp_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                            
+                            # Create a unique identifier for physical location
+                            comp_df_rf = comp_df.copy()
+                            comp_df_rf['Loc_ID'] = comp_df_rf[elment_col].astype(str) + "_" + comp_df_rf['layer'].astype(str)
+                            
+                            approved_locs = set(comp_df_rf[accepted_mask]['Loc_ID'].unique())
+                            
+                            # Filter rejections: only keep those whose Loc_ID is NOT in approved_locs
+                            red_flags = comp_df_rf[rejected_mask & (~comp_df_rf['Loc_ID'].isin(approved_locs))]
+                            
                             if not red_flags.empty:
-                                display_cols = ['serial', 'sample status']
+                                display_cols = ['serial', 'sample status', elment_col, 'layer']
                                 if battalion_col: display_cols.append(battalion_col)
-                                if zone_col: display_cols.append(zone_col)
                                 if 'Test Type' in red_flags.columns: display_cols.append('Test Type')
-                                st.dataframe(red_flags[display_cols].head(100), use_container_width=True)
-                                st.caption(f"Showing up to 100 unresolved items. Total: {len(red_flags)}")
+                                existing_cols = [c for c in display_cols if c in red_flags.columns]
+                                st.dataframe(red_flags[existing_cols].head(100), use_container_width=True)
+                                st.caption(f"Total unresolved layers: {len(red_flags)}")
                             else:
-                                st.success("✅ No pending rejections or revisions for this contractor!")
+                                st.success("✅ All rejected layers have been successfully re-tested and approved!")
+                        else:
+                            st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
+
+                    # Add Timeline comparison across Battalions/Elements
+                    if battalion_col and elment_col and 'Date ( test)' in comp_df.columns:
+                        st.markdown("#### ⏱️ Inter-Battalion Element Timeline Analysis")
+                        st.caption("Evaluates contractor speed and start/end dates for each element across different battalions.")
+                        time_df = comp_df.dropna(subset=['Date ( test)'])
+                        if not time_df.empty:
+                            timeline = time_df.groupby([battalion_col, elment_col]).agg(
+                                Start_Date=('Date ( test)', 'min'),
+                                End_Date=('Date ( test)', 'max'),
+                                Total_Submittals=('Date ( test)', 'count')
+                            ).reset_index()
+                            timeline['Duration (Days)'] = (timeline['End_Date'] - timeline['Start_Date']).dt.days
+                            timeline['Start_Date'] = timeline['Start_Date'].dt.strftime('%Y-%m-%d')
+                            timeline['End_Date'] = timeline['End_Date'].dt.strftime('%Y-%m-%d')
+                            timeline = timeline.sort_values([battalion_col, 'Start_Date'])
+                            st.dataframe(timeline, use_container_width=True)
+                        else:
+                            st.info("No valid dates found for timeline analysis.")
 
                 with tab_stockpile:
                     stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile']
