@@ -220,6 +220,11 @@ def render_login_screen():
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
+# Helper for Battalion strings
+def fmt_b(val):
+    s = str(val).strip()
+    return s[:-2] if s.endswith('.0') else s
+
 # ==========================================
 # 7. Main Dashboard Application
 # ==========================================
@@ -888,50 +893,77 @@ def render_dashboard():
             st.dataframe(summary_pivot, use_container_width=True)
             st.divider()
 
-            # 💡 SMART LOOKUP DICTIONARY
+            # 💡 SMART LOOKUP DICTIONARY (Battalion Aware)
             target_dict = {}
             battalion_col_main = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
             
+            def fmt_b(val):
+                s = str(val).strip()
+                return s[:-2] if s.endswith('.0') else s
+
             if 'Company' in df.columns and 'Required Quantity' in df.columns:
                 cols_to_extract = ['Company', 'Required Quantity']
-                if battalion_col_main and battalion_col_main in df.columns:
-                    cols_to_extract.append(battalion_col_main)
-                    
+                if battalion_col_main: cols_to_extract.append(battalion_col_main)
                 lookup_df = df[cols_to_extract].dropna(subset=['Company'])
+                
                 for _, row in lookup_df.iterrows():
                     c_key = str(row['Company']).strip()
                     c_qty = pd.to_numeric(row['Required Quantity'], errors='coerce')
                     if pd.notna(c_qty):
-                        target_dict[c_key] = c_qty
                         if battalion_col_main and pd.notna(row.get(battalion_col_main)):
-                            b_key = str(row[battalion_col_main]).strip()
+                            b_key = fmt_b(row[battalion_col_main])
                             target_dict[f"{c_key}_{b_key}"] = c_qty
+                        else:
+                            target_dict[c_key] = c_qty
 
-            st.markdown("#### 📥 Master Stockpile Targets Report (All Contractors)")
+            st.markdown("#### 📥 Master Stockpile Targets Report")
             report_data = []
             all_log_companies = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
+            battalion_col_stock = next((c for c in mat_df.columns if 'BATTAL' in c.upper()), None)
+
             for c_name in all_log_companies:
                 c_name_clean = str(c_name).strip()
                 c_df_stock = mat_df[(mat_df['Company Name'] == c_name) & (mat_df['Loc_Category'] == 'Stockpile')]
-                if num_tests_col:
-                    exec_qty = pd.to_numeric(c_df_stock[num_tests_col], errors='coerce').fillna(0).sum()
+                
+                if battalion_col_stock:
+                    bats = c_df_stock[battalion_col_stock].dropna().unique()
+                    if len(bats) == 0: bats = ["Unknown"]
                 else:
-                    exec_qty = len(c_df_stock)
-                exec_qty = int(exec_qty)
-                req_qty = target_dict.get(c_name_clean, 0)
-                req_qty = int(req_qty)
-                diff = exec_qty - req_qty
-                if req_qty > 0:
-                    status = "✅ Target Exceeded / Complete" if diff >= 0 else f"⚠️ Missing {abs(diff)} Tests"
-                else:
-                    status = "Not Defined in Target List"
-                report_data.append({
-                    "Contractor Name": c_name_clean,
-                    "Executed Stockpile Tests": exec_qty,
-                    "Required Target (Overall)": req_qty if req_qty > 0 else "N/A",
-                    "Difference (+/-)": diff if req_qty > 0 else "N/A",
-                    "Status": status
-                })
+                    bats = ["Global"]
+
+                for b in bats:
+                    b_clean = fmt_b(b)
+                    if b == "Global" or b == "Unknown":
+                        bat_stock_df = c_df_stock
+                        req_qty = target_dict.get(c_name_clean, np.nan)
+                    else:
+                        bat_stock_df = c_df_stock[c_df_stock[battalion_col_stock] == b]
+                        req_qty = target_dict.get(f"{c_name_clean}_{b_clean}", np.nan)
+
+                    if num_tests_col:
+                        exec_qty = int(pd.to_numeric(bat_stock_df[num_tests_col], errors='coerce').fillna(0).sum())
+                    else:
+                        exec_qty = len(bat_stock_df)
+
+                    if pd.notna(req_qty) and req_qty > 0:
+                        diff = exec_qty - int(req_qty)
+                        status = "✅ Target Exceeded" if diff >= 0 else f"⚠️ Missing {abs(diff)} Tests"
+                        req_val = int(req_qty)
+                        diff_val = diff
+                    else:
+                        status = "No Target Defined"
+                        req_val = "N/A"
+                        diff_val = "N/A"
+
+                    report_data.append({
+                        "Contractor Name": c_name_clean,
+                        "Battalion": b_clean if b not in ["Global", "Unknown"] else "N/A",
+                        "Executed Stockpile Tests": exec_qty,
+                        "Required Target": req_val,
+                        "Difference (+/-)": diff_val,
+                        "Status": status
+                    })
+                    
             report_df = pd.DataFrame(report_data)
             st.dataframe(report_df, use_container_width=True)
             csv_export = report_df.to_csv(index=False).encode('utf-8-sig')
@@ -1052,21 +1084,21 @@ def render_dashboard():
                             st.info("No valid dates found for timeline analysis.")
 
                 with tab_stockpile:
-                    battalion_col_stock = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
-                    
                     if battalion_col_stock:
                         avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
                         selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats)
                         
                         if selected_bat != "All Battalions":
                             comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
-                            req_qty = target_dict.get(f"{selected_comp.strip()}_{selected_bat}", np.nan)
-                            if pd.isna(req_qty):
-                                req_qty = target_dict.get(selected_comp.strip(), np.nan)
-                                if pd.notna(req_qty): st.caption("⚠️ Displaying overall company target (battalion-specific target not found in lookup).")
+                            b_key = fmt_b(selected_bat)
+                            req_qty = target_dict.get(f"{selected_comp.strip()}_{b_key}", np.nan)
                         else:
                             comp_bat_df = comp_df_full
-                            req_qty = target_dict.get(selected_comp.strip(), np.nan)
+                            m_keys = [k for k in target_dict.keys() if k.startswith(selected_comp.strip() + "_")]
+                            if m_keys:
+                                req_qty = sum(target_dict[k] for k in m_keys)
+                            else:
+                                req_qty = np.nan
                     else:
                         comp_bat_df = comp_df_full
                         req_qty = target_dict.get(selected_comp.strip(), np.nan)
@@ -1119,7 +1151,14 @@ def render_dashboard():
                             <div class="prog-bg" style="height: 10px; background: rgba(255,255,255,0.05);"><div class="prog-fill" style="width: {progress_pct}%; background: {prog_color};"></div></div>
                         </div>
                         """, unsafe_allow_html=True)
-                    
+                    else:
+                        st.markdown(f"""
+                        <div style="background: rgba(10, 20, 33, 0.8); padding: 20px; border-radius: 15px; border-left: 5px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                            <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;">🎯 Stockpile Target Achievement</h4>
+                            <p style="color: #d1d5da; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
                     if 'Date ( test)' in comp_bat_df.columns:
                         time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
                         time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
