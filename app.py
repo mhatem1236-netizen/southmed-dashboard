@@ -888,14 +888,24 @@ def render_dashboard():
             st.dataframe(summary_pivot, use_container_width=True)
             st.divider()
 
+            # 💡 SMART LOOKUP DICTIONARY
             target_dict = {}
+            battalion_col_main = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
+            
             if 'Company' in df.columns and 'Required Quantity' in df.columns:
-                lookup_df = df[['Company', 'Required Quantity']].dropna(subset=['Company'])
+                cols_to_extract = ['Company', 'Required Quantity']
+                if battalion_col_main and battalion_col_main in df.columns:
+                    cols_to_extract.append(battalion_col_main)
+                    
+                lookup_df = df[cols_to_extract].dropna(subset=['Company'])
                 for _, row in lookup_df.iterrows():
                     c_key = str(row['Company']).strip()
                     c_qty = pd.to_numeric(row['Required Quantity'], errors='coerce')
                     if pd.notna(c_qty):
                         target_dict[c_key] = c_qty
+                        if battalion_col_main and pd.notna(row.get(battalion_col_main)):
+                            b_key = str(row[battalion_col_main]).strip()
+                            target_dict[f"{c_key}_{b_key}"] = c_qty
 
             st.markdown("#### 📥 Master Stockpile Targets Report (All Contractors)")
             report_data = []
@@ -918,7 +928,7 @@ def render_dashboard():
                 report_data.append({
                     "Contractor Name": c_name_clean,
                     "Executed Stockpile Tests": exec_qty,
-                    "Required Target": req_qty if req_qty > 0 else "N/A",
+                    "Required Target (Overall)": req_qty if req_qty > 0 else "N/A",
                     "Difference (+/-)": diff if req_qty > 0 else "N/A",
                     "Status": status
                 })
@@ -933,28 +943,28 @@ def render_dashboard():
                 type="primary"
             )
             st.divider()
+
             # ==========================================
             # 🔥 BI INDIVIDUAL CONTRACTOR DEEP DIVE 🔥
             # ==========================================
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
             if all_log_companies:
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies)
-                comp_df = mat_df[mat_df['Company Name'] == selected_comp]
+                comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
                 
-                # 🗂️ التبويبات الجديدة (Tabs)
                 tab_360, tab_stockpile = st.tabs(["🌐 360° Corporate Profile", "⛰️ Stockpile Sourcing & AI Targets"])
                 
                 with tab_360:
                     st.markdown(f"### 🌐 Executive Profile: `{selected_comp}`")
                     
-                    battalion_col = next((c for c in comp_df.columns if 'BATTAL' in c.upper()), None)
-                    zone_col = next((c for c in comp_df.columns if 'ZONE' in c.upper()), None)
-                    elment_col = next((c for c in comp_df.columns if 'ELMEN' in c.upper() or 'ELEMENT' in c.upper()), None)
+                    battalion_col_360 = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
+                    zone_col_360 = next((c for c in comp_df_full.columns if 'ZONE' in c.upper()), None)
+                    elment_col_360 = next((c for c in comp_df_full.columns if 'ELMEN' in c.upper() or 'ELEMENT' in c.upper()), None)
                     
-                    total_tests_360 = int(pd.to_numeric(comp_df[num_tests_col], errors='coerce').fillna(0).sum()) if num_tests_col else len(comp_df)
-                    battalions_count = comp_df[battalion_col].nunique() if battalion_col else "N/A"
-                    zones_count = comp_df[zone_col].nunique() if zone_col else "N/A"
-                    avg_dur_360 = pd.to_numeric(comp_df['DURATION'], errors='coerce').mean() if 'DURATION' in comp_df.columns else "N/A"
+                    total_tests_360 = int(pd.to_numeric(comp_df_full[num_tests_col], errors='coerce').fillna(0).sum()) if num_tests_col else len(comp_df_full)
+                    battalions_count = comp_df_full[battalion_col_360].nunique() if battalion_col_360 else "N/A"
+                    zones_count = comp_df_full[zone_col_360].nunique() if zone_col_360 else "N/A"
+                    avg_dur_360 = pd.to_numeric(comp_df_full['DURATION'], errors='coerce').mean() if 'DURATION' in comp_df_full.columns else "N/A"
                     
                     c1, c2, c3, c4 = st.columns(4)
                     create_card(c1, "Total Test Points", total_tests_360)
@@ -962,30 +972,30 @@ def render_dashboard():
                     create_card(c3, "Active Zones", zones_count)
                     create_card(c4, "Avg Delay (Days)", f"{avg_dur_360:.1f}" if pd.notna(avg_dur_360) else "N/A")
                     
-                    if battalion_col and zone_col:
+                    if battalion_col_360 and zone_col_360:
                         st.markdown("#### 🗺️ Spatial Footprint (Battalion ➔ Zone)")
-                        tree_df_360 = comp_df.copy()
-                        tree_df_360[battalion_col] = tree_df_360[battalion_col].fillna('Unknown Battalion').astype(str)
-                        tree_df_360[zone_col] = tree_df_360[zone_col].fillna('Unknown Zone').astype(str)
-                        tree_grouped = tree_df_360.groupby([battalion_col, zone_col]).size().reset_index(name='Submittals')
-                        fig_tree_360 = px.treemap(tree_grouped, path=[battalion_col, zone_col], values='Submittals', title=f"Workload Distribution for {selected_comp}", color='Submittals', color_continuous_scale='Blues')
+                        tree_df_360 = comp_df_full.copy()
+                        tree_df_360[battalion_col_360] = tree_df_360[battalion_col_360].fillna('Unknown Battalion').astype(str)
+                        tree_df_360[zone_col_360] = tree_df_360[zone_col_360].fillna('Unknown Zone').astype(str)
+                        tree_grouped = tree_df_360.groupby([battalion_col_360, zone_col_360]).size().reset_index(name='Submittals')
+                        fig_tree_360 = px.treemap(tree_grouped, path=[battalion_col_360, zone_col_360], values='Submittals', title=f"Workload Distribution for {selected_comp}", color='Submittals', color_continuous_scale='Blues')
                         fig_tree_360 = style_3d_glassy(fig_tree_360, chart_type="treemap")
                         st.plotly_chart(fig_tree_360, use_container_width=True)
                         
                     col_q1, col_q2 = st.columns(2)
                     with col_q1:
-                        if battalion_col and 'sample status' in comp_df.columns:
+                        if battalion_col_360 and 'sample status' in comp_df_full.columns:
                             st.markdown("#### ⚖️ Quality by Battalion")
-                            qual_df = comp_df.groupby([battalion_col, 'sample status']).size().reset_index(name='Count')
-                            fig_qual = px.bar(qual_df, x=battalion_col, y='Count', color='sample status', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map={'ACCEPTED':'#2ecc71', 'APPROVED AS NOTED':'#00d2ff', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f'})
+                            qual_df = comp_df_full.groupby([battalion_col_360, 'sample status']).size().reset_index(name='Count')
+                            fig_qual = px.bar(qual_df, x=battalion_col_360, y='Count', color='sample status', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map={'ACCEPTED':'#2ecc71', 'APPROVED AS NOTED':'#00d2ff', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f'})
                             fig_qual = style_3d_glassy(fig_qual, chart_type="bar")
                             st.plotly_chart(fig_qual, use_container_width=True)
                             
                     with col_q2:
-                        if elment_col:
+                        if elment_col_360:
                             st.markdown("#### 🏗️ Workload by Element")
-                            el_df = comp_df.groupby(elment_col).size().reset_index(name='Count').sort_values('Count', ascending=False)
-                            fig_elment = px.bar(el_df.head(15), x=elment_col, y='Count', title="Top 15 Elements by Submittals", color=elment_col, color_discrete_sequence=NEON_COLORS)
+                            el_df = comp_df_full.groupby(elment_col_360).size().reset_index(name='Count').sort_values('Count', ascending=False)
+                            fig_elment = px.bar(el_df.head(15), x=elment_col_360, y='Count', title="Top 15 Elements by Submittals", color=elment_col_360, color_discrete_sequence=NEON_COLORS)
                             fig_elment = style_3d_glassy(fig_elment, chart_type="bar")
                             st.plotly_chart(fig_elment, use_container_width=True)
                         else:
@@ -993,34 +1003,27 @@ def render_dashboard():
                                 
                     col_d1, col_d2 = st.columns(2)
                     with col_d1:
-                        if 'Done BY' in comp_df.columns:
+                        if 'Done BY' in comp_df_full.columns:
                             st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
-                            off_df = comp_df.groupby('Done BY').size().reset_index(name='Count')
+                            off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count')
                             fig_off = px.pie(off_df, names='Done BY', values='Count', hole=0.4, title="Submittal Volume per Review Office", color_discrete_sequence=NEON_COLORS)
                             fig_off.update_traces(textinfo='label+value')
                             fig_off = style_3d_glassy(fig_off, chart_type="pie")
                             st.plotly_chart(fig_off, use_container_width=True)
                             
                     with col_d2:
-                        if 'sample status' in comp_df.columns and 'layer' in comp_df.columns and elment_col:
+                        if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
                             st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
                             st.caption("Shows rejections ONLY IF the same Layer/Element wasn't approved later.")
-                            
-                            rejected_mask = comp_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                            accepted_mask = comp_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                            
-                            # Create a unique identifier for physical location
-                            comp_df_rf = comp_df.copy()
-                            comp_df_rf['Loc_ID'] = comp_df_rf[elment_col].astype(str) + "_" + comp_df_rf['layer'].astype(str)
-                            
+                            rejected_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
+                            accepted_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                            comp_df_rf = comp_df_full.copy()
+                            comp_df_rf['Loc_ID'] = comp_df_rf[elment_col_360].astype(str) + "_" + comp_df_rf['layer'].astype(str)
                             approved_locs = set(comp_df_rf[accepted_mask]['Loc_ID'].unique())
-                            
-                            # Filter rejections: only keep those whose Loc_ID is NOT in approved_locs
                             red_flags = comp_df_rf[rejected_mask & (~comp_df_rf['Loc_ID'].isin(approved_locs))]
-                            
                             if not red_flags.empty:
-                                display_cols = ['serial', 'sample status', elment_col, 'layer']
-                                if battalion_col: display_cols.append(battalion_col)
+                                display_cols = ['serial', 'sample status', elment_col_360, 'layer']
+                                if battalion_col_360: display_cols.append(battalion_col_360)
                                 if 'Test Type' in red_flags.columns: display_cols.append('Test Type')
                                 existing_cols = [c for c in display_cols if c in red_flags.columns]
                                 st.dataframe(red_flags[existing_cols].head(100), use_container_width=True)
@@ -1030,13 +1033,12 @@ def render_dashboard():
                         else:
                             st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
 
-                    # Add Timeline comparison across Battalions/Elements
-                    if battalion_col and elment_col and 'Date ( test)' in comp_df.columns:
+                    if battalion_col_360 and elment_col_360 and 'Date ( test)' in comp_df_full.columns:
                         st.markdown("#### ⏱️ Inter-Battalion Element Timeline Analysis")
                         st.caption("Evaluates contractor speed and start/end dates for each element across different battalions.")
-                        time_df = comp_df.dropna(subset=['Date ( test)'])
+                        time_df = comp_df_full.dropna(subset=['Date ( test)'])
                         if not time_df.empty:
-                            timeline = time_df.groupby([battalion_col, elment_col]).agg(
+                            timeline = time_df.groupby([battalion_col_360, elment_col_360]).agg(
                                 Start_Date=('Date ( test)', 'min'),
                                 End_Date=('Date ( test)', 'max'),
                                 Total_Submittals=('Date ( test)', 'count')
@@ -1044,22 +1046,41 @@ def render_dashboard():
                             timeline['Duration (Days)'] = (timeline['End_Date'] - timeline['Start_Date']).dt.days
                             timeline['Start_Date'] = timeline['Start_Date'].dt.strftime('%Y-%m-%d')
                             timeline['End_Date'] = timeline['End_Date'].dt.strftime('%Y-%m-%d')
-                            timeline = timeline.sort_values([battalion_col, 'Start_Date'])
+                            timeline = timeline.sort_values([battalion_col_360, 'Start_Date'])
                             st.dataframe(timeline, use_container_width=True)
                         else:
                             st.info("No valid dates found for timeline analysis.")
 
                 with tab_stockpile:
-                    stock_df = comp_df[comp_df['Loc_Category'] == 'Stockpile']
+                    battalion_col_stock = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
+                    
+                    if battalion_col_stock:
+                        avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
+                        selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats)
+                        
+                        if selected_bat != "All Battalions":
+                            comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
+                            req_qty = target_dict.get(f"{selected_comp.strip()}_{selected_bat}", np.nan)
+                            if pd.isna(req_qty):
+                                req_qty = target_dict.get(selected_comp.strip(), np.nan)
+                                if pd.notna(req_qty): st.caption("⚠️ Displaying overall company target (battalion-specific target not found in lookup).")
+                        else:
+                            comp_bat_df = comp_df_full
+                            req_qty = target_dict.get(selected_comp.strip(), np.nan)
+                    else:
+                        comp_bat_df = comp_df_full
+                        req_qty = target_dict.get(selected_comp.strip(), np.nan)
+
+                    stock_df = comp_bat_df[comp_bat_df['Loc_Category'] == 'Stockpile']
                     
                     if num_tests_col:
                         stock_count = int(pd.to_numeric(stock_df[num_tests_col], errors='coerce').fillna(0).sum())
-                        bottom_count = int(pd.to_numeric(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'][num_tests_col], errors='coerce').fillna(0).sum())
-                        fill_count = int(pd.to_numeric(comp_df[comp_df['Loc_Category'] == 'Fill'][num_tests_col], errors='coerce').fillna(0).sum())
+                        bottom_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'][num_tests_col], errors='coerce').fillna(0).sum())
+                        fill_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Fill'][num_tests_col], errors='coerce').fillna(0).sum())
                     else:
                         stock_count = len(stock_df)
-                        bottom_count = len(comp_df[comp_df['Loc_Category'] == 'Bottom of Excavation'])
-                        fill_count = len(comp_df[comp_df['Loc_Category'] == 'Fill'])
+                        bottom_count = len(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'])
+                        fill_count = len(comp_bat_df[comp_bat_df['Loc_Category'] == 'Fill'])
                     
                     col_200 = next((c for c in stock_df.columns if '200' in str(c)), None)
                     if col_200 and not stock_df.empty:
@@ -1075,8 +1096,6 @@ def render_dashboard():
                     create_card(cc3, "Fill Tests", fill_count)
                     create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
                     
-                    req_qty = target_dict.get(selected_comp.strip(), np.nan)
-
                     if pd.notna(req_qty) and req_qty > 0:
                         req_qty_int = int(req_qty)
                         diff = stock_count - req_qty_int
@@ -1101,8 +1120,8 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    if 'Date ( test)' in comp_df.columns:
-                        time_analysis_df = comp_df.dropna(subset=['Date ( test)']).copy()
+                    if 'Date ( test)' in comp_bat_df.columns:
+                        time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
                         time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
                         fill_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Fill'].groupby('Month').size()
                         stock_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Stockpile'].groupby('Month').size()
@@ -1132,7 +1151,7 @@ def render_dashboard():
                             fig_class = style_3d_glassy(fig_class, chart_type="pie")
                             st.plotly_chart(fig_class, use_container_width=True)
                         else:
-                            st.info(f"No Stockpile classification data logged for {selected_comp}.")
+                            st.info(f"No Stockpile classification data logged.")
                             
                     with ch_col2:
                         if 'sample status' in stock_df.columns and not stock_df.empty:
@@ -1141,7 +1160,7 @@ def render_dashboard():
                             fig_stock_status = style_3d_glassy(fig_stock_status, chart_type="pie")
                             st.plotly_chart(fig_stock_status, use_container_width=True)
                         else:
-                            st.info(f"No Stockpile status data logged for {selected_comp}.")
+                            st.info(f"No Stockpile status data logged.")
 
                     ch_col3, ch_col4 = st.columns(2)
                     with ch_col3:
@@ -1157,13 +1176,13 @@ def render_dashboard():
                             st.info("No Date data available to show Stockpile timeline.")
 
                     with ch_col4:
-                        if 'sample status' in comp_df.columns and not comp_df.empty:
-                            fig_status = px.pie(comp_df, names='sample status', title=f"Overall Approval Rate (All Tests) for {selected_comp}", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                        if 'sample status' in comp_bat_df.columns and not comp_bat_df.empty:
+                            fig_status = px.pie(comp_bat_df, names='sample status', title=f"Overall Approval Rate (All Tests)", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
                             fig_status.update_traces(textinfo='label+percent')
                             fig_status = style_3d_glassy(fig_status, chart_type="pie")
                             st.plotly_chart(fig_status, use_container_width=True)
                         else:
-                            st.info(f"No overall status data logged for {selected_comp}.")
+                            st.info(f"No overall status data logged.")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
