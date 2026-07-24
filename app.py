@@ -24,7 +24,7 @@ if "theme" not in st.session_state:
     st.session_state["theme"] = "Dark"
 
 # ==========================================
-# 2. Dynamic UI/UX CSS Injection (UPDATED)
+# 2. Dynamic UI/UX CSS Injection (FIXED)
 # ==========================================
 def inject_custom_css():
     is_dark = st.session_state["theme"] == "Dark"
@@ -38,10 +38,6 @@ def inject_custom_css():
         text_main = "#ffffff"
         text_muted = "#8da3b9"
         title_color = "#ffaa00"
-        scroll_bg = "#050a11"
-        delta_up = "#2ecc71"
-        delta_down = "#e74c3c"
-        sidebar_text = "#ffffff"
     else:
         bg_main = "#F4F7F6"
         bg_sidebar = "#ffffff"
@@ -51,23 +47,23 @@ def inject_custom_css():
         text_main = "#2C3E50"      # لون الكلام الغامق في اللايت مود
         text_muted = "#5D6D7E"     # لون الكلام الثانوي
         title_color = "#2980B9"
-        scroll_bg = "#ecf0f1"
-        delta_up = "#27ae60"
-        delta_down = "#c0392b"
-        sidebar_text = "#2C3E50"
 
     custom_css = f"""
     <style>
-    @import url('[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap)');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
     
-    /* 🔴 FORCE TEXT COLORS EVERYWHERE 🔴 */
-    html, body, [class*="css"], .stMarkdown, .stText, p, span, div {{
-        font-family: 'Inter', sans-serif !important; 
+    /* 🔴 FIXED: تم إصلاح مشكلة الأيقونات بعدم إجبار الفونت على الـ spans 🔴 */
+    html, body, [class*="css"] {{
         color: {text_main} !important; 
+        font-family: 'Inter', sans-serif; 
     }}
     
-    h1, h2, h3, h4, h5, h6 {{ 
+    h1, h2, h3, h4, h5, h6, .login-title {{ 
         font-family: 'Montserrat', sans-serif !important; 
+        color: {text_main} !important;
+    }}
+    
+    p, .stMarkdown, label {{
         color: {text_main} !important;
     }}
     
@@ -75,11 +71,6 @@ def inject_custom_css():
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
     [data-testid="stHeader"] {{ background: transparent !important; }}
-    
-    /* Sidebar Text Fix */
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] div {{
-        color: {sidebar_text} !important;
-    }}
     
     /* Global Cards */
     .metric-card, .simulator-card, .leaderboard-card, .health-card, .custom-card {{ 
@@ -89,24 +80,20 @@ def inject_custom_css():
     }}
     
     /* Typography */
-    .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; }}
-    .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; }}
+    .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; font-family: 'Montserrat', sans-serif; }}
+    .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; font-family: 'Montserrat', sans-serif; }}
     .bi-title {{ color: {title_color} !important; font-size: 26px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; }}
     
-    /* Deltas & Progress */
-    .delta-up {{ color: {delta_up} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
-    .delta-down {{ color: {delta_down} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
+    /* Deltas & Alerts */
+    .delta-up {{ color: #2ecc71 !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
+    .delta-down {{ color: #e74c3c !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-neutral {{ color: {text_muted} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     
-    /* Dividers & Alerts */
+    /* Dividers */
     .gradient-divider {{ height: 2px; background: linear-gradient(90deg, transparent 0%, {title_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
-    
-    /* Warning Box Texts */
-    .stAlert p, .stAlert span {{ color: #1e3d59 !important; }}
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
-
 # ==========================================
 # 3. Authentication & User Management
 # ==========================================
