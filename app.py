@@ -11,14 +11,117 @@ import base64
 # ==========================================
 # 1. System Configuration & Constants
 # ==========================================
+st.set_page_config(page_title="Command Center BI Dashboard", layout="wide", initial_sidebar_state="expanded")
+
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
 
 USERS_DB_FILE = "users_db.csv"
 LOGIN_LOGS_FILE = "login_logs.csv"
 
+# Theme Initialization
+if "theme" not in st.session_state:
+    st.session_state["theme"] = "Dark"
+
 # ==========================================
-# 2. Authentication & User Management
+# 2. Dynamic UI/UX CSS Injection
+# ==========================================
+def inject_custom_css():
+    is_dark = st.session_state["theme"] == "Dark"
+    
+    if is_dark:
+        bg_main = "radial-gradient(circle at top right, #0b1a2e, #050a11)"
+        bg_sidebar = "rgba(5, 10, 17, 0.95)"
+        card_bg = "linear-gradient(145deg, rgba(20, 35, 54, 0.6), rgba(10, 20, 33, 0.9))"
+        card_border = "rgba(255, 170, 0, 0.15)"
+        card_shadow = "0 10px 30px rgba(0, 0, 0, 0.4)"
+        text_main = "#ffffff"
+        text_muted = "#8da3b9"
+        title_color = "#ffaa00"
+        scroll_bg = "#050a11"
+        delta_up = "#2ecc71"
+        delta_down = "#e74c3c"
+        glass_bg = "rgba(10, 20, 33, 0.8)"
+    else:
+        bg_main = "#F4F7F6"
+        bg_sidebar = "#ffffff"
+        card_bg = "#ffffff"
+        card_border = "rgba(0, 0, 0, 0.08)"
+        card_shadow = "0 8px 25px rgba(0, 0, 0, 0.05)"
+        text_main = "#2C3E50"
+        text_muted = "#7F8C8D"
+        title_color = "#2980B9"
+        scroll_bg = "#ecf0f1"
+        delta_up = "#27ae60"
+        delta_down = "#c0392b"
+        glass_bg = "rgba(255, 255, 255, 0.9)"
+
+    custom_css = f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
+    
+    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; color: {text_main}; }}
+    h1, h2, h3, h4, h5, h6 {{ font-family: 'Montserrat', sans-serif !important; }}
+    
+    /* Core Layout */
+    [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
+    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
+    [data-testid="stHeader"] {{ background: transparent !important; }}
+    
+    /* Global Cards */
+    .metric-card, .simulator-card, .leaderboard-card, .health-card, .custom-card {{ 
+        background: {card_bg}; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
+        padding: 25px; border-radius: 16px; border: 1px solid {card_border}; 
+        box-shadow: {card_shadow}; margin-bottom: 15px; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    }}
+    .metric-card:hover {{ transform: translateY(-8px); border-left: 4px solid #00d2ff; box-shadow: 0 15px 35px rgba(0, 210, 255, 0.2); }}
+    
+    /* Typography */
+    .metric-label {{ color: {text_muted}; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1.5px; font-family: 'Montserrat', sans-serif; }}
+    .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; font-family: 'Montserrat', sans-serif; }}
+    .bi-title {{ color: {title_color}; font-size: 26px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; }}
+    
+    /* Deltas & Progress */
+    .delta-up {{ color: {delta_up}; font-size: 14px; font-weight: bold; margin-top: 8px; }}
+    .delta-down {{ color: {delta_down}; font-size: 14px; font-weight: bold; margin-top: 8px; }}
+    .delta-neutral {{ color: {text_muted}; font-size: 14px; font-weight: bold; margin-top: 8px; }}
+    .prog-bg {{ width: 100%; background: rgba(127, 140, 141, 0.2); border-radius: 5px; margin-top: 15px; height: 6px; overflow: hidden; }}
+    .prog-fill {{ height: 100%; border-radius: 5px; transition: width 1s ease-in-out; }}
+    
+    /* Dividers & Alerts */
+    .gradient-divider {{ height: 2px; background: linear-gradient(90deg, transparent 0%, {title_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
+    .alert-banner {{ background: linear-gradient(90deg, rgba(231,76,60,0.9), rgba(192,57,43,0.9)); color: white; padding: 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(231,76,60,0.3); border-left: 5px solid #ffaa00; }}
+    
+    /* Ticker */
+    .ticker-wrap {{ background: {card_bg}; border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
+    .ticker {{ display: inline-block; padding-right: 100%; animation: ticker 35s linear infinite; }}
+    @keyframes ticker {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
+    .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; }}
+    .ticker-item span {{ color: #00d2ff; font-weight: 800; }}
+    
+    /* UI Details */
+    .stDataFrame {{ border: 1px solid {card_border}; border-radius: 12px; overflow: hidden; }}
+    .login-container {{ display: flex; justify-content: center; align-items: center; min-height: 80vh; }}
+    .login-title {{ color: {text_main}; font-weight: 800; text-align: center; margin-bottom: 20px; font-size: 24px; letter-spacing: 1px; font-family: 'Montserrat', sans-serif; }}
+    ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
+    ::-webkit-scrollbar-track {{ background: {scroll_bg}; }}
+    ::-webkit-scrollbar-thumb {{ background: rgba(0, 210, 255, 0.5); border-radius: 10px; }}
+    ::-webkit-scrollbar-thumb:hover {{ background: rgba(0, 210, 255, 0.8); }}
+    
+    @media print {{
+        * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
+        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, .ticker-wrap {{ display: none !important; }}
+        body, [data-testid="stAppViewContainer"] {{ background: #ffffff !important; color: #000 !important; }}
+        .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"] {{ background: #ffffff !important; border: 1px solid #ddd !important; box-shadow: none !important; page-break-inside: avoid !important; }}
+        .metric-value, .bi-title {{ -webkit-text-fill-color: #000 !important; color: #000 !important; }}
+        h1, h2, h3, h4, p, span, .metric-label {{ color: #333 !important; }}
+    }}
+    </style>
+    """
+    st.markdown(custom_css, unsafe_allow_html=True)
+
+# ==========================================
+# 3. Authentication & User Management
 # ==========================================
 def init_auth_system():
     if not os.path.exists(USERS_DB_FILE):
@@ -58,27 +161,35 @@ def authenticate_user(email, password):
     return False, "Invalid Email or Password."
 
 # ==========================================
-# 3. 3D Glassy Chart Styling Function
+# 4. 3D Glassy Chart Styling Function
 # ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
+    is_dark = st.session_state.get("theme", "Dark") == "Dark"
+    template = "plotly_dark" if is_dark else "plotly_white"
+    font_color = "#d1d5da" if is_dark else "#2C3E50"
+    grid_color = 'rgba(255,255,255,0.05)' if is_dark else 'rgba(0,0,0,0.05)'
+    line_color = 'rgba(255, 255, 255, 0.4)' if is_dark else 'rgba(0, 0, 0, 0.2)'
+    marker_line = 'white' if is_dark else '#2C3E50'
+
     fig.update_layout(
-        template="plotly_dark",
+        template=template,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Montserrat", color="#d1d5da", size=12),
-        margin=dict(t=50, b=20, l=20, r=20)
+        font=dict(family="Inter", color=font_color, size=12),
+        margin=dict(t=50, b=20, l=20, r=20),
+        title_font=dict(family="Montserrat", size=16, color=font_color)
     )
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
-        fig.update_traces(marker=dict(line=dict(color='rgba(255, 255, 255, 0.4)', width=1.5)), opacity=0.85)
+        fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85)
     elif chart_type == "line":
-        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=1.5)))
+        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color=marker_line, width=1.5)))
         
-    fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(255,255,255,0.05)')
+    fig.update_xaxes(showgrid=False, title_font=dict(family="Inter"))
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, title_font=dict(family="Inter"))
     return fig
 
 # ==========================================
-# 4. History Manager
+# 5. History Manager
 # ==========================================
 class HistoryManager:
     FILE_NAME = "project_history_log.csv"
@@ -116,57 +227,6 @@ class HistoryManager:
         elif diff < 0: return f'<div class="delta-down">▼ {diff_fmt} ({pct_str})</div>'
         else: return f'<div class="delta-neutral">➖ No change</div>'
 
-# ==========================================
-# 5. Page Config & CSS Styling
-# ==========================================
-st.set_page_config(page_title="Command Center BI Dashboard", layout="wide")
-
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&display=swap');
-    html, body, [class*="css"] { font-family: 'Montserrat', sans-serif !important; }
-    .login-container { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
-    .login-title { color: #1e3d59; font-weight: 800; text-align: center; margin-bottom: 20px; font-size: 24px; letter-spacing: 1px;}
-    [data-testid="stAppViewContainer"] { background: radial-gradient(circle at top right, #0b1a2e, #050a11) !important; }
-    [data-testid="stSidebar"] { background-color: rgba(5, 10, 17, 0.95) !important; border-right: 1px solid rgba(255, 170, 0, 0.1); }
-    .metric-card { background: linear-gradient(145deg, rgba(20, 35, 54, 0.6), rgba(10, 20, 33, 0.9)); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 25px; border-radius: 20px; text-align: center; border: 1px solid rgba(255, 170, 0, 0.15); border-left: 4px solid #ffaa00; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); margin-bottom: 15px; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .metric-card:hover { transform: translateY(-8px) scale(1.02); border-left: 4px solid #00d2ff; box-shadow: 0 15px 35px rgba(0, 210, 255, 0.25); }
-    .metric-label { color: #8da3b9; font-size: 14px; font-weight: 500; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1.5px;}
-    .metric-value { color: #ffffff !important; font-size: 38px; font-weight: 800; background: -webkit-linear-gradient(#ffffff, #a0aec0); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
-    .prog-bg { width: 100%; background: rgba(255,255,255,0.1); border-radius: 5px; margin-top: 15px; height: 6px; overflow: hidden;}
-    .prog-fill { height: 100%; border-radius: 5px; transition: width 1s ease-in-out;}
-    .stDataFrame { border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; overflow: hidden; }
-    .delta-up { color: #2ecc71; font-size: 14px; font-weight: bold; margin-top: 8px; text-shadow: 0 0 10px rgba(46, 204, 113, 0.4);}
-    .delta-down { color: #e74c3c; font-size: 14px; font-weight: bold; margin-top: 8px; text-shadow: 0 0 10px rgba(231, 76, 60, 0.4);}
-    .delta-neutral { color: #95a5a6; font-size: 14px; font-weight: bold; margin-top: 8px; }
-    .bi-title { color: #ffaa00; font-size: 28px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; text-shadow: 0px 0px 15px rgba(255, 170, 0, 0.3);}
-    .gradient-divider { height: 2px; background: linear-gradient(90deg, transparent 0%, rgba(255,170,0,0.8) 50%, transparent 100%); margin-top: 40px; margin-bottom: 40px; border: none; opacity: 0.6;}
-    .alert-banner { background: linear-gradient(90deg, rgba(231,76,60,0.9), rgba(192,57,43,0.9)); padding: 20px; border-radius: 15px; color: white; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(231,76,60,0.3); border-left: 5px solid #ffaa00;}
-    .simulator-card { background: linear-gradient(135deg, rgba(14, 36, 57, 0.7), rgba(46, 204, 113, 0.1)); backdrop-filter: blur(12px); padding: 25px; border-radius: 20px; border: 1px solid rgba(46, 204, 113, 0.4); text-align: center; margin-top: 15px; box-shadow: 0 8px 25px rgba(46, 204, 113, 0.15);}
-    .leaderboard-card { background: rgba(10, 20, 33, 0.7); padding: 25px; border-radius: 20px; border-left: 5px solid; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.3);}
-    .health-card { background: rgba(10, 20, 33, 0.8); backdrop-filter: blur(10px); padding: 15px 25px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);}
-    .ticker-wrap { width: 100%; overflow: hidden; background: linear-gradient(90deg, rgba(0, 210, 255, 0.1), rgba(0,0,0,0)); border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff;}
-    .ticker { display: inline-block; white-space: nowrap; padding-right: 100%; animation-iteration-count: infinite; animation-timing-function: linear; animation-name: ticker; animation-duration: 35s;}
-    @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-    .ticker-item { display: inline-block; padding: 0 2rem; font-weight: 500; color: #d1d5da; font-size: 14px;}
-    .ticker-item span { color: #ffaa00; font-weight: bold; }
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #050a11; }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 170, 0, 0.5); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 170, 0, 0.8); }
-    @media print {
-        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        body, [data-testid="stAppViewContainer"] { background: #050a11 !important; }
-        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, [data-testid="stSidebarCollapsedControl"], .ticker-wrap { display: none !important; }
-        .main .block-container { max-width: 100% !important; padding: 5mm !important; margin: 0 !important; }
-        .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"], .alert-banner { page-break-inside: avoid !important; background: #0b1a2e !important; border: 1px solid rgba(255, 170, 0, 0.4) !important; }
-        .metric-value, .bi-title { -webkit-text-fill-color: white !important; color: white !important; }
-        h1, h2, h3, h4, p, span, .metric-label { color: #d1d5da !important; }
-        .gradient-divider { display: none !important; }
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 def create_card(column, label, value, delta_html="", progress=None):
     if progress is not None:
         prog_color = "#2ecc71" if progress > 80 else ("#f1c40f" if progress > 50 else "#e74c3c")
@@ -191,6 +251,11 @@ def ai_assistant(query, data_summary):
     else:
         return "I am here to assist. Ask me about project logs, contractor performance, or quality control metrics."
 
+# Helper for Battalion strings
+def fmt_b(val):
+    s = str(val).strip()
+    return s[:-2] if s.endswith('.0') else s
+
 # ==========================================
 # 6. Login Screen Logic
 # ==========================================
@@ -198,10 +263,14 @@ def render_login_screen():
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
     col_space1, col_center, col_space2 = st.columns([1, 2, 1])
     with col_center:
-        st.markdown("""
-            <div style="background: white; padding: 50px; border-radius: 15px; box-shadow: 0px 10px 40px rgba(0,0,0,0.7);">
+        is_dark = st.session_state.get("theme", "Dark") == "Dark"
+        bg_color = "#ffffff" if not is_dark else "rgba(20, 35, 54, 0.8)"
+        text_col = "#1e3d59" if not is_dark else "#00d2ff"
+        
+        st.markdown(f"""
+            <div style="background: {bg_color}; padding: 50px; border-radius: 15px; box-shadow: 0px 10px 40px rgba(0,0,0,0.2);">
                 <div style="text-align:center; margin-bottom: 20px;">
-                    <h1 style="color: #1e3d59; font-weight: 800; margin:0; letter-spacing: 2px;">KK ENGINEERING</h1>
+                    <h1 style="color: {text_col}; font-weight: 800; margin:0; letter-spacing: 2px; font-family:'Montserrat', sans-serif;">KK ENGINEERING</h1>
                     <p style="color: #7f8c8d; font-size: 16px; margin:0;">Command Center Portal</p>
                 </div>
                 <hr style="border: 0.5px solid #eee; margin-bottom: 30px;">
@@ -220,10 +289,6 @@ def render_login_screen():
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Helper for Battalion strings
-def fmt_b(val):
-    s = str(val).strip()
-    return s[:-2] if s.endswith('.0') else s
 
 # ==========================================
 # 7. Main Dashboard Application
@@ -231,23 +296,45 @@ def fmt_b(val):
 def render_dashboard():
     user = st.session_state["current_user"]
     
+    # UI Dynamic Variables
+    is_dark = st.session_state.get("theme", "Dark") == "Dark"
+    ui = {
+        'text_main': '#ffffff' if is_dark else '#2C3E50',
+        'text_muted': '#8da3b9' if is_dark else '#7F8C8D',
+        'card_bg': 'rgba(10, 20, 33, 0.8)' if is_dark else '#ffffff',
+        'border_color': 'rgba(255, 255, 255, 0.1)' if is_dark else 'rgba(0,0,0,0.05)',
+        'shadow': '0 5px 15px rgba(0,0,0,0.4)' if is_dark else '0 5px 15px rgba(0,0,0,0.05)',
+        'highlight_bg': 'rgba(0,210,255,0.05)' if is_dark else 'rgba(52, 152, 219, 0.1)'
+    }
+    
     try: st.image("5.jpg", use_container_width=True)
     except: pass
 
     col_h1, col_h2 = st.columns([0.8, 0.2])
     with col_h1: st.title("Mega Infrastructure Command Center 🏗️⚡")
     with col_h2:
-        st.markdown(f"<div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center;'><span style='color:#d1d5da; font-size:12px;'>Logged in as</span><br><b style='color:#ffaa00;'>{user['Name']}</b><br><span style='color:#2ecc71; font-size:12px;'>{user['Role']} Account</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center;'><span style='color:{ui['text_muted']}; font-size:12px;'>Logged in as</span><br><b style='color:#ffaa00;'>{user['Name']}</b><br><span style='color:#2ecc71; font-size:12px;'>{user['Role']} Account</span></div>", unsafe_allow_html=True)
         if st.button("Logout", use_container_width=True):
             st.session_state["authenticated"] = False
             st.rerun()
+
+    # --- THEME TOGGLE IN SIDEBAR ---
+    st.sidebar.markdown("### 🎨 UI/UX Mode")
+    theme_col1, theme_col2 = st.sidebar.columns(2)
+    if theme_col1.button("🌙 Dark"):
+        st.session_state["theme"] = "Dark"
+        st.rerun()
+    if theme_col2.button("☀️ Light"):
+        st.session_state["theme"] = "Light"
+        st.rerun()
+    st.sidebar.divider()
 
     if user["Role"] == "Admin":
         with st.sidebar.expander("🔐 Admin Control Panel", expanded=False):
             st.markdown("#### User Management")
             users_df = pd.read_csv(USERS_DB_FILE)
             st.dataframe(users_df[["Name", "Email", "Role", "Status"]], use_container_width=True)
-            tab_add, tab_edit, tab_backup = st.tabs(["➕ Add User", "✏️ Edit/Delete", "💾 Backup DB"])
+            tab_add, tab_edit, tab_backup = st.tabs(["➕ Add", "✏️ Edit", "💾 Backup"])
             with tab_add:
                 new_email = st.text_input("New User Email", key="add_email")
                 new_pass = st.text_input("New Password", type="password", key="add_pass")
@@ -308,7 +395,7 @@ def render_dashboard():
     data_source = st.sidebar.selectbox("Connection Type:", ["Local CSV Upload", "Live SQL Database (Pending)"])
 
     with st.sidebar.expander("🗄️ History Database Backup"):
-        st.markdown("<span style='font-size:12px; color:#d1d5da;'>Because cloud servers reset daily, save your history before leaving and restore it tomorrow.</span>", unsafe_allow_html=True)
+        st.markdown(f"<span style='font-size:12px; color:{ui['text_muted']};'>Because cloud servers reset daily, save your history before leaving and restore it tomorrow.</span>", unsafe_allow_html=True)
         history_upload = st.file_uploader("1. Restore History Log", type="csv")
         if history_upload is not None:
             restored_df = pd.read_csv(history_upload)
@@ -352,10 +439,10 @@ def render_dashboard():
         error_str = f"{scanned_msg} &rarr; " + " | ".join(error_details) if error_details else f"{scanned_msg} &rarr; Data is 100% clean and structured."
         
         st.markdown(f"""
-            <div class="health-card" style="border-left: 5px solid {health_color};">
+            <div class="health-card" style="border-left: 5px solid {health_color}; background:{ui['card_bg']}; color:{ui['text_main']};">
                 <div>
-                    <h4 style="margin: 0; color: #d1d5da; font-size: 14px; text-transform: uppercase;">{health_icon} Data Integrity Inspector</h4>
-                    <p style="margin: 5px 0 0 0; color: #8da3b9; font-size: 13px;">{error_str}</p>
+                    <h4 style="margin: 0; color: {ui['text_main']}; font-size: 15px; text-transform: uppercase;">{health_icon} Data Integrity Inspector</h4>
+                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 13px;">{error_str}</p>
                 </div>
                 <div>
                     <h2 style="margin: 0; color: {health_color}; text-shadow: 0 0 10px {health_color};">{health_score:.1f}%</h2>
@@ -436,7 +523,7 @@ def render_dashboard():
         st.markdown(f"""
             <div class="alert-banner">
                 <div>
-                    <h3 style="margin:0; font-size:22px;">🚨 Command Center Live Alerts</h3>
+                    <h3 style="margin:0; font-size:22px; color:white;">🚨 Command Center Live Alerts</h3>
                     <p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">Top issues requiring immediate management attention today.</p>
                 </div>
                 <div style="text-align:right;">
@@ -471,11 +558,17 @@ def render_dashboard():
 
         g_col, s_col = st.columns([0.4, 0.6])
         with g_col:
+            gauge_font_color = "white" if is_dark else "#2C3E50"
+            gauge_bg = "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)"
+            
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number", value=overall_rate,
-                title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': 'white'}},
-                number={'suffix': "%", 'font': {'size': 40, 'color': 'white'}},
-                gauge={'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"}, 'bar': {'color': "#ffffff", 'thickness': 0.25}, 'bgcolor': "rgba(255,255,255,0.05)", 'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}]}
+                title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': gauge_font_color}},
+                number={'suffix': "%", 'font': {'size': 40, 'color': gauge_font_color}},
+                gauge={'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"}, 
+                       'bar': {'color': "#00d2ff", 'thickness': 0.25}, 
+                       'bgcolor': gauge_bg, 
+                       'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}]}
             ))
             fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20), font={'family': 'Montserrat'})
             st.plotly_chart(fig_gauge, use_container_width=True)
@@ -486,15 +579,15 @@ def render_dashboard():
                 st.markdown(f"""
                     <div class="simulator-card">
                         <h4 style="color: #2ecc71; margin: 0; text-transform: uppercase; font-size: 16px; letter-spacing: 1px;">✨ Simulated Optimization Impact</h4>
-                        <p style="font-size: 38px; font-weight: 800; color: #ffffff; margin: 5px 0;">{total_time_recovered:,} <span style="font-size:16px; color:#d1d5da; font-weight:500;">Project Days Saved</span></p>
-                        <p style="font-size: 14px; color: #a0aec0; margin: 0; line-height: 1.6;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
+                        <p style="font-size: 38px; font-weight: 800; color: {ui['text_main']}; margin: 5px 0;">{total_time_recovered:,} <span style="font-size:16px; color:{ui['text_muted']}; font-weight:500;">Project Days Saved</span></p>
+                        <p style="font-size: 14px; color: {ui['text_muted']}; margin: 0; line-height: 1.6;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
                     </div>
                     """, unsafe_allow_html=True)
             else:
-                st.markdown("""
-                    <div class="simulator-card" style="border-color: rgba(255,255,255,0.1); background: rgba(10, 20, 33, 0.5);">
-                        <h4 style="color: #8da3b9; margin: 0; font-size: 18px;">🎛️ Optimization Simulator Inactive</h4>
-                        <p style="font-size: 14px; color: #8da3b9; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
+                st.markdown(f"""
+                    <div class="simulator-card" style="border-color: {ui['border_color']}; background: {ui['card_bg']};">
+                        <h4 style="color: {ui['text_muted']}; margin: 0; font-size: 18px;">🎛️ Optimization Simulator Inactive</h4>
+                        <p style="font-size: 14px; color: {ui['text_muted']}; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -504,7 +597,7 @@ def render_dashboard():
         narrative = f"The dataset encompasses <b>{total_requests_count:,}</b> submittals involving <b>{total_tests_count:,}</b> field tests. The current overall approval index stands at <b>{overall_rate:.1f}%</b>, with an average turnaround time of <b>{avg_duration_value} days</b>. "
         if worst_office_name != "N/A":
             narrative += f"Attention is required for <b>{worst_office_name}</b>, which currently flags the highest processing delays across the logged sectors."
-        st.markdown(f"<div style='font-size: 15px; color: #8da3b9; line-height: 1.6; background: rgba(0,210,255,0.05); padding: 20px; border-radius: 10px; border-left: 4px solid #00d2ff; margin-bottom: 25px;'>{narrative}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 15px; color: {ui['text_main']}; line-height: 1.6; background: {ui['highlight_bg']}; padding: 20px; border-radius: 10px; border-left: 4px solid #00d2ff; margin-bottom: 25px;'>{narrative}</div>", unsafe_allow_html=True)
 
         st.markdown('<div class="bi-title">🤖 Live Anomaly & Root Cause Detector</div>', unsafe_allow_html=True)
         anomalies = []
@@ -523,9 +616,9 @@ def render_dashboard():
                     anomalies.append(f"🔍 <b>Root Cause Insight:</b> Global rejection rate is high ({fail_pct:.1f}%). The primary contributor is the <b>{top_fail_test}</b> test, most frequently failing under contractor <b>{top_fail_comp}</b>.")
         if anomalies:
             for anomaly in anomalies:
-                st.markdown(f'<div style="background: rgba(231,76,60,0.1); border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: #d1d5da;">{anomaly}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="background: rgba(231,76,60,0.1); border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: {ui["text_main"]};">{anomaly}</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: #d1d5da;">✅ No severe workflow anomalies or critical bottlenecks detected in the current data scope.</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: {ui["text_main"]};">✅ No severe workflow anomalies or critical bottlenecks detected in the current data scope.</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -541,11 +634,11 @@ def render_dashboard():
                 y_diff = bm_yield - overall_rate
                 y_color = "#2ecc71" if y_diff >= 0 else "#e74c3c"
                 y_icon = "▲" if y_diff >= 0 else "▼"
-                b1.markdown(f"<div class='metric-card'><h4>Yield vs Sector Avg</h4><h2 style='color:white;'>{bm_yield:.1f}%</h2><p style='color:{y_color}; font-weight:bold;'>{y_icon} {abs(y_diff):.1f}% vs Global ({overall_rate:.1f}%)</p></div>", unsafe_allow_html=True)
+                b1.markdown(f"<div class='metric-card'><h4>Yield vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_yield:.1f}%</h2><p style='color:{y_color}; font-weight:bold;'>{y_icon} {abs(y_diff):.1f}% vs Global ({overall_rate:.1f}%)</p></div>", unsafe_allow_html=True)
                 d_diff = bm_dur - avg_duration_value
                 d_color = "#e74c3c" if d_diff > 0 else "#2ecc71" 
                 d_icon = "▲" if d_diff > 0 else "▼"
-                b2.markdown(f"<div class='metric-card'><h4>Delay vs Sector Avg</h4><h2 style='color:white;'>{bm_dur:.1f} Days</h2><p style='color:{d_color}; font-weight:bold;'>{d_icon} {abs(d_diff):.1f} Days vs Global ({avg_duration_value:.1f})</p></div>", unsafe_allow_html=True)
+                b2.markdown(f"<div class='metric-card'><h4>Delay vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_dur:.1f} Days</h2><p style='color:{d_color}; font-weight:bold;'>{d_icon} {abs(d_diff):.1f} Days vs Global ({avg_duration_value:.1f})</p></div>", unsafe_allow_html=True)
         else:
             st.info("Company Name column is required for benchmarking.")
 
@@ -566,10 +659,10 @@ def render_dashboard():
             tot_a, r_a, d_a = get_c_stats(c_a)
             tot_b, r_b, d_b = get_c_stats(c_b)
             st.markdown(f"""
-            <div style="display:flex; justify-content:space-between; text-align:center; background:rgba(10,20,33,0.8); padding:20px; border-radius:15px; border:1px solid #ffaa00; box-shadow: 0 5px 15px rgba(0,0,0,0.4);">
-                <div style="width:45%; border-right:1px solid rgba(255,255,255,0.1);"><h3 style="color:#00d2ff; margin-top:0;">{c_a}</h3><p style="font-size:32px; font-weight:800; color:white; margin:0;">{r_a:.1f}% Yield</p><p style="color:#8da3b9; font-size:14px; margin-top:5px;">{tot_a} Submittals | {d_a} Days Avg Delay</p></div>
+            <div style="display:flex; justify-content:space-between; text-align:center; background:{ui['card_bg']}; padding:20px; border-radius:15px; border:1px solid #ffaa00; box-shadow: {ui['shadow']};">
+                <div style="width:45%; border-right:1px solid {ui['border_color']};"><h3 style="color:#00d2ff; margin-top:0;">{c_a}</h3><p style="font-size:32px; font-weight:800; color:{ui['text_main']}; margin:0;">{r_a:.1f}% Yield</p><p style="color:{ui['text_muted']}; font-size:14px; margin-top:5px;">{tot_a} Submittals | {d_a} Days Avg Delay</p></div>
                 <div style="width:10%; align-self:center; font-size:30px; font-weight:900; color:#ffaa00; text-shadow: 0 0 10px rgba(255,170,0,0.5);">VS</div>
-                <div style="width:45%; border-left:1px solid rgba(255,255,255,0.1);"><h3 style="color:#e74c3c; margin-top:0;">{c_b}</h3><p style="font-size:32px; font-weight:800; color:white; margin:0;">{r_b:.1f}% Yield</p><p style="color:#8da3b9; font-size:14px; margin-top:5px;">{tot_b} Submittals | {d_b} Days Avg Delay</p></div>
+                <div style="width:45%; border-left:1px solid {ui['border_color']};"><h3 style="color:#e74c3c; margin-top:0;">{c_b}</h3><p style="font-size:32px; font-weight:800; color:{ui['text_main']}; margin:0;">{r_b:.1f}% Yield</p><p style="color:{ui['text_muted']}; font-size:14px; margin-top:5px;">{tot_b} Submittals | {d_b} Days Avg Delay</p></div>
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -863,15 +956,15 @@ def render_dashboard():
                 l_col1.markdown(f"""
                     <div class="leaderboard-card" style="border-left-color: #2ecc71;">
                         <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
-                        <h2 style="margin:8px 0; color:white; font-size: 28px;">{best_comp['Company']}</h2>
-                        <span style="color:#8da3b9;">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
+                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{best_comp['Company']}</h2>
+                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
                     </div>
                 """, unsafe_allow_html=True)
                 l_col2.markdown(f"""
                     <div class="leaderboard-card" style="border-left-color: #e74c3c;">
                         <h4 style="margin:0; color:#e74c3c; text-transform: uppercase; font-size: 14px;">⚠️ Needs Attention</h4>
-                        <h2 style="margin:8px 0; color:white; font-size: 28px;">{worst_comp['Company']}</h2>
-                        <span style="color:#8da3b9;">Approval Rate: <b style="color:#e74c3c; font-size: 18px;">{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
+                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{worst_comp['Company']}</h2>
+                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#e74c3c; font-size: 18px;">{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
                     </div>
                 """, unsafe_allow_html=True)
 
@@ -1141,21 +1234,21 @@ def render_dashboard():
                             prog_color = "linear-gradient(90deg, #00d2ff, #2ecc71)"
                         
                         st.markdown(f"""
-                        <div style="background: rgba(10, 20, 33, 0.8); padding: 20px; border-radius: 15px; border-left: 5px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                        <div style="background: {ui['card_bg']}; padding: 20px; border-radius: 15px; border-left: 5px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
                             <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 15px;">🎯 Stockpile Target Achievement</h4>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="color: #d1d5da; font-size: 15px;">Target Required: <b style="color: white; font-size: 18px;">{req_qty_int}</b></span>
-                                <span style="color: #00d2ff; font-size: 15px;">Executed Tests: <b style="color: white; font-size: 18px;">{stock_count}</b></span>
-                                <span style="font-size: 15px; font-weight: bold;">Status: {status_msg}</span>
+                                <span style="color: {ui['text_muted']}; font-size: 15px;">Target Required: <b style="color: {ui['text_main']}; font-size: 18px;">{req_qty_int}</b></span>
+                                <span style="color: #00d2ff; font-size: 15px;">Executed Tests: <b style="color: {ui['text_main']}; font-size: 18px;">{stock_count}</b></span>
+                                <span style="font-size: 15px; font-weight: bold; color: {ui['text_main']};">Status: {status_msg}</span>
                             </div>
-                            <div class="prog-bg" style="height: 10px; background: rgba(255,255,255,0.05);"><div class="prog-fill" style="width: {progress_pct}%; background: {prog_color};"></div></div>
+                            <div class="prog-bg" style="height: 10px; background: rgba(127,140,141,0.2);"><div class="prog-fill" style="width: {progress_pct}%; background: {prog_color};"></div></div>
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         st.markdown(f"""
-                        <div style="background: rgba(10, 20, 33, 0.8); padding: 20px; border-radius: 15px; border-left: 5px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                        <div style="background: {ui['card_bg']}; padding: 20px; border-radius: 15px; border-left: 5px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
                             <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;">🎯 Stockpile Target Achievement</h4>
-                            <p style="color: #d1d5da; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
+                            <p style="color: {ui['text_muted']}; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -1173,7 +1266,7 @@ def render_dashboard():
                             st.markdown(f"""
                             <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                                 <h4 style="color: #2ecc71; margin: 0 0 5px 0;">🤖 AI Engineer Recommendation</h4>
-                                <p style="color: #d1d5da; margin: 0; font-size: 14px; line-height: 1.6;">
+                                <p style="color: {ui['text_main']}; margin: 0; font-size: 14px; line-height: 1.6;">
                                 <b>Analysis:</b> High filling activity (DPL/Fill) detected in <b>{peak_fill_month}</b> ({peak_fill_val} submittals logged). Correlating Stockpile test volume during this period is {stock_in_peak}. <br>
                                 <b>Action:</b> Consider proactively scheduling more Stockpile source approvals ahead of such high-volume fill operations to maintain material quality buffers and prevent bottlenecks.
                                 </p>
@@ -1275,15 +1368,15 @@ def render_dashboard():
                         if 'Company Name' in bh_df.columns:
                             if 'Date ( test)' in bh_df.columns:
                                 comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
-                                comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:#8da3b9;'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
+                                comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:{ui['text_muted']};'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
                                 companies_str = "<br>".join(comp_details) if comp_details else "N/A"
                             else:
                                 companies_worked = bh_df['Company Name'].dropna().unique()
                                 companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
                             st.markdown(f"""
-                                <div class="metric-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
+                                <div class="custom-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
                                     <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element</div>
-                                    <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500;">{companies_str}</div>
+                                    <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500; color:{ui['text_main']};">{companies_str}</div>
                                 </div>
                                 """, unsafe_allow_html=True)
 
@@ -1300,9 +1393,9 @@ def render_dashboard():
                                     alert_cols[idx % 4].markdown(f"""
                                         <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
                                             <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
-                                            <div style="color: #ffffff; font-size: 14px; line-height: 1.6;">
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
                                                 <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
-                                                <span style="font-size:12px; color:#ffcccc;">Status is REVISE/REJECTED with no subsequent approval found!</span>
+                                                <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
                                             </div>
                                         </div>
                                         """, unsafe_allow_html=True)
@@ -1333,10 +1426,10 @@ def render_dashboard():
                                     if curr_D > next_D:
                                         logic_errors.append(f"<b>Layer {curr_L}</b> was tested on <span style='color:#ffaa00;'>{curr_D.date()}</span>, which is AFTER <b>Layer {next_L}</b> tested on <span style='color:#ffaa00;'>{next_D.date()}</span>.")
                                 if not missing_layers and not logic_errors:
-                                    st.markdown("""
+                                    st.markdown(f"""
                                     <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                                         <h5 style="color: #2ecc71; margin: 0;">✅ Sequence Verified</h5>
-                                        <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">All compaction layers are chronologically correct with no missing intermediate layers.</p>
+                                        <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">All compaction layers are chronologically correct with no missing intermediate layers.</p>
                                     </div>
                                     """, unsafe_allow_html=True)
                                 else:
@@ -1345,7 +1438,7 @@ def render_dashboard():
                                         st.markdown(f"""
                                         <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
                                             <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5>
-                                            <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:white;">{missing_str}</b></p>
+                                            <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:{ui['text_main']};">{missing_str}</b></p>
                                         </div>
                                         """, unsafe_allow_html=True)
                                     if logic_errors:
@@ -1353,7 +1446,7 @@ def render_dashboard():
                                         st.markdown(f"""
                                         <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                                             <h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5>
-                                            <p style="color: #d1d5da; margin: 5px 0 0 0; font-size: 14px; line-height:1.8;">{errors_html}</p>
+                                            <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px; line-height:1.8;">{errors_html}</p>
                                         </div>
                                         """, unsafe_allow_html=True)
                             else:
@@ -1425,6 +1518,7 @@ def render_dashboard():
 # 8. Main Application Execution
 # ==========================================
 def main():
+    inject_custom_css()  # يحقن الـ Theme اللي الموديل اختاره
     init_auth_system()
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
