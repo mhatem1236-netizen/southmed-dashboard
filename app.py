@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import os
 from datetime import datetime
 import pytz
@@ -15,6 +16,14 @@ st.set_page_config(page_title="Command Center BI Dashboard", layout="wide", init
 
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
+
+# توحيد صارم للألوان حسب حالة العينة لراحة العين
+STATUS_COLORS = {
+    'ACCEPTED': '#2ecc71', 
+    'APPROVED AS NOTED': '#00d2ff', 
+    'REVISE': '#f1c40f', 
+    'REJECTED': '#e74c3c'
+}
 
 USERS_DB_FILE = "users_db.csv"
 LOGIN_LOGS_FILE = "login_logs.csv"
@@ -435,7 +444,7 @@ def render_dashboard():
         statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
         selected_statuses = st.sidebar.multiselect("📊 Sample Status:", options=statuses, default=statuses)
 
-        # 🔴 NEW BATTALION FILTER 🔴
+        # 🔴 BATTALION FILTER 🔴
         battalion_col_filter = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
         selected_battalions = []
         if battalion_col_filter:
@@ -482,7 +491,8 @@ def render_dashboard():
         overall_acc = len(filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in filtered_df.columns else 0
         overall_rate = (overall_acc / total_requests_count * 100) if total_requests_count > 0 else 0
 
-        rejected_count = len(filtered_df[filtered_df['sample status'].isin(['REJECTED', 'REVISE'])]) if 'sample status' in filtered_df.columns else 0
+        rejected_count = len(filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) if 'sample status' in filtered_df.columns else 0
+
         ticker_html = f"""
         <div class="ticker-wrap">
             <div class="ticker">
@@ -517,7 +527,6 @@ def render_dashboard():
             </div>
         """, unsafe_allow_html=True)
 
-        st.markdown(f"**📂 Active Data Source:** `{uploaded_file.name}`")
         col_btn, col_msg = st.columns([0.2, 0.8])
         with col_btn:
             if st.button("💾 Save to BI History"):
@@ -591,7 +600,7 @@ def render_dashboard():
                 if dur > avg_duration_value + 5:
                     anomalies.append(f"⚠️ <b>Anomaly Detected:</b> <b>{comp}</b> is showing severe delays ({dur:.1f} days) compared to the global average ({avg_duration_value:.1f} days).")
         if 'sample status' in filtered_df.columns and 'Test Type' in filtered_df.columns:
-            rejections_df = filtered_df[filtered_df['sample status'].isin(['REJECTED', 'REVISE'])]
+            rejections_df = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
             if not rejections_df.empty:
                 top_fail_test = rejections_df['Test Type'].value_counts().idxmax()
                 top_fail_comp = rejections_df['Company Name'].value_counts().idxmax() if 'Company Name' in rejections_df.columns else "Unknown"
@@ -611,7 +620,7 @@ def render_dashboard():
             bm_comp = st.selectbox("Select Contractor for Benchmarking against Global Averages:", companies, key="bm_engine")
             if bm_comp:
                 bm_df = filtered_df[filtered_df['Company Name'] == bm_comp]
-                bm_acc = len(bm_df[bm_df['sample status'].isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bm_df.columns else 0
+                bm_acc = len(bm_df[bm_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bm_df.columns else 0
                 bm_yield = (bm_acc / len(bm_df) * 100) if len(bm_df) > 0 else 0
                 bm_dur = bm_df['DURATION'].mean() if 'DURATION' in bm_df.columns else 0
                 b1, b2 = st.columns(2)
@@ -636,7 +645,7 @@ def render_dashboard():
             def get_c_stats(c_name):
                 d = filtered_df[filtered_df['Company Name']==c_name]
                 tot = len(d)
-                acc = len(d[d['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in d.columns else 0
+                acc = len(d[d['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in d.columns else 0
                 rate = (acc/tot*100) if tot>0 else 0
                 dur = round(d['DURATION'].mean(), 1) if 'DURATION' in d.columns else 0
                 return tot, rate, dur
@@ -699,36 +708,33 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown("### 📈 Timeline Analysis")
-        time_col1, time_col2 = st.columns(2)
-        with time_col1:
-            if 'Date ( test)' in filtered_df.columns:
-                tl_df = filtered_df.copy()
-                tl_df['Month_Plot'] = tl_df['Date ( test)'].dt.to_period('M').astype(str)
-                monthly_data = tl_df.groupby('Month_Plot').size().reset_index(name='Count')
-                fig_m = px.line(monthly_data.sort_values('Month_Plot'), x='Month_Plot', y='Count', markers=True, title="Monthly Workload Trend 📅", color_discrete_sequence=['#00d2ff'])
-                fig_m = style_3d_glassy(fig_m, chart_type="line")
-                st.plotly_chart(fig_m, use_container_width=True)
-
-        with time_col2:
-            if 'Date( SUB)' in filtered_df.columns and 'sample status' in filtered_df.columns:
-                gap_df = filtered_df.dropna(subset=['Date( SUB)']).copy()
-                gap_df['Month_Plot'] = gap_df['Date( SUB)'].dt.to_period('M').astype(str)
-                total_sub = gap_df.groupby('Month_Plot').size().reset_index(name='Total Submitted')
-                accepted_mask = gap_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                accepted_sub = gap_df[accepted_mask].groupby('Month_Plot').size().reset_index(name='Accepted')
-                rejected_mask = gap_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])
-                rejected_sub = gap_df[rejected_mask].groupby('Month_Plot').size().reset_index(name='Rejected')
-                merged_gap = total_sub.merge(accepted_sub, on='Month_Plot', how='left').merge(rejected_sub, on='Month_Plot', how='left').fillna(0)
-                melted_gap = merged_gap.melt(id_vars='Month_Plot', value_vars=['Total Submitted', 'Accepted', 'Rejected'], var_name='Status', value_name='Count')
-                fig_gap = px.bar(
-                    melted_gap.sort_values('Month_Plot'), 
-                    x='Month_Plot', y='Count', color='Status', barmode='group',
-                    color_discrete_map={'Total Submitted': '#00d2ff', 'Accepted': '#2ecc71', 'Rejected': '#ff007f'},
-                    title="Monthly Quality Yield (Based on Submission Date) 🎯"
-                )
-                fig_gap = style_3d_glassy(fig_gap, chart_type="bar")
-                st.plotly_chart(fig_gap, use_container_width=True)
+        # 🔴 التعديل هنا: دمج الـ Workload مع الـ Quality Yield 🔴
+        st.markdown('<div class="bi-title">📈 Comprehensive Timeline (Workload vs Quality Correlation)</div>', unsafe_allow_html=True)
+        if 'Date ( test)' in filtered_df.columns and 'sample status' in filtered_df.columns:
+            tl_df = filtered_df.dropna(subset=['Date ( test)', 'sample status']).copy()
+            tl_df['Month_Plot'] = tl_df['Date ( test)'].dt.to_period('M').astype(str)
+            
+            monthly_stats = tl_df.groupby('Month_Plot').apply(lambda x: pd.Series({
+                'Total': len(x),
+                'Accepted': len(x[x['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]),
+                'Rejected': len(x[x['sample status'].str.upper().isin(['REJECTED', 'REVISE'])])
+            })).reset_index()
+            
+            monthly_stats['Acc_Pct'] = (monthly_stats['Accepted'] / monthly_stats['Total'] * 100).round(1)
+            monthly_stats['Rej_Pct'] = (monthly_stats['Rejected'] / monthly_stats['Total'] * 100).round(1)
+            
+            fig_combo = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            fig_combo.add_trace(go.Bar(x=monthly_stats['Month_Plot'], y=monthly_stats['Accepted'], name='Accepted/Approved', marker_color=STATUS_COLORS['ACCEPTED'], customdata=monthly_stats['Acc_Pct'], hovertemplate="<b>%{x}</b><br>Accepted: %{y} (%{customdata}%)<extra></extra>"), secondary_y=False)
+            fig_combo.add_trace(go.Bar(x=monthly_stats['Month_Plot'], y=monthly_stats['Rejected'], name='Rejected/Revise', marker_color=STATUS_COLORS['REJECTED'], customdata=monthly_stats['Rej_Pct'], hovertemplate="<b>%{x}</b><br>Rejected: %{y} (%{customdata}%)<extra></extra>"), secondary_y=False)
+            fig_combo.add_trace(go.Scatter(x=monthly_stats['Month_Plot'], y=monthly_stats['Total'], name='Total Workload', mode='lines+markers', line=dict(color='#00d2ff', width=4), marker=dict(size=8), hovertemplate="<b>%{x}</b><br>Total Logged: %{y}<extra></extra>"), secondary_y=True)
+            
+            fig_combo.update_layout(barmode='stack', title="Volume vs. Rejection Impact over Time", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+            fig_combo.update_yaxes(title_text="Submittals (Quality)", secondary_y=False)
+            fig_combo.update_yaxes(title_text="Total Workload", secondary_y=True)
+            
+            fig_combo = style_3d_glassy(fig_combo, chart_type="line")
+            st.plotly_chart(fig_combo, use_container_width=True)
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -752,8 +758,9 @@ def render_dashboard():
         if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             tree_df = filtered_df.copy()
             tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
+            tree_df['status_upper'] = tree_df['sample status'].str.upper()
             status_weights = {'ACCEPTED': 100, 'APPROVED AS NOTED': 80, 'REVISE': 40, 'REJECTED': 0, 'Unknown': 50}
-            tree_df['Heat_Score'] = tree_df['sample status'].map(status_weights).fillna(50)
+            tree_df['Heat_Score'] = tree_df['status_upper'].map(status_weights).fillna(50)
             fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], color='Heat_Score', color_continuous_scale='RdYlGn', title="Project Hierarchy Heat Map (Green = High Approval, Red = Bottleneck/Rejections)")
             fig_tree.update_traces(hovertemplate='<b>%{label}</b><br>Score: %{color:.1f}')
             fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
@@ -908,15 +915,18 @@ def render_dashboard():
                 st.plotly_chart(fig_c2, use_container_width=True)
 
         with chart_col2:
+            # 🔴 التعديل هنا: الـ Pie Charts بقت بتعرض الألوان الموحدة و النسب المئوية 🔴
             if 'sample status' in filtered_df.columns:
-                fig_p1 = px.pie(filtered_df, names='sample status', hole=0.4, title="Sample Status Distribution", color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
-                fig_p1.update_traces(hovertemplate='<b>Status:</b> %{label}<br>Count: %{value} (%{percent})')
+                filtered_df['status_upper'] = filtered_df['sample status'].str.upper()
+                fig_p1 = px.pie(filtered_df, names='status_upper', hole=0.4, title="Sample Status Distribution", color='status_upper', color_discrete_map=STATUS_COLORS)
+                fig_p1.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                 fig_p1 = style_3d_glassy(fig_p1, chart_type="pie")
                 st.plotly_chart(fig_p1, use_container_width=True)
             if 'Classification' in filtered_df.columns:
                 class_df = filtered_df.dropna(subset=['Classification']).copy()
                 if not class_df.empty:
                     fig_p2 = px.pie(class_df, names='Classification', title="Sample Classification Distribution", color_discrete_sequence=NEON_COLORS)
+                    fig_p2.update_traces(textinfo='label+percent', hovertemplate='<b>Class:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                     fig_p2 = style_3d_glassy(fig_p2, chart_type="pie")
                     st.plotly_chart(fig_p2, use_container_width=True)
 
@@ -1085,10 +1095,12 @@ def render_dashboard():
                         
                     col_q1, col_q2 = st.columns(2)
                     with col_q1:
+                        # 🔴 التعديل هنا: توحيد الألوان باستخدام STATUS_COLORS 🔴
                         if battalion_col_360 and 'sample status' in comp_df_full.columns:
                             st.markdown("#### ⚖️ Quality by Battalion")
-                            qual_df = comp_df_full.groupby([battalion_col_360, 'sample status']).size().reset_index(name='Count')
-                            fig_qual = px.bar(qual_df, x=battalion_col_360, y='Count', color='sample status', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map={'ACCEPTED':'#2ecc71', 'APPROVED AS NOTED':'#00d2ff', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f'})
+                            comp_df_full['status_upper'] = comp_df_full['sample status'].str.upper()
+                            qual_df = comp_df_full.groupby([battalion_col_360, 'status_upper']).size().reset_index(name='Count')
+                            fig_qual = px.bar(qual_df, x=battalion_col_360, y='Count', color='status_upper', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map=STATUS_COLORS)
                             fig_qual = style_3d_glassy(fig_qual, chart_type="bar")
                             st.plotly_chart(fig_qual, use_container_width=True)
                             
@@ -1104,12 +1116,14 @@ def render_dashboard():
                                 
                     col_d1, col_d2 = st.columns(2)
                     with col_d1:
+                        # 🔴 التعديل هنا: تحويل Processed By Office لـ Bar Chart للمقارنة 🔴
                         if 'Done BY' in comp_df_full.columns:
                             st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
-                            off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count')
-                            fig_off = px.pie(off_df, names='Done BY', values='Count', hole=0.4, title="Submittal Volume per Review Office", color_discrete_sequence=NEON_COLORS)
-                            fig_off.update_traces(textinfo='label+value')
-                            fig_off = style_3d_glassy(fig_off, chart_type="pie")
+                            off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count').sort_values('Count', ascending=False)
+                            off_df['Percent'] = (off_df['Count'] / off_df['Count'].sum() * 100).round(1)
+                            fig_off = px.bar(off_df, x='Done BY', y='Count', text='Count', title="Submittal Volume per Review Office", color='Done BY', color_discrete_sequence=NEON_COLORS)
+                            fig_off.update_traces(customdata=off_df['Percent'], hovertemplate='<b>Office:</b> %{x}<br>Count: %{y}<br>Percentage: %{customdata}%')
+                            fig_off = style_3d_glassy(fig_off, chart_type="bar")
                             st.plotly_chart(fig_off, use_container_width=True)
                             
                     with col_d2:
@@ -1197,7 +1211,6 @@ def render_dashboard():
                     create_card(cc3, "Fill Tests", fill_count)
                     create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
                     
-                    # 🔴 هــــنـــا التعديل الجديــــد 🔴
                     if pd.notna(req_qty) and req_qty > 0:
                         req_qty_int = int(req_qty)
                         diff = stock_count - req_qty_int
@@ -1270,16 +1283,18 @@ def render_dashboard():
                             class_counts = stock_df['Classification'].value_counts().reset_index()
                             class_counts.columns = ['Classification', 'Count']
                             fig_class = px.pie(class_counts, names='Classification', values='Count', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
-                            fig_class.update_traces(textinfo='label+value')
+                            fig_class.update_traces(textinfo='label+percent', hovertemplate='<b>Class:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                             fig_class = style_3d_glassy(fig_class, chart_type="pie")
                             st.plotly_chart(fig_class, use_container_width=True)
                         else:
                             st.info(f"No Stockpile classification data logged.")
                             
                     with ch_col2:
+                        # 🔴 التعديل هنا: ربط ألوان القطاعات بـ STATUS_COLORS 🔴
                         if 'sample status' in stock_df.columns and not stock_df.empty:
-                            fig_stock_status = px.pie(stock_df, names='sample status', title=f"Stockpile Approval/Rejection Rate", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
-                            fig_stock_status.update_traces(textinfo='label+value')
+                            stock_df['status_upper'] = stock_df['sample status'].str.upper()
+                            fig_stock_status = px.pie(stock_df, names='status_upper', title=f"Stockpile Approval/Rejection Rate", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
+                            fig_stock_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                             fig_stock_status = style_3d_glassy(fig_stock_status, chart_type="pie")
                             st.plotly_chart(fig_stock_status, use_container_width=True)
                         else:
@@ -1299,9 +1314,11 @@ def render_dashboard():
                             st.info("No Date data available to show Stockpile timeline.")
 
                     with ch_col4:
+                        # 🔴 التعديل هنا: ربط ألوان القطاعات بـ STATUS_COLORS 🔴
                         if 'sample status' in comp_bat_df.columns and not comp_bat_df.empty:
-                            fig_status = px.pie(comp_bat_df, names='sample status', title=f"Overall Approval Rate (All Tests)", hole=0.3, color='sample status', color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
-                            fig_status.update_traces(textinfo='label+percent')
+                            comp_bat_df['status_upper'] = comp_bat_df['sample status'].str.upper()
+                            fig_status = px.pie(comp_bat_df, names='status_upper', title=f"Overall Approval Rate (All Tests)", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
+                            fig_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                             fig_status = style_3d_glassy(fig_status, chart_type="pie")
                             st.plotly_chart(fig_status, use_container_width=True)
                         else:
@@ -1473,8 +1490,11 @@ def render_dashboard():
 
                         b_col1, b_col2 = st.columns(2)
                         with b_col1:
+                            # 🔴 التعديل هنا: ربط الألوان والنسبة في הـ Pie Chart 🔴
                             if 'sample status' in bh_df.columns:
-                                fig_ep = px.pie(bh_df, names='sample status', title=f"Status Breakdown for {selected_bh}", hole=0.4, color_discrete_map={'ACCEPTED':'#2ecc71', 'REJECTED':'#ff007f', 'REVISE':'#f1c40f', 'APPROVED AS NOTED':'#00d2ff'})
+                                bh_df['status_upper'] = bh_df['sample status'].str.upper()
+                                fig_ep = px.pie(bh_df, names='status_upper', title=f"Status Breakdown for {selected_bh}", hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
+                                fig_ep.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                                 fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
                                 st.plotly_chart(fig_ep, use_container_width=True)
                         with b_col2:
