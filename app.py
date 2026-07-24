@@ -156,23 +156,25 @@ def style_3d_glassy(fig, chart_type="bar"):
     marker_line = 'white' if is_dark else '#2C3E50'
 
     fig.update_layout(
-        template=template,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        template=template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter", color=font_color, size=12),
         margin=dict(t=50, b=20, l=20, r=20),
         title_font=dict(family="Montserrat", size=16, color=font_color),
         legend=dict(font=dict(color=font_color))
     )
+    
+    # 🔴 التعديل هنا: التفرقة بين الخطوط والأعمدة في الشارتات المدمجة 🔴
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
         fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85)
     elif chart_type == "line":
-        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color=marker_line, width=1.5)))
+        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color=marker_line, width=1.5)), selector=dict(type='scatter'))
+    elif chart_type == "combo":
+        fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85, selector=dict(type='bar'))
+        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color=marker_line, width=1.5)), selector=dict(type='scatter'))
         
     fig.update_xaxes(showgrid=False, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     return fig
-
 # ==========================================
 # 5. History Manager
 # ==========================================
