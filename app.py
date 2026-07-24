@@ -100,6 +100,12 @@ def inject_custom_css():
     
     /* Dividers */
     .gradient-divider {{ height: 2px; background: linear-gradient(90deg, transparent 0%, {title_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
+    
+    .ticker-wrap {{ background: {card_bg}; border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
+    .ticker {{ display: inline-block; padding-right: 100%; animation: ticker 35s linear infinite; }}
+    @keyframes ticker {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
+    .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; }}
+    .ticker-item span {{ color: #00d2ff; font-weight: 800; }}
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
@@ -156,14 +162,16 @@ def style_3d_glassy(fig, chart_type="bar"):
     marker_line = 'white' if is_dark else '#2C3E50'
 
     fig.update_layout(
-        template=template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        template=template,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter", color=font_color, size=12),
         margin=dict(t=50, b=20, l=20, r=20),
         title_font=dict(family="Montserrat", size=16, color=font_color),
         legend=dict(font=dict(color=font_color))
     )
     
-    # 🔴 التعديل هنا: التفرقة بين الخطوط والأعمدة في الشارتات المدمجة 🔴
+    # 🔴 التمييز بين الشارتات لمنع خطأ الـ Combo Chart 🔴
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
         fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85)
     elif chart_type == "line":
@@ -175,6 +183,7 @@ def style_3d_glassy(fig, chart_type="bar"):
     fig.update_xaxes(showgrid=False, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     return fig
+
 # ==========================================
 # 5. History Manager
 # ==========================================
@@ -422,7 +431,7 @@ def render_dashboard():
         error_str = f"{scanned_msg} &rarr; " + " | ".join(error_details) if error_details else f"{scanned_msg} &rarr; Data is 100% clean and structured."
         
         st.markdown(f"""
-            <div class="health-card" style="border-left: 5px solid {health_color}; background:{ui['card_bg']}; color:{ui['text_main']};">
+            <div class="health-card" style="border-left: 5px solid {health_color}; background:{ui['card_bg']}; color:{ui['text_main']}; margin-bottom: 20px;">
                 <div>
                     <h4 style="margin: 0; color: {ui['text_main']}; font-size: 15px; text-transform: uppercase;">{health_icon} Data Integrity Inspector</h4>
                     <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 13px;">{error_str}</p>
@@ -446,7 +455,6 @@ def render_dashboard():
         statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
         selected_statuses = st.sidebar.multiselect("📊 Sample Status:", options=statuses, default=statuses)
 
-        # 🔴 BATTALION FILTER 🔴
         battalion_col_filter = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
         selected_battalions = []
         if battalion_col_filter:
@@ -466,7 +474,6 @@ def render_dashboard():
         if len(companies) > 0: filtered_df = filtered_df[filtered_df['Company Name'].isin(selected_companies)]
         if len(statuses) > 0: filtered_df = filtered_df[filtered_df['sample status'].isin(selected_statuses)]
         
-        # 🔴 APPLY BATTALION FILTER 🔴
         if battalion_col_filter and len(selected_battalions) > 0: 
             filtered_df = filtered_df[filtered_df[battalion_col_filter].isin(selected_battalions)]
 
@@ -735,7 +742,7 @@ def render_dashboard():
             fig_combo.update_yaxes(title_text="Submittals (Quality)", secondary_y=False)
             fig_combo.update_yaxes(title_text="Total Workload", secondary_y=True)
             
-            fig_combo = style_3d_glassy(fig_combo, chart_type="line")
+            fig_combo = style_3d_glassy(fig_combo, chart_type="combo")
             st.plotly_chart(fig_combo, use_container_width=True)
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -835,6 +842,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
+        # 🔴 بلوك الـ History Trend رجع مكانه 🔴
         global_history_df = HistoryManager.load_history()
         if not global_history_df.empty:
             if 'File_Name' not in global_history_df.columns:
@@ -1492,7 +1500,6 @@ def render_dashboard():
 
                         b_col1, b_col2 = st.columns(2)
                         with b_col1:
-                            # 🔴 التعديل هنا: ربط الألوان والنسبة في הـ Pie Chart 🔴
                             if 'sample status' in bh_df.columns:
                                 bh_df['status_upper'] = bh_df['sample status'].str.upper()
                                 fig_ep = px.pie(bh_df, names='status_upper', title=f"Status Breakdown for {selected_bh}", hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
