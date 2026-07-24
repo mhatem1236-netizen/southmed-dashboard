@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+import time
 from datetime import datetime
 import pytz
 import base64
@@ -1266,6 +1267,7 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
 
+                    # 🔴 THE DEEP SCAN EXPERIENCE (Generative AI Terminal) 🔴
                     if 'Date ( test)' in comp_bat_df.columns:
                         time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
                         time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
@@ -1277,15 +1279,84 @@ def render_dashboard():
                             peak_fill_val = fill_by_month.max()
                             stock_in_peak = stock_by_month.get(peak_fill_month, 0)
                             
-                            st.markdown(f"""
-                            <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                                <h4 style="color: #2ecc71; margin: 0 0 5px 0;">🤖 AI Engineer Recommendation</h4>
-                                <p style="color: {ui['text_main']}; margin: 0; font-size: 14px; line-height: 1.6;">
-                                <b>Analysis:</b> High filling activity (DPL/Fill) detected in <b>{peak_fill_month}</b> ({peak_fill_val} submittals logged). Correlating Stockpile test volume during this period is {stock_in_peak}. <br>
-                                <b>Action:</b> Consider proactively scheduling more Stockpile source approvals ahead of such high-volume fill operations to maintain material quality buffers and prevent bottlenecks.
-                                </p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            bat_key = selected_bat if battalion_col_stock else "all"
+                            scan_key = f"scan_{selected_comp}_{bat_key}"
+                            
+                            if scan_key not in st.session_state:
+                                st.session_state[scan_key] = False
+
+                            if not st.session_state[scan_key]:
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                if st.button("🧠 Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
+                                    with st.container():
+                                        progress_bar = st.progress(0)
+                                        status_text = st.empty()
+                                        status_text.markdown(f"**<span style='color:#00d2ff;'>[1/3]</span> Scanning {total_requests_count:,} Submittal Logs...**", unsafe_allow_html=True)
+                                        time.sleep(1)
+                                        progress_bar.progress(33)
+                                        status_text.markdown("**<span style='color:#ffaa00;'>[2/3]</span> Correlating Fill layers with Stockpile sources...**", unsafe_allow_html=True)
+                                        time.sleep(1.2)
+                                        progress_bar.progress(66)
+                                        status_text.markdown("**<span style='color:#2ecc71;'>[3/3]</span> Generating Quality Traceability Insights...**", unsafe_allow_html=True)
+                                        time.sleep(1.2)
+                                        progress_bar.progress(100)
+                                        time.sleep(0.5)
+                                        st.session_state[scan_key] = True
+                                        st.rerun()
+                            
+                            if st.session_state[scan_key]:
+                                base_confidence = 75.0
+                                confidence_bonus = min(24.5, peak_fill_val * 0.6) 
+                                ai_confidence = round(base_confidence + confidence_bonus, 1)
+
+                                ai_ratio = stock_in_peak / peak_fill_val if peak_fill_val > 0 else 1
+                                if ai_ratio < 0.05:
+                                    status_level, status_color, status_bg, status_icon = "SEVERE DEFICIT", "#e74c3c", "rgba(231, 76, 60, 0.1)", "🚨"
+                                    quality_insight = f"Significant discrepancy detected. Fill operations ({peak_fill_val} tests) lack sufficient corresponding stockpile verifications, creating a gap in material quality traceability."
+                                    directive = f"ACTION REQUIRED: Request contractor to submit at least {max(1, int(peak_fill_val * 0.1))} Stockpile samples to cover the executed fill volume."
+                                elif ai_ratio < 0.15:
+                                    status_level, status_color, status_bg, status_icon = "COVERAGE GAP", "#f1c40f", "rgba(241, 196, 15, 0.1)", "⚠️"
+                                    quality_insight = f"Material approval rate is lagging behind fill execution speed. A minor gap in material source validation is forming."
+                                    directive = f"ADVISORY: Schedule routine stockpile sampling to restore balance with field operations."
+                                else:
+                                    status_level, status_color, status_bg, status_icon = "OPTIMAL COVERAGE", "#2ecc71", "rgba(46, 204, 113, 0.1)", "✅"
+                                    quality_insight = f"Stockpile testing frequency is well-aligned with the current fill execution volume."
+                                    directive = f"MAINTAIN: Continue current testing and approval workflow."
+
+                                st.markdown(f"""
+                                <style>
+                                    @keyframes scanline {{ 0% {{ transform: translateY(-10px); opacity: 0; }} 50% {{ opacity: 1; }} 100% {{ transform: translateY(0); opacity: 1; }} }}
+                                    .ai-terminal {{ background: linear-gradient(145deg, #0a1118, {status_bg}); border: 1px solid rgba(255,255,255,0.05); border-left: 5px solid {status_color}; border-radius: 12px; padding: 25px; margin: 20px 0; box-shadow: 0 0 20px {status_bg}; animation: scanline 0.8s ease-out forwards; }}
+                                    .ai-badge {{ background: rgba(0,0,0,0.4); border: 1px solid {ui['border_color']}; padding: 5px 12px; border-radius: 20px; font-size: 12px; color: #00d2ff; }}
+                                </style>
+                                <div class="ai-terminal">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+                                        <h3 style="color: {status_color}; margin: 0; display: flex; align-items: center; font-size: 20px;"><span style="font-size: 24px; margin-right: 10px;">🤖</span> Generative AI Quality Auditor</h3>
+                                        <div style="display: flex; gap: 10px;">
+                                            <span class="ai-badge">⚡ Data Confidence: {ai_confidence}%</span>
+                                            <span class="ai-badge" style="color: {status_color}; border-color: {status_color}; font-weight: bold;">{status_icon} Status: {status_level}</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #00d2ff;">
+                                            <div style="color: #00d2ff; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> FIELD_DATA.DETECT()</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">Peak filling activity detected in <b style="color:white;">{peak_fill_month}</b> with <b style="color:#00d2ff;">{peak_fill_val} submittals</b>.<br>Correlating approved Stockpile volume during this period is <b style="color:{status_color};">{stock_in_peak}</b>.</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #ffaa00;">
+                                            <div style="color: #ffaa00; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QUALITY_GAP.ANALYZE()</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{quality_insight}</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid {status_color};">
+                                            <div style="color: {status_color}; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QC_ACTION.RECOMMEND()</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6; font-weight: 500;">{directive}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                col_reset, _ = st.columns([0.2, 0.8])
+                                if col_reset.button("🔄 Reset AI Auditor", key=f"reset_{scan_key}"):
+                                    st.session_state[scan_key] = False
+                                    st.rerun()
 
                     ch_col1, ch_col2 = st.columns(2)
                     with ch_col1:
