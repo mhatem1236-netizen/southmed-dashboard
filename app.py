@@ -45,14 +45,14 @@ def inject_custom_css():
         card_border = "rgba(0, 0, 0, 0.1)"
         card_shadow = "0 8px 25px rgba(0, 0, 0, 0.05)"
         text_main = "#2C3E50"      # لون الكلام الغامق في اللايت مود
-        text_muted = "#5D6D7E"     # لون الكلام الثانوي
+        text_muted = "#5D6D7E"     
         title_color = "#2980B9"
 
     custom_css = f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
     
-    /* 🔴 FIXED: تم إصلاح مشكلة الأيقونات بعدم إجبار الفونت على الـ spans 🔴 */
+    /* منع الفونت من بوظان الأيقونات */
     html, body, [class*="css"] {{
         color: {text_main} !important; 
         font-family: 'Inter', sans-serif; 
@@ -94,6 +94,7 @@ def inject_custom_css():
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
+
 # ==========================================
 # 3. Authentication & User Management
 # ==========================================
@@ -135,14 +136,12 @@ def authenticate_user(email, password):
     return False, "Invalid Email or Password."
 
 # ==========================================
-# 4. 3D Glassy Chart Styling Function (UPDATED)
+# 4. 3D Glassy Chart Styling Function
 # ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
-    
-    # 🔴 FIXING CHART COLORS BASED ON THEME 🔴
     template = "plotly_dark" if is_dark else "plotly_white"
-    font_color = "#d1d5da" if is_dark else "#2C3E50"  # Dark gray for Light mode
+    font_color = "#d1d5da" if is_dark else "#2C3E50"
     grid_color = 'rgba(255,255,255,0.05)' if is_dark else 'rgba(0,0,0,0.1)'
     line_color = 'rgba(255, 255, 255, 0.4)' if is_dark else 'rgba(0, 0, 0, 0.2)'
     marker_line = 'white' if is_dark else '#2C3E50'
@@ -154,7 +153,7 @@ def style_3d_glassy(fig, chart_type="bar"):
         font=dict(family="Inter", color=font_color, size=12),
         margin=dict(t=50, b=20, l=20, r=20),
         title_font=dict(family="Montserrat", size=16, color=font_color),
-        legend=dict(font=dict(color=font_color)) # Force legend color
+        legend=dict(font=dict(color=font_color))
     )
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
         fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85)
@@ -164,6 +163,7 @@ def style_3d_glassy(fig, chart_type="bar"):
     fig.update_xaxes(showgrid=False, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     return fig
+
 # ==========================================
 # 5. History Manager
 # ==========================================
@@ -227,7 +227,6 @@ def ai_assistant(query, data_summary):
     else:
         return "I am here to assist. Ask me about project logs, contractor performance, or quality control metrics."
 
-# Helper for Battalion strings
 def fmt_b(val):
     s = str(val).strip()
     return s[:-2] if s.endswith('.0') else s
@@ -265,14 +264,12 @@ def render_login_screen():
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-
 # ==========================================
 # 7. Main Dashboard Application
 # ==========================================
 def render_dashboard():
     user = st.session_state["current_user"]
     
-    # UI Dynamic Variables
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     ui = {
         'text_main': '#ffffff' if is_dark else '#2C3E50',
@@ -294,7 +291,6 @@ def render_dashboard():
             st.session_state["authenticated"] = False
             st.rerun()
 
-    # --- THEME TOGGLE IN SIDEBAR ---
     st.sidebar.markdown("### 🎨 UI/UX Mode")
     theme_col1, theme_col2 = st.sidebar.columns(2)
     if theme_col1.button("🌙 Dark"):
@@ -962,14 +958,9 @@ def render_dashboard():
             st.dataframe(summary_pivot, use_container_width=True)
             st.divider()
 
-            # 💡 SMART LOOKUP DICTIONARY (Battalion Aware)
             target_dict = {}
             battalion_col_main = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
             
-            def fmt_b(val):
-                s = str(val).strip()
-                return s[:-2] if s.endswith('.0') else s
-
             if 'Company' in df.columns and 'Required Quantity' in df.columns:
                 cols_to_extract = ['Company', 'Required Quantity']
                 if battalion_col_main: cols_to_extract.append(battalion_col_main)
@@ -1045,9 +1036,6 @@ def render_dashboard():
             )
             st.divider()
 
-            # ==========================================
-            # 🔥 BI INDIVIDUAL CONTRACTOR DEEP DIVE 🔥
-            # ==========================================
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
             if all_log_companies:
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies)
@@ -1197,32 +1185,47 @@ def render_dashboard():
                     create_card(cc3, "Fill Tests", fill_count)
                     create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
                     
+                    # 🔴 هــــنـــا التعديل الجديــــد 🔴
                     if pd.notna(req_qty) and req_qty > 0:
                         req_qty_int = int(req_qty)
                         diff = stock_count - req_qty_int
-                        if diff >= 0:
-                            status_msg = f"<span style='color: #2ecc71;'>Target Exceeded (+{diff} Tests)</span>"
-                            progress_pct = 100
-                            prog_color = "linear-gradient(90deg, #2ecc71, #27ae60)"
+                        progress_pct = min(100, (stock_count / req_qty_int) * 100) if req_qty_int > 0 else 100
+                        
+                        if progress_pct >= 90:
+                            prog_color = "#2ecc71" 
+                            status_color = "#2ecc71"
+                            status_icon = "✅"
+                        elif progress_pct >= 70:
+                            prog_color = "#f1c40f" 
+                            status_color = "#f1c40f"
+                            status_icon = "⚠️"
                         else:
-                            status_msg = f"<span style='color: #ffaa00;'>Missing {abs(diff)} Tests</span>"
-                            progress_pct = min(100, (stock_count / req_qty_int) * 100)
-                            prog_color = "linear-gradient(90deg, #00d2ff, #2ecc71)"
+                            prog_color = "#e74c3c" 
+                            status_color = "#e74c3c"
+                            status_icon = "🚨"
+
+                        if diff >= 0:
+                            status_msg = f"<span style='color: #2ecc71;'>{status_icon} Target Exceeded (+{diff} Tests)</span>"
+                            prog_color = "#2ecc71"
+                        else:
+                            status_msg = f"<span style='color: {status_color};'>{status_icon} Missing {abs(diff)} Tests ({progress_pct:.1f}%)</span>"
                         
                         st.markdown(f"""
-                        <div style="background: {ui['card_bg']}; padding: 20px; border-radius: 15px; border-left: 5px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
-                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 15px;">🎯 Stockpile Target Achievement</h4>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="color: {ui['text_muted']}; font-size: 15px;">Target Required: <b style="color: {ui['text_main']}; font-size: 18px;">{req_qty_int}</b></span>
-                                <span style="color: #00d2ff; font-size: 15px;">Executed Tests: <b style="color: {ui['text_main']}; font-size: 18px;">{stock_count}</b></span>
-                                <span style="font-size: 15px; font-weight: bold; color: {ui['text_main']};">Status: {status_msg}</span>
+                        <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
+                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 20px; font-size: 18px; font-weight: bold;">🎯 Stockpile Target Achievement</h4>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: flex-end;">
+                                <span style="color: {ui['text_muted']}; font-size: 14px;">Target Required: <b style="color: {ui['text_main']}; font-size: 16px;">{req_qty_int}</b></span>
+                                <span style="color: #00d2ff; font-size: 14px;">Executed Tests: <b style="color: {ui['text_main']}; font-size: 16px;">{stock_count}</b></span>
+                                <span style="font-size: 14px; font-weight: bold; color: {ui['text_main']};">Status: {status_msg}</span>
                             </div>
-                            <div class="prog-bg" style="height: 10px; background: rgba(127,140,141,0.2);"><div class="prog-fill" style="width: {progress_pct}%; background: {prog_color};"></div></div>
+                            <div class="prog-bg" style="height: 12px; background: rgba(127,140,141,0.2); border-radius: 10px; width: 100%; overflow: hidden;">
+                                <div class="prog-fill" style="width: {progress_pct}%; background: {prog_color}; height: 100%; border-radius: 10px; transition: width 1s ease-in-out;"></div>
+                            </div>
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         st.markdown(f"""
-                        <div style="background: {ui['card_bg']}; padding: 20px; border-radius: 15px; border-left: 5px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
+                        <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
                             <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;">🎯 Stockpile Target Achievement</h4>
                             <p style="color: {ui['text_muted']}; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
                         </div>
@@ -1494,7 +1497,7 @@ def render_dashboard():
 # 8. Main Application Execution
 # ==========================================
 def main():
-    inject_custom_css()  # يحقن الـ Theme اللي الموديل اختاره
+    inject_custom_css()  
     init_auth_system()
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
