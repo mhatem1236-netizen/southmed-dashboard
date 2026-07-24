@@ -24,7 +24,7 @@ if "theme" not in st.session_state:
     st.session_state["theme"] = "Dark"
 
 # ==========================================
-# 2. Dynamic UI/UX CSS Injection
+# 2. Dynamic UI/UX CSS Injection (UPDATED)
 # ==========================================
 def inject_custom_css():
     is_dark = st.session_state["theme"] == "Dark"
@@ -41,81 +41,68 @@ def inject_custom_css():
         scroll_bg = "#050a11"
         delta_up = "#2ecc71"
         delta_down = "#e74c3c"
-        glass_bg = "rgba(10, 20, 33, 0.8)"
+        sidebar_text = "#ffffff"
     else:
         bg_main = "#F4F7F6"
         bg_sidebar = "#ffffff"
         card_bg = "#ffffff"
-        card_border = "rgba(0, 0, 0, 0.08)"
+        card_border = "rgba(0, 0, 0, 0.1)"
         card_shadow = "0 8px 25px rgba(0, 0, 0, 0.05)"
-        text_main = "#2C3E50"
-        text_muted = "#7F8C8D"
+        text_main = "#2C3E50"      # لون الكلام الغامق في اللايت مود
+        text_muted = "#5D6D7E"     # لون الكلام الثانوي
         title_color = "#2980B9"
         scroll_bg = "#ecf0f1"
         delta_up = "#27ae60"
         delta_down = "#c0392b"
-        glass_bg = "rgba(255, 255, 255, 0.9)"
+        sidebar_text = "#2C3E50"
 
     custom_css = f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
+    @import url('[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap)');
     
-    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; color: {text_main}; }}
-    h1, h2, h3, h4, h5, h6 {{ font-family: 'Montserrat', sans-serif !important; }}
+    /* 🔴 FORCE TEXT COLORS EVERYWHERE 🔴 */
+    html, body, [class*="css"], .stMarkdown, .stText, p, span, div {{
+        font-family: 'Inter', sans-serif !important; 
+        color: {text_main} !important; 
+    }}
+    
+    h1, h2, h3, h4, h5, h6 {{ 
+        font-family: 'Montserrat', sans-serif !important; 
+        color: {text_main} !important;
+    }}
     
     /* Core Layout */
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
     [data-testid="stHeader"] {{ background: transparent !important; }}
     
+    /* Sidebar Text Fix */
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] div {{
+        color: {sidebar_text} !important;
+    }}
+    
     /* Global Cards */
     .metric-card, .simulator-card, .leaderboard-card, .health-card, .custom-card {{ 
-        background: {card_bg}; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
+        background: {card_bg} !important; 
         padding: 25px; border-radius: 16px; border: 1px solid {card_border}; 
-        box-shadow: {card_shadow}; margin-bottom: 15px; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        box-shadow: {card_shadow}; margin-bottom: 15px; 
     }}
-    .metric-card:hover {{ transform: translateY(-8px); border-left: 4px solid #00d2ff; box-shadow: 0 15px 35px rgba(0, 210, 255, 0.2); }}
     
     /* Typography */
-    .metric-label {{ color: {text_muted}; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1.5px; font-family: 'Montserrat', sans-serif; }}
-    .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; font-family: 'Montserrat', sans-serif; }}
-    .bi-title {{ color: {title_color}; font-size: 26px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; }}
+    .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; }}
+    .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; }}
+    .bi-title {{ color: {title_color} !important; font-size: 26px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; }}
     
     /* Deltas & Progress */
-    .delta-up {{ color: {delta_up}; font-size: 14px; font-weight: bold; margin-top: 8px; }}
-    .delta-down {{ color: {delta_down}; font-size: 14px; font-weight: bold; margin-top: 8px; }}
-    .delta-neutral {{ color: {text_muted}; font-size: 14px; font-weight: bold; margin-top: 8px; }}
-    .prog-bg {{ width: 100%; background: rgba(127, 140, 141, 0.2); border-radius: 5px; margin-top: 15px; height: 6px; overflow: hidden; }}
-    .prog-fill {{ height: 100%; border-radius: 5px; transition: width 1s ease-in-out; }}
+    .delta-up {{ color: {delta_up} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
+    .delta-down {{ color: {delta_down} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
+    .delta-neutral {{ color: {text_muted} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     
     /* Dividers & Alerts */
     .gradient-divider {{ height: 2px; background: linear-gradient(90deg, transparent 0%, {title_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
-    .alert-banner {{ background: linear-gradient(90deg, rgba(231,76,60,0.9), rgba(192,57,43,0.9)); color: white; padding: 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(231,76,60,0.3); border-left: 5px solid #ffaa00; }}
     
-    /* Ticker */
-    .ticker-wrap {{ background: {card_bg}; border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
-    .ticker {{ display: inline-block; padding-right: 100%; animation: ticker 35s linear infinite; }}
-    @keyframes ticker {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
-    .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; }}
-    .ticker-item span {{ color: #00d2ff; font-weight: 800; }}
-    
-    /* UI Details */
-    .stDataFrame {{ border: 1px solid {card_border}; border-radius: 12px; overflow: hidden; }}
-    .login-container {{ display: flex; justify-content: center; align-items: center; min-height: 80vh; }}
-    .login-title {{ color: {text_main}; font-weight: 800; text-align: center; margin-bottom: 20px; font-size: 24px; letter-spacing: 1px; font-family: 'Montserrat', sans-serif; }}
-    ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
-    ::-webkit-scrollbar-track {{ background: {scroll_bg}; }}
-    ::-webkit-scrollbar-thumb {{ background: rgba(0, 210, 255, 0.5); border-radius: 10px; }}
-    ::-webkit-scrollbar-thumb:hover {{ background: rgba(0, 210, 255, 0.8); }}
-    
-    @media print {{
-        * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-        [data-testid="stSidebar"], .stFileUploader, .stButton, header, footer, .ticker-wrap {{ display: none !important; }}
-        body, [data-testid="stAppViewContainer"] {{ background: #ffffff !important; color: #000 !important; }}
-        .metric-card, .simulator-card, .leaderboard-card, .health-card, div[data-testid="stPlotlyChart"] {{ background: #ffffff !important; border: 1px solid #ddd !important; box-shadow: none !important; page-break-inside: avoid !important; }}
-        .metric-value, .bi-title {{ -webkit-text-fill-color: #000 !important; color: #000 !important; }}
-        h1, h2, h3, h4, p, span, .metric-label {{ color: #333 !important; }}
-    }}
+    /* Warning Box Texts */
+    .stAlert p, .stAlert span {{ color: #1e3d59 !important; }}
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
@@ -161,13 +148,15 @@ def authenticate_user(email, password):
     return False, "Invalid Email or Password."
 
 # ==========================================
-# 4. 3D Glassy Chart Styling Function
+# 4. 3D Glassy Chart Styling Function (UPDATED)
 # ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
+    
+    # 🔴 FIXING CHART COLORS BASED ON THEME 🔴
     template = "plotly_dark" if is_dark else "plotly_white"
-    font_color = "#d1d5da" if is_dark else "#2C3E50"
-    grid_color = 'rgba(255,255,255,0.05)' if is_dark else 'rgba(0,0,0,0.05)'
+    font_color = "#d1d5da" if is_dark else "#2C3E50"  # Dark gray for Light mode
+    grid_color = 'rgba(255,255,255,0.05)' if is_dark else 'rgba(0,0,0,0.1)'
     line_color = 'rgba(255, 255, 255, 0.4)' if is_dark else 'rgba(0, 0, 0, 0.2)'
     marker_line = 'white' if is_dark else '#2C3E50'
 
@@ -177,17 +166,17 @@ def style_3d_glassy(fig, chart_type="bar"):
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter", color=font_color, size=12),
         margin=dict(t=50, b=20, l=20, r=20),
-        title_font=dict(family="Montserrat", size=16, color=font_color)
+        title_font=dict(family="Montserrat", size=16, color=font_color),
+        legend=dict(font=dict(color=font_color)) # Force legend color
     )
     if chart_type in ["bar", "pie", "histogram", "treemap"]:
         fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85)
     elif chart_type == "line":
         fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color=marker_line, width=1.5)))
         
-    fig.update_xaxes(showgrid=False, title_font=dict(family="Inter"))
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, title_font=dict(family="Inter"))
+    fig.update_xaxes(showgrid=False, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     return fig
-
 # ==========================================
 # 5. History Manager
 # ==========================================
