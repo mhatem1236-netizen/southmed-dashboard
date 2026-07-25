@@ -34,7 +34,7 @@ if "theme" not in st.session_state:
     st.session_state["theme"] = "Dark"
 
 # ==========================================
-# 2. Dynamic UI/UX CSS Injection (FIXED)
+# 2. Dynamic UI/UX CSS Injection (White-labeled)
 # ==========================================
 def inject_custom_css():
     is_dark = st.session_state["theme"] == "Dark"
@@ -54,7 +54,7 @@ def inject_custom_css():
         card_bg = "#ffffff"
         card_border = "rgba(0, 0, 0, 0.1)"
         card_shadow = "0 8px 25px rgba(0, 0, 0, 0.05)"
-        text_main = "#2C3E50"      # لون الكلام الغامق في اللايت مود
+        text_main = "#2C3E50"      
         text_muted = "#5D6D7E"     
         title_color = "#2980B9"
 
@@ -62,30 +62,24 @@ def inject_custom_css():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
     
+    /* 🔴 WHITE-LABELING: Hiding Streamlit Artifacts 🔴 */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    [data-testid="stHeader"] {{display: none;}}
+    .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
+    
     /* منع الفونت من بوظان الأيقونات */
-    html, body, [class*="css"] {{
-        color: {text_main} !important; 
-        font-family: 'Inter', sans-serif; 
-    }}
-    
-    h1, h2, h3, h4, h5, h6, .login-title {{ 
-        font-family: 'Montserrat', sans-serif !important; 
-        color: {text_main} !important;
-    }}
-    
-    p, .stMarkdown, label {{
-        color: {text_main} !important;
-    }}
+    html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
+    h1, h2, h3, h4, h5, h6, .login-title {{ font-family: 'Montserrat', sans-serif !important; color: {text_main} !important; }}
+    p, .stMarkdown, label {{ color: {text_main} !important; }}
     
     /* Core Layout */
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
-    [data-testid="stHeader"] {{ background: transparent !important; }}
     
     /* Global Cards */
     .metric-card, .simulator-card, .leaderboard-card, .health-card, .custom-card {{ 
-        background: {card_bg} !important; 
-        padding: 25px; border-radius: 16px; border: 1px solid {card_border}; 
+        background: {card_bg} !important; padding: 25px; border-radius: 16px; border: 1px solid {card_border}; 
         box-shadow: {card_shadow}; margin-bottom: 15px; 
     }}
     
@@ -523,6 +517,25 @@ def render_dashboard():
                 worst_office_name = worst_office['Done BY']
                 worst_office_delay = round(worst_office['DURATION'], 1)
 
+        # 🔴 NEW: Global Best/Worst Contractor (Accountability Logic) 🔴
+        global_best_comp, global_worst_comp = "N/A", "N/A"
+        global_best_rate, global_worst_delay = 0, 0
+        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns and 'DURATION' in filtered_df.columns:
+            g_comp_stats = []
+            for c in filtered_df['Company Name'].dropna().unique():
+                c_df_temp = filtered_df[filtered_df['Company Name'] == c]
+                c_t = len(c_df_temp)
+                c_a = len(c_df_temp[c_df_temp['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])])
+                c_dur = c_df_temp['DURATION'].mean()
+                g_comp_stats.append({'Comp': c, 'Total': c_t, 'Rate': (c_a/c_t*100) if c_t>0 else 0, 'Delay': c_dur})
+            g_df = pd.DataFrame(g_comp_stats)
+            valid_g = g_df[g_df['Total'] >= 5] if len(g_df[g_df['Total'] >= 5]) > 0 else g_df
+            if not valid_g.empty:
+                global_best_comp = valid_g.loc[valid_g['Rate'].idxmax()]['Comp']
+                global_best_rate = valid_g.loc[valid_g['Rate'].idxmax()]['Rate']
+                global_worst_comp = valid_g.loc[valid_g['Delay'].idxmax()]['Comp']
+                global_worst_delay = valid_g.loc[valid_g['Delay'].idxmax()]['Delay']
+
         st.markdown(f"""
             <div class="alert-banner">
                 <div>
@@ -557,6 +570,26 @@ def render_dashboard():
         create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog)
         d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
         create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
+
+        # 🔴 360° Accountability Board 🔴
+        st.markdown('<div class="bi-title" style="margin-top: 20px;">⚖️ 360° Accountability Board (Eye in the Sky)</div>', unsafe_allow_html=True)
+        acc_c1, acc_c2 = st.columns(2)
+        acc_c1.markdown(f"""
+            <div class="leaderboard-card" style="border-left: 6px solid #2ecc71; background: {ui['card_bg']};">
+                <div style="color: #2ecc71; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px;">🏆 Top Performing Contractor</div>
+                <div style="color: {ui['text_main']}; font-size: 28px; font-weight: 800; font-family: 'Montserrat';">{global_best_comp}</div>
+                <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 5px;">Maintains highest Quality Yield at <b style="color: #2ecc71;">{global_best_rate:.1f}%</b>.</div>
+            </div>
+        """, unsafe_allow_html=True)
+        acc_c2.markdown(f"""
+            <div class="leaderboard-card" style="border-left: 6px solid #e74c3c; background: {ui['card_bg']};">
+                <div style="color: #e74c3c; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px;">🚨 Critical Bottleneck (Highest Delay)</div>
+                <div style="color: {ui['text_main']}; font-size: 28px; font-weight: 800; font-family: 'Montserrat';">{global_worst_comp}</div>
+                <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 5px;">Causes sector slowdown with <b style="color: #e74c3c;">{global_worst_delay:.1f} Days</b> avg delay.</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         g_col, s_col = st.columns([0.4, 0.6])
         with g_col:
@@ -783,65 +816,88 @@ def render_dashboard():
             <meta charset="UTF-8">
             <title>Executive Report - {uploaded_file.name}</title>
             <style>
-                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; }}
-                .header {{ border-bottom: 3px solid #1e3d59; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }}
-                .header h1 {{ color: #1e3d59; margin: 0; font-size: 32px; text-transform: uppercase; }}
-                .header p {{ margin: 5px 0 0 0; color: #7f8c8d; }}
-                .score-card {{ background: #f8f9fa; border-left: 5px solid #2ecc71; padding: 20px; margin-bottom: 30px; border-radius: 5px; }}
-                .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }}
-                .box {{ border: 1px solid #ecf0f1; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
-                .box h3 {{ margin-top: 0; color: #e67e22; border-bottom: 1px solid #ecf0f1; padding-bottom: 10px; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
-                th, td {{ padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }}
+                body {{ font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; background-color: #f9fbfd; }}
+                .container {{ max-width: 900px; margin: auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 8px solid #1e3d59; }}
+                .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 20px; margin-bottom: 30px; }}
+                .header h1 {{ color: #1e3d59; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 1px; }}
+                .header p {{ margin: 5px 0 0 0; color: #7f8c8d; font-size: 14px; }}
+                .kpi-row {{ display: flex; justify-content: space-between; margin-bottom: 30px; }}
+                .kpi-box {{ background: #f4f7f6; padding: 20px; border-radius: 8px; width: 30%; text-align: center; border-bottom: 4px solid #00d2ff; }}
+                .kpi-box h3 {{ margin: 0; color: #7f8c8d; font-size: 12px; text-transform: uppercase; }}
+                .kpi-box h2 {{ margin: 10px 0 0 0; color: #2c3e50; font-size: 28px; }}
+                .section-title {{ color: #e67e22; font-size: 18px; border-bottom: 1px solid #ecf0f1; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }}
+                th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #eee; }}
                 th {{ background-color: #1e3d59; color: white; }}
+                .highlight-red {{ color: #e74c3c; font-weight: bold; }}
+                .highlight-green {{ color: #2ecc71; font-weight: bold; }}
             </style>
         </head>
         <body onload="window.print()">
-            <div class="header">
-                <div>
-                    <h1>Executive Intelligence Briefing</h1>
-                    <p><strong>System:</strong> Mega Infrastructure BI Portal</p>
-                    <p><strong>Dataset:</strong> {uploaded_file.name}</p>
-                    <p><strong>Generated On:</strong> {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d at %I:%M %p")}</p>
+            <div class="container">
+                <div class="header">
+                    <div>
+                        <h1>KK Engineering - Executive Brief</h1>
+                        <p><strong>Dataset:</strong> {uploaded_file.name}</p>
+                        <p><strong>Generated On:</strong> {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d at %I:%M %p")}</p>
+                    </div>
+                    <div style="font-size: 40px;">🏗️</div>
                 </div>
-                <div style="font-size: 50px;">🏛️</div>
-            </div>
-            <div class="score-card">
-                <h2 style="margin:0; color: #2c3e50;">Project Health Index: {overall_rate:.1f}% Approval Rate</h2>
-                <p style="margin:5px 0 0 0;">Evaluating {total_requests_count} total submittals to date.</p>
-            </div>
-            <div class="grid">
-                <div class="box">
-                    <h3>📊 Key Performance Metrics</h3>
-                    <table>
-                        <tr><td>Total Submittals</td><td><strong>{current_metrics["Total_Requests"]}</strong></td></tr>
-                        <tr><td>Total Field Tests</td><td><strong>{current_metrics["Total_Tests"]}</strong></td></tr>
-                        <tr><td>Average Duration</td><td><strong>{current_metrics["Avg_Duration"]} Days</strong></td></tr>
-                        <tr><td>Average DPL Score</td><td><strong>{current_metrics["Avg_DPL"]}</strong></td></tr>
-                        <tr><td>Total Paperwork Pages</td><td><strong>{current_metrics["Total_Paperwork"]}</strong></td></tr>
-                    </table>
+                
+                <div class="kpi-row">
+                    <div class="kpi-box" style="border-color: #2ecc71;">
+                        <h3>Overall Approval</h3>
+                        <h2 class="highlight-green">{overall_rate:.1f}%</h2>
+                    </div>
+                    <div class="kpi-box" style="border-color: #ffaa00;">
+                        <h3>Total Submittals</h3>
+                        <h2>{total_requests_count:,}</h2>
+                    </div>
+                    <div class="kpi-box" style="border-color: #e74c3c;">
+                        <h3>Avg Sector Delay</h3>
+                        <h2 class="highlight-red">{avg_duration_value} Days</h2>
+                    </div>
                 </div>
-                <div class="box">
-                    <h3>⚠️ Risk & Bottleneck Analysis</h3>
-                    <table>
-                        <tr><td>Rejected/Revise Count</td><td><strong style="color: #e74c3c;">{rejected_count} Submittals</strong></td></tr>
-                        <tr><td>Critical Bottleneck Node</td><td><strong>{worst_office_name}</strong></td></tr>
-                        <tr><td>Max Department Delay</td><td><strong style="color: #e74c3c;">{worst_office_delay} Days Average</strong></td></tr>
-                        <tr><td>Data Integrity Score</td><td><strong>{health_score:.1f}%</strong></td></tr>
-                    </table>
-                </div>
+
+                <div class="section-title">⚖️ 360° Accountability & Risk Assessment</div>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Identified Node / Value</th>
+                    </tr>
+                    <tr>
+                        <td><strong>🏆 Top Performing Contractor</strong></td>
+                        <td class="highlight-green">{global_best_comp} ({global_best_rate:.1f}% Yield)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>🚨 Critical Bottleneck (Contractor)</strong></td>
+                        <td class="highlight-red">{global_worst_comp} ({global_worst_delay:.1f} Days Avg Delay)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>⏱️ Worst Review Office</strong></td>
+                        <td class="highlight-red">{worst_office_name} ({worst_office_delay} Days Avg Delay)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>⚠️ Pending Rejections</strong></td>
+                        <td class="highlight-red">{rejected_count} Submittals</td>
+                    </tr>
+                    <tr>
+                        <td><strong>🛡️ Data Integrity Score</strong></td>
+                        <td>{health_score:.1f}%</td>
+                    </tr>
+                </table>
+                
+                <p style="text-align: center; color: #95a5a6; font-size: 11px; margin-top: 50px;">Confidential Document - Generated by AI Command Center BI Portal</p>
             </div>
-            <p style="text-align: center; color: #95a5a6; font-size: 12px; margin-top: 50px;">Confidential Document - Generated Automatically by the AI BI Framework</p>
         </body>
         </html>
         """
         b64 = base64.b64encode(html_report.encode()).decode()
-        href = f'<a href="data:text/html;base64,{b64}" download="Executive_Report_{datetime.now(EGYPT_TZ).strftime("%Y%m%d")}.html" style="background-color:#ffaa00; color:#1e3d59; padding:12px 24px; text-decoration:none; font-weight:bold; border-radius:8px; display:inline-block; transition:0.3s; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4);">📄 Download PDF-Ready Report</a>'
+        href = f'<a href="data:text/html;base64,{b64}" download="KK_Executive_Report_{datetime.now(EGYPT_TZ).strftime("%Y%m%d")}.html" style="background-color:#ffaa00; color:#1e3d59; padding:12px 24px; text-decoration:none; font-weight:bold; border-radius:8px; display:inline-block; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4); transition: all 0.3s;">📄 Download Ultra-Premium PDF Report</a>'
         st.markdown(href, unsafe_allow_html=True)
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        # 🔴 بلوك الـ History Trend رجع مكانه 🔴
         global_history_df = HistoryManager.load_history()
         if not global_history_df.empty:
             if 'File_Name' not in global_history_df.columns:
@@ -924,7 +980,6 @@ def render_dashboard():
                 st.plotly_chart(fig_c2, use_container_width=True)
 
         with chart_col2:
-            # 🔴 التعديل هنا: الـ Pie Charts بقت بتعرض الألوان الموحدة و النسب المئوية 🔴
             if 'sample status' in filtered_df.columns:
                 filtered_df['status_upper'] = filtered_df['sample status'].str.upper()
                 fig_p1 = px.pie(filtered_df, names='status_upper', hole=0.4, title="Sample Status Distribution", color='status_upper', color_discrete_map=STATUS_COLORS)
@@ -1104,7 +1159,6 @@ def render_dashboard():
                         
                     col_q1, col_q2 = st.columns(2)
                     with col_q1:
-                        # 🔴 التعديل هنا: توحيد الألوان باستخدام STATUS_COLORS 🔴
                         if battalion_col_360 and 'sample status' in comp_df_full.columns:
                             st.markdown("#### ⚖️ Quality by Battalion")
                             comp_df_full['status_upper'] = comp_df_full['sample status'].str.upper()
@@ -1125,7 +1179,6 @@ def render_dashboard():
                                 
                     col_d1, col_d2 = st.columns(2)
                     with col_d1:
-                        # 🔴 التعديل هنا: تحويل Processed By Office لـ Bar Chart للمقارنة 🔴
                         if 'Done BY' in comp_df_full.columns:
                             st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
                             off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count').sort_values('Count', ascending=False)
@@ -1157,8 +1210,8 @@ def render_dashboard():
                         else:
                             st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
 
-                    # 🔴 1. NEW: Rejection & Rework Ledger 🔴
-                    if 'sample status' in comp_df_full.columns and 'serial' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns:
+                    # 🔴 1. FIX: Advanced Rejection & Rework Ledger (Layer-Based Tracking) 🔴
+                    if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
                         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                         st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
                         
@@ -1169,15 +1222,28 @@ def render_dashboard():
                             ledger_data = []
                             total_delay_days = 0
                             
+                            el_col = elment_col_360 if elment_col_360 else None
+                            
                             for _, rej_row in rejected_items.iterrows():
-                                serial = rej_row['serial']
+                                serial = rej_row.get('serial', 'N/A')
                                 rej_date = rej_row['Date( SUB)']
+                                layer = str(rej_row.get('layer', 'Unknown'))
+                                test_type = str(rej_row.get('Test Type', 'Unknown'))
                                 
-                                future_accepts = rework_df[
-                                    (rework_df['serial'] == serial) & 
+                                filter_mask = (
                                     (rework_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])) & 
-                                    (rework_df['Date( SUB)'] >= rej_date)
-                                ]
+                                    (rework_df['Date( SUB)'] >= rej_date) &
+                                    (rework_df['layer'].astype(str) == layer) &
+                                    (rework_df['Test Type'].astype(str) == test_type)
+                                )
+                                
+                                if el_col:
+                                    element_val = str(rej_row.get(el_col, 'Unknown'))
+                                    filter_mask = filter_mask & (rework_df[el_col].astype(str) == element_val)
+                                else:
+                                    element_val = "N/A"
+
+                                future_accepts = rework_df[filter_mask]
                                 
                                 if not future_accepts.empty:
                                     acc_date = future_accepts['Date( SUB)'].min()
@@ -1190,21 +1256,23 @@ def render_dashboard():
                                     status_text = "Pending 🚨"
                                     
                                 ledger_data.append({
-                                    "Serial No.": serial,
-                                    "Test Type": rej_row.get('Test Type', 'N/A'),
+                                    "Rejected Serial": serial,
+                                    "Element": element_val,
+                                    "Layer": layer,
+                                    "Test Type": test_type,
                                     "Rejection Date": rej_date.strftime('%Y-%m-%d') if pd.notna(rej_date) else 'N/A',
                                     "Resolution Date": acc_date.strftime('%Y-%m-%d') if pd.notna(acc_date) else 'Not Resolved',
                                     "Rework Delay (Days)": delay_days,
                                     "Status": status_text
                                 })
                             
-                            ledger_df = pd.DataFrame(ledger_data).sort_values(by="Rework Delay (Days)", ascending=False)
+                            ledger_df = pd.DataFrame(ledger_data).sort_values(by=["Status", "Rework Delay (Days)"], ascending=[False, False])
                             
                             st.markdown(f"""
                             <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <h3 style="margin: 0; color: #e74c3c; font-size: 18px;">Total Rework Time Leakage</h3>
-                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">Total project days lost due to rework and re-submission cycles for {selected_comp}.</p>
+                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">Total project days lost tracking re-submissions for the same rejected layers/elements.</p>
                                 </div>
                                 <div style="font-size: 32px; font-weight: bold; color: #e74c3c;">{total_delay_days} Days Lost</div>
                             </div>
@@ -1213,6 +1281,8 @@ def render_dashboard():
                             st.dataframe(ledger_df, use_container_width=True)
                         else:
                             st.success(f"✅ No rejected submittals found for {selected_comp}. Zero rework leakage!")
+                    else:
+                        st.info("Requires 'sample status', 'layer', and 'Date( SUB)' columns to calculate rework delays.")
 
                     if battalion_col_360 and elment_col_360 and 'Date ( test)' in comp_df_full.columns:
                         st.markdown("#### ⏱️ Inter-Battalion Element Timeline Analysis")
@@ -1532,8 +1602,8 @@ def render_dashboard():
 
                         if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
                             rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                            approved_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                            approved_layers = set(bh_df[approved_mask]['layer'].dropna().astype(str).unique())
+                            accepted_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                            approved_layers = set(bh_df[accepted_mask]['layer'].dropna().astype(str).unique())
                             unresolved_alerts = list(set([(str(row.get('layer', 'Unknown')), row.get('Test Type', 'N/A'), row.get('serial', 'N/A')) for _, row in bh_df[rejected_mask].iterrows() if str(row.get('layer', 'Unknown')) not in approved_layers]))
                             if unresolved_alerts:
                                 st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
