@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import pytz
 import base64
 import hashlib
-import streamlit.components.v1 as components
+import sqlite3
 
 # ==========================================
 # 1. System Configuration & Constants
@@ -29,17 +29,17 @@ STATUS_COLORS = {
 
 USERS_DB_FILE = "users_db.csv"
 LOGIN_LOGS_FILE = "login_logs.csv"
-AUDIT_LOG_FILE = "audit_trail.csv" # 🚀 NEW: Audit Trail File
+AUDIT_LOG_FILE = "audit_trail.csv"
 
 if "theme" not in st.session_state:
     st.session_state["theme"] = "Dark"
-if "site_mode" not in st.session_state: # 🚀 NEW: Site Mode State
+if "site_mode" not in st.session_state:
     st.session_state["site_mode"] = False
-if "chat_history" not in st.session_state: # 🚀 NEW: GenAI Chat State
+if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
 # ==========================================
-# 2. Dynamic UI/UX CSS Injection (White-labeled + New Modules)
+# 2. Dynamic UI/UX CSS Injection
 # ==========================================
 def inject_custom_css():
     is_dark = st.session_state["theme"] == "Dark"
@@ -67,10 +67,9 @@ def inject_custom_css():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
     
-   /* 🔴 WHITE-LABELING: Hiding Streamlit Artifacts 🔴 */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
-    [data-testid="stHeader"] {{background: transparent !important;}}
+    [data-testid="stHeader"] {{display: none;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
     html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
@@ -101,12 +100,10 @@ def inject_custom_css():
     .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; }}
     .ticker-item span {{ color: #00d2ff; font-weight: 800; }}
 
-    /* 🚀 NEW: Chat UI Styling */
     .chat-container {{ background: {card_bg}; padding: 20px; border-radius: 15px; border: 1px solid {card_border}; margin-bottom: 20px; max-height: 400px; overflow-y: auto; }}
     .user-msg {{ background: rgba(0, 210, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: right; border-right: 3px solid #00d2ff; }}
     .ai-msg {{ background: rgba(255, 170, 0, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }}
     
-    /* 📱 NEW: Site Mode Mobile Styling */
     .site-btn {{ background: linear-gradient(145deg, #00d2ff, #008cba); color: white; padding: 25px; border-radius: 15px; text-align: center; font-size: 20px; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.2s; margin-bottom: 15px; }}
     .site-btn:hover {{ transform: translateY(-5px); }}
     .site-btn:active {{ transform: translateY(2px); }}
@@ -115,7 +112,7 @@ def inject_custom_css():
     st.markdown(custom_css, unsafe_allow_html=True)
 
 # ==========================================
-# 3. Authentication & User Management (Optimized with Caching)
+# 3. Authentication & User Management
 # ==========================================
 @st.cache_data(ttl=30)
 def _load_users_db():
@@ -209,53 +206,125 @@ def style_3d_glassy(fig, chart_type="bar"):
     return fig
 
 # ==========================================
-# 5. History Manager (Optimized & Safer)
+# 5. History Manager with SQLite (Persistent)
 # ==========================================
 class HistoryManager:
-    FILE_NAME = "project_history_log.csv"
+    DB_FILE = "project_history.db"
     
     @staticmethod
-    @st.cache_data(ttl=30)
-    def load_history():
-        if os.path.exists(HistoryManager.FILE_NAME):
-            return pd.read_csv(HistoryManager.FILE_NAME)
-        return pd.DataFrame()
-
+    def init_db():
+        conn = sqlite3.connect(HistoryManager.DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS kpi_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                file_name TEXT,
+                total_requests INTEGER,
+                total_tests INTEGER,
+                avg_dpl REAL,
+                avg_duration REAL,
+                total_paperwork INTEGER
+            )
+        ''')
+        conn.commit()
+        conn.close()
+    
     @staticmethod
     def save_metrics(metrics_dict):
-        metrics_dict['Timestamp'] = datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S")
-        df_new = pd.DataFrame([metrics_dict])
-        if os.path.exists(HistoryManager.FILE_NAME):
-            df_old = pd.read_csv(HistoryManager.FILE_NAME)
-            df_combined = pd.concat([df_old, df_new], ignore_index=True)
-        else:
-            df_combined = df_new
-        df_combined.to_csv(HistoryManager.FILE_NAME, index=False)
-        HistoryManager.load_history.clear() # Clear cache after saving
-
+        HistoryManager.init_db()
+        conn = sqlite3.connect(HistoryManager.DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO kpi_history 
+            (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"),
+            metrics_dict.get("File_Name", ""),
+            metrics_dict.get("Total_Requests", 0),
+            metrics_dict.get("Total_Tests", 0),
+            metrics_dict.get("Avg_DPL", 0),
+            metrics_dict.get("Avg_Duration", 0),
+            metrics_dict.get("Total_Paperwork", 0)
+        ))
+        conn.commit()
+        conn.close()
+    
+    @staticmethod
+    def load_history():
+        HistoryManager.init_db()
+        try:
+            conn = sqlite3.connect(HistoryManager.DB_FILE)
+            df = pd.read_sql_query("SELECT * FROM kpi_history ORDER BY timestamp", conn)
+            conn.close()
+            return df
+        except:
+            return pd.DataFrame()
+    
     @staticmethod
     def get_delta_html(current_val, metric_key, current_file_name):
         history_df = HistoryManager.load_history()
-        if history_df.empty or metric_key not in history_df.columns: 
-            return "" 
+        if history_df.empty:
+            return ""
         
-        # FIX: Safer handling of missing 'File_Name' column
-        if 'File_Name' in history_df.columns:
-            file_history = history_df[history_df['File_Name'] == current_file_name]
-        else:
-            file_history = history_df # Fallback to global history
-            
-        if file_history.empty: 
-            return "" 
-            
-        last_val = file_history.iloc[-1][metric_key]
+        column_map = {
+            "Total_Requests": "total_requests",
+            "Total_Tests": "total_tests",
+            "Avg_DPL": "avg_dpl",
+            "Avg_Duration": "avg_duration",
+            "Total_Paperwork": "total_paperwork"
+        }
+        
+        db_column = column_map.get(metric_key)
+        if not db_column or db_column not in history_df.columns:
+            return ""
+        
+        file_history = history_df[history_df['file_name'] == current_file_name] if 'file_name' in history_df.columns else history_df
+        
+        if file_history.empty:
+            return ""
+        
+        last_val = file_history.iloc[-1][db_column]
         diff = current_val - last_val
         pct_str = "0%" if last_val == 0 else f"{abs((diff / last_val) * 100):.1f}%"
         diff_fmt = f"{int(diff)}" if isinstance(current_val, (int, float)) and float(current_val).is_integer() else f"{diff:.2f}"
         
-        if diff > 0: return f'<div class="delta-up">▲ +{diff_fmt} ({pct_str})</div>'
-        elif diff < 0: return f'<div class="delta-down">▼ {diff_fmt} ({pct_str})</div>'
-        else: return f'<div class="delta-neutral">➖ No change</div>'
+        if diff > 0: 
+            return f'<div class="delta-up">▲ +{diff_fmt} ({pct_str})</div>'
+        elif diff < 0: 
+            return f'<div class="delta-down">▼ {diff_fmt} ({pct_str})</div>'
+        else: 
+            return f'<div class="delta-neutral">➖ No change</div>'
+    
+    @staticmethod
+    def export_to_csv():
+        HistoryManager.init_db()
+        conn = sqlite3.connect(HistoryManager.DB_FILE)
+        df = pd.read_sql_query("SELECT * FROM kpi_history", conn)
+        conn.close()
+        return df
+    
+    @staticmethod
+    def import_from_csv(df):
+        HistoryManager.init_db()
+        conn = sqlite3.connect(HistoryManager.DB_FILE)
+        for _, row in df.iterrows():
+            conn.execute("""
+                INSERT INTO kpi_history 
+                (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                row.get('timestamp', ''),
+                row.get('file_name', ''),
+                row.get('total_requests', 0),
+                row.get('total_tests', 0),
+                row.get('avg_dpl', 0),
+                row.get('avg_duration', 0),
+                row.get('total_paperwork', 0)
+            ))
+        conn.commit()
+        conn.close()
 
 def create_card(column, label, value, delta_html="", progress=None):
     if progress is not None:
@@ -286,12 +355,14 @@ def fmt_b(val):
     return s[:-2] if s.endswith('.0') else s
 
 # ==========================================
-# 🚀 6. NEW ADVANCED MODULES LOGIC
+# 6. Audit Trail & GenAI
 # ==========================================
-
-# 1. Audit Trail (Data Versioning)
 def check_audit_trail(uploaded_file):
-    file_hash = hashlib.md5(uploaded_file.getvalue()).hexdigest()
+    original_pos = uploaded_file.tell()
+    file_content = uploaded_file.read()
+    file_hash = hashlib.md5(file_content).hexdigest()
+    uploaded_file.seek(original_pos)
+    
     if os.path.exists(AUDIT_LOG_FILE):
         audit_df = pd.read_csv(AUDIT_LOG_FILE)
         last_record = audit_df[audit_df['File_Name'] == uploaded_file.name]
@@ -301,8 +372,7 @@ def check_audit_trail(uploaded_file):
                 return "✅ Data is identical to the last uploaded version. No changes detected."
             else:
                 old_rows = last_record.iloc[-1]['Row_Count']
-                new_df = pd.read_csv(uploaded_file)
-                new_rows = len(new_df)
+                new_rows = len(file_content.decode('utf-8', errors='ignore').strip().split('\n')) - 1
                 diff = new_rows - old_rows
                 return f"🔄 <b>Data Changed!</b> Previous: {old_rows} rows. Current: {new_rows} rows. (<b>{'+' if diff>=0 else ''}{diff} rows</b> modified/added)."
     
@@ -310,7 +380,7 @@ def check_audit_trail(uploaded_file):
         "Timestamp": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"),
         "File_Name": uploaded_file.name,
         "Hash": file_hash,
-        "Row_Count": len(pd.read_csv(uploaded_file))
+        "Row_Count": len(file_content.decode('utf-8', errors='ignore').strip().split('\n')) - 1
     }])
     if os.path.exists(AUDIT_LOG_FILE):
         pd.concat([pd.read_csv(AUDIT_LOG_FILE), new_audit], ignore_index=True).to_csv(AUDIT_LOG_FILE, index=False)
@@ -318,7 +388,6 @@ def check_audit_trail(uploaded_file):
         new_audit.to_csv(AUDIT_LOG_FILE, index=False)
     return "🆕 <b>New File Registered</b> in the Audit Trail System."
 
-# 2. GenAI Chat Engine (Smart Rule-Based Analysis)
 def genai_chat_engine(query, df):
     query = query.lower()
     response = "🤖 **AI Engineering Assistant:**\n\n"
@@ -382,7 +451,7 @@ def render_login_screen():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 8. NEW: Site Engineer Mobile Mode
+# 8. Site Engineer Mobile Mode
 # ==========================================
 def render_site_mode():
     st.title("📱 Site Engineer Mobile Mode")
@@ -405,65 +474,8 @@ def render_site_mode():
     }), use_container_width=True, hide_index=True)
 
 # ==========================================
-# 🚀 9. NEW: Advanced Modules Renderers
+# 9. Alert System Module (ONLY)
 # ==========================================
-def render_gis_module(df):
-    st.markdown('<div class="bi-title">🗺️ GIS Spatial Intelligence Map</div>', unsafe_allow_html=True)
-    st.caption("Visualizing project zones and quality status on a geographic map.")
-    
-    if 'Company Name' in df.columns:
-        map_df = df.copy()
-        np.random.seed(42)
-        map_df['lat'] = 30.0444 + np.random.uniform(-0.1, 0.1, len(map_df))
-        map_df['lon'] = 31.2357 + np.random.uniform(-0.1, 0.1, len(map_df))
-        
-        if 'sample status' in map_df.columns:
-            map_df['status_upper'] = map_df['sample status'].str.upper()
-            map_df['is_rejected'] = map_df['status_upper'].isin(['REJECTED', 'REVISE']).astype(int)
-            
-            fig_map = go.Figure(go.Scattergeo(
-                lat = map_df['lat'], lon = map_df['lon'],
-                text = map_df['Company Name'] + "<br>" + map_df['status_upper'],
-                mode = 'markers',
-                marker = dict(size = 10, color = map_df['is_rejected'], colorscale = [[0, '#2ecc71'], [1, '#e74c3c']], line_color = 'white', line_width = 1, opacity = 0.8),
-                hoverinfo = 'text'
-            ))
-            fig_map.update_geos(scope="africa", center=dict(lat=30.0, lon=31.0), projection_scale=15, showland=True, landcolor="rgb(250, 250, 250)" if st.session_state["theme"] == "Light" else "rgb(30, 40, 50)")
-            fig_map.update_layout(title="Project Quality Heatmap (Green = Approved, Red = Rejected)", height=600, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_map, use_container_width=True)
-
-def render_gantt_module(df):
-    st.markdown('<div class="bi-title">📅 Interactive Project Gantt Chart</div>', unsafe_allow_html=True)
-    st.caption("Tracking the lifecycle of elements from submission to final approval.")
-    
-    if 'Date ( test)' in df.columns and 'Date( SUB)' in df.columns and 'Company Name' in df.columns:
-        gantt_df = df.dropna(subset=['Date ( test)', 'Date( SUB)']).copy()
-        gantt_df = gantt_df[gantt_df['Date( SUB)'] >= gantt_df['Date ( test)']]
-        if not gantt_df.empty:
-            gantt_df = gantt_df.head(50) # Limit for performance
-            gantt_df['status_upper'] = gantt_df['sample status'].str.upper() if 'sample status' in gantt_df.columns else 'UNKNOWN'
-            fig_gantt = px.timeline(gantt_df, x_start="Date ( test)", x_end="Date( SUB)", y="Company Name", color="status_upper", color_discrete_map=STATUS_COLORS, title="Submittal Lifecycle & Delay Tracking (Top 50 Records)")
-            fig_gantt.update_yaxes(autorange="reversed")
-            fig_gantt.update_layout(height=600, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_gantt, use_container_width=True)
-
-def render_bim_module(df):
-    st.markdown('<div class="bi-title">🏗️ Lightweight 3D BIM / Spatial Viewer</div>', unsafe_allow_html=True)
-    st.caption("Visualizing testing density and quality across project layers and zones in 3D space.")
-    
-    zone_col = next((c for c in df.columns if 'ZONE' in c.upper()), None)
-    layer_col = next((c for c in df.columns if 'LAYER' in c.upper()), None)
-    batt_col = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
-    
-    if zone_col and layer_col and batt_col and 'sample status' in df.columns:
-        bim_df = df.dropna(subset=[zone_col, layer_col, batt_col]).copy()
-        bim_df['status_upper'] = bim_df['sample status'].str.upper()
-        bim_df['Layer_Num'] = bim_df[layer_col].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
-        
-        fig_3d = px.scatter_3d(bim_df, x=batt_col, y=zone_col, z='Layer_Num', color='status_upper', color_discrete_map=STATUS_COLORS, title="3D Spatial Distribution of Quality Status (Battalion x Zone x Layer)", opacity=0.7, size_max=10)
-        fig_3d.update_layout(height=700, scene=dict(xaxis_title=batt_col, yaxis_title=zone_col, zaxis_title="Layer Depth", bgcolor="rgba(0,0,0,0)"), paper_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig_3d, use_container_width=True)
-
 def render_alerts_module(df):
     st.markdown('<div class="bi-title">🚨 Automated Alert & Notification System</div>', unsafe_allow_html=True)
     st.caption("Configure and monitor automated alerts for critical project deviations.")
@@ -480,7 +492,7 @@ def render_alerts_module(df):
         if 'DURATION' in df.columns:
             high_delay = df[df['DURATION'] > 15]
             if not high_delay.empty:
-                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M"), "Severity": "⚠️ WARNING", "Message": f"{len(high_delay)} submittals have exceeded the 15-day SLA limit."})
+                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M"), "Severity": "️ WARNING", "Message": f"{len(high_delay)} submittals have exceeded the 15-day SLA limit."})
         if not alerts:
             alerts.append({"Time": "Now", "Severity": "✅ OK", "Message": "All systems nominal. No critical alerts."})
         st.dataframe(pd.DataFrame(alerts), use_container_width=True, hide_index=True)
@@ -497,7 +509,7 @@ def render_alerts_module(df):
             st.balloons()
 
 # ==========================================
-# 10. Main Dashboard Application (ORIGINAL + INTEGRATIONS)
+# 10. Main Dashboard Application
 # ==========================================
 def render_dashboard():
     user = st.session_state["current_user"]
@@ -528,7 +540,7 @@ def render_dashboard():
 
     st.sidebar.markdown("### 🎨 UI/UX Mode")
     theme_col1, theme_col2 = st.sidebar.columns(2)
-    if theme_col1.button("🌙 Dark"):
+    if theme_col1.button(" Dark"):
         st.session_state["theme"] = "Dark"
         st.rerun()
     if theme_col2.button("☀️ Light"):
@@ -536,7 +548,6 @@ def render_dashboard():
         st.rerun()
     st.sidebar.divider()
 
-    # 🚀 NEW: Site Mode Toggle
     st.session_state["site_mode"] = st.sidebar.toggle("📱 Activate Site Engineer Mode (Mobile)", value=st.session_state["site_mode"])
     if st.session_state["site_mode"]:
         render_site_mode()
@@ -611,17 +622,37 @@ def render_dashboard():
     st.sidebar.markdown("### 📁 1. Data Source")
     data_source = st.sidebar.selectbox("Connection Type:", ["Local CSV Upload", "Live SQL Database (Pending)"])
 
-    with st.sidebar.expander("🗄️ History Database Backup"):
-        st.markdown(f"<span style='font-size:12px; color:{ui['text_muted']};'>Because cloud servers reset daily, save your history before leaving and restore it tomorrow.</span>", unsafe_allow_html=True)
-        history_upload = st.file_uploader("1. Restore History Log", type="csv")
+    with st.sidebar.expander("🗄️ History Database Management"):
+        st.markdown(f"<span style='font-size:12px; color:{ui['text_muted']};'>Data is automatically saved to SQLite database and persists across sessions.</span>", unsafe_allow_html=True)
+        
+        if st.button(" Download Backup CSV", use_container_width=True):
+            backup_df = HistoryManager.export_to_csv()
+            if not backup_df.empty:
+                csv_backup = backup_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label=" Download Now",
+                    data=csv_backup,
+                    file_name=f"history_backup_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            else:
+                st.info("No history data to backup")
+        
+        history_upload = st.file_uploader(" Restore from Backup (Optional)", type="csv")
         if history_upload is not None:
-            restored_df = pd.read_csv(history_upload)
-            restored_df.to_csv(HistoryManager.FILE_NAME, index=False)
-            HistoryManager.load_history.clear()
-            st.success("✅ History Restored!")
-        if os.path.exists(HistoryManager.FILE_NAME):
-            with open(HistoryManager.FILE_NAME, "rb") as f:
-                st.download_button(label="2. Download Backup 💾", data=f, file_name=f"history_backup_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv", mime="text/csv", use_container_width=True)
+            try:
+                restored_df = pd.read_csv(history_upload)
+                HistoryManager.import_from_csv(restored_df)
+                st.success("✅ History Restored Successfully!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error restoring backup: {str(e)}")
+        
+        history_df = HistoryManager.load_history()
+        if not history_df.empty:
+            st.markdown(f"📊 **Total Records:** {len(history_df)}")
+            st.markdown(f"📅 **Last Entry:** {history_df.iloc[-1]['timestamp']}")
     
     st.sidebar.divider()
 
@@ -630,11 +661,24 @@ def render_dashboard():
         uploaded_file = st.sidebar.file_uploader("Upload your Project Log (CSV) 📂", type="csv")
 
     if uploaded_file is not None:
-        # 🚀 NEW: Audit Trail Check
+        uploaded_file.seek(0)
+        
         audit_msg = check_audit_trail(uploaded_file)
         st.sidebar.success(audit_msg, icon="🛡️")
-
-        df = pd.read_csv(uploaded_file)
+        
+        uploaded_file.seek(0)
+        
+        try:
+            df = pd.read_csv(uploaded_file)
+            
+            if df.empty:
+                st.error("⚠️ الملف لا يحتوي على بيانات!")
+                st.stop()
+        except Exception as e:
+            st.error(f"❌ خطأ في قراءة الملف: {str(e)}")
+            st.info("💡 تأكد أن الملف بصيغة CSV وأن البيانات منسقة بشكل صحيح.")
+            st.stop()
+        
         df.columns = df.columns.str.strip() 
         
         if 'Company Name' not in df.columns and 'Company' in df.columns:
@@ -672,23 +716,15 @@ def render_dashboard():
             </div>
         """, unsafe_allow_html=True)
 
-        # 🚀 NEW: Advanced Modules Navigation
+        # 🚨 Alert System Button (ONLY)
         st.markdown("### 🚀 Select Advanced Module to Explore")
-        mod1, mod2, mod3, mod4 = st.columns(4)
-        with mod1: show_gis = st.button("🗺️ GIS Map", use_container_width=True)
-        with mod2: show_gantt = st.button("📅 Gantt Chart", use_container_width=True)
-        with mod3: show_bim = st.button("🏗️ 3D BIM Viewer", use_container_width=True)
-        with mod4: show_alerts = st.button("🚨 Alert System", use_container_width=True)
+        mod1 = st.button(" Alert System", use_container_width=True)
 
-        if show_gis: render_gis_module(df)
-        if show_gantt: render_gantt_module(df)
-        if show_bim: render_bim_module(df)
-        if show_alerts: render_alerts_module(df)
-        
-        if show_gis or show_gantt or show_bim or show_alerts:
+        if mod1:
+            render_alerts_module(df)
             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        # 🚀 NEW: GenAI Chat Interface
+        # 🧠 GenAI Chat Interface
         st.markdown('<div class="bi-title">🧠 Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
         st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
         
@@ -705,8 +741,8 @@ def render_dashboard():
         prompt = st.chat_input("Ask the AI Engineering Assistant...")
         if prompt:
             st.session_state["chat_history"].append({"role": "user", "content": prompt})
-            with st.spinner("🧠 AI is analyzing the dataset..."):
-                time.sleep(1.5) # Simulate processing
+            with st.spinner(" AI is analyzing the dataset..."):
+                time.sleep(1.5)
                 ai_response = genai_chat_engine(prompt, df)
             st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
             st.rerun()
@@ -780,7 +816,7 @@ def render_dashboard():
                 <div class="ticker-item">✅ <b>Current Global Yield:</b> <span>{overall_rate:.1f}%</span></div>
                 <div class="ticker-item">⏱️ <b>Sector Avg Delay:</b> <span>{avg_duration_value} Days</span></div>
                 <div class="ticker-item">🚨 <b>Pending Rejections:</b> <span>{rejected_count}</span></div>
-                <div class="ticker-item">🧪 <b>Total Field Tests:</b> <span>{total_tests_count:,}</span></div>
+                <div class="ticker-item"> <b>Total Field Tests:</b> <span>{total_tests_count:,}</span></div>
             </div>
         </div>
         """
@@ -954,7 +990,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
             cc1, cc2 = st.columns(2)
             c_a = cc1.selectbox("Select Contractor A", companies, index=0)
@@ -1072,7 +1108,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
         if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             tree_df = filtered_df.copy()
             tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
@@ -1177,14 +1213,14 @@ def render_dashboard():
 
         global_history_df = HistoryManager.load_history()
         if not global_history_df.empty:
-            if 'File_Name' not in global_history_df.columns:
-                global_history_df['File_Name'] = uploaded_file.name
-            file_trend_df = global_history_df[global_history_df['File_Name'] == uploaded_file.name].copy()
+            if 'file_name' not in global_history_df.columns:
+                global_history_df['file_name'] = uploaded_file.name
+            file_trend_df = global_history_df[global_history_df['file_name'] == uploaded_file.name].copy()
             if len(file_trend_df) > 1:
-                st.markdown(f"### 🚀 KPI Daily Growth Trend for `{uploaded_file.name}`")
-                file_trend_df['Added_Requests'] = file_trend_df['Total_Requests'].diff().fillna(0)
-                file_trend_df['Growth_Rate_%'] = ((file_trend_df['Total_Requests'].diff() / file_trend_df['Total_Requests'].shift(1)) * 100).fillna(0)
-                file_trend_df['Date_Time'] = pd.to_datetime(file_trend_df['Timestamp']).dt.strftime('%m-%d %H:%M')
+                st.markdown(f"###  KPI Daily Growth Trend for `{uploaded_file.name}`")
+                file_trend_df['Added_Requests'] = file_trend_df['total_requests'].diff().fillna(0)
+                file_trend_df['Growth_Rate_%'] = ((file_trend_df['total_requests'].diff() / file_trend_df['total_requests'].shift(1)) * 100).fillna(0)
+                file_trend_df['Date_Time'] = pd.to_datetime(file_trend_df['timestamp']).dt.strftime('%m-%d %H:%M')
                 col_t1, col_t2 = st.columns(2)
                 with col_t1:
                     fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', title="Daily Added Submittals Trend", text_auto=True, color_discrete_sequence=['#00d2ff'])
@@ -1195,13 +1231,13 @@ def render_dashboard():
                     fig_rate = style_3d_glassy(fig_rate, chart_type="line")
                     st.plotly_chart(fig_rate, use_container_width=True)
                 with st.expander("🖨️ View & Export History Log for this File"):
-                    export_df = file_trend_df[['Timestamp', 'Total_Requests', 'Added_Requests', 'Growth_Rate_%', 'Avg_DPL', 'Avg_Duration']].copy()
+                    export_df = file_trend_df[['timestamp', 'total_requests', 'Added_Requests', 'Growth_Rate_%', 'avg_dpl', 'avg_duration']].copy()
                     export_df.rename(columns={'Added_Requests': '+ Added', 'Growth_Rate_%': 'Growth %'}, inplace=True)
                     st.dataframe(export_df.round(2), use_container_width=True)
                 st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         if num_tests_col and 'Test Type' in filtered_df.columns:
-            st.markdown("### 🧪 Detailed Test Counts by Type")
+            st.markdown("###  Detailed Test Counts by Type")
             test_summary = filtered_df.groupby('Test Type')[num_tests_col].sum().reset_index()
             t_cols = st.columns(len(test_summary))
             for i, row in test_summary.iterrows():
@@ -1273,7 +1309,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             comp_stats = []
             for comp in filtered_df['Company Name'].dropna().unique():
@@ -1290,7 +1326,7 @@ def render_dashboard():
                 l_col1, l_col2 = st.columns(2)
                 l_col1.markdown(f"""
                     <div class="leaderboard-card" style="border-left-color: #2ecc71;">
-                        <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
+                        <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;"> Top Performer Contractor</h4>
                         <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{best_comp['Company']}</h2>
                         <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
                     </div>
@@ -1313,7 +1349,7 @@ def render_dashboard():
                 else: return 'Other'
             mat_df['Loc_Category'] = mat_df['Sampling_Lower'].apply(categorize_location)
             
-            st.markdown("#### 📑 Consolidated Contractors Summary (Ready for Print)")
+            st.markdown("####  Consolidated Contractors Summary (Ready for Print)")
             summary_pivot = pd.crosstab(mat_df['Company Name'], mat_df['Loc_Category'], margins=True, margins_name="Total")
             cols_order = ['Stockpile', 'Bottom of Excavation', 'Fill', 'Other', 'Total']
             existing_cols = [c for c in cols_order if c in summary_pivot.columns]
@@ -1457,7 +1493,7 @@ def render_dashboard():
                     col_d1, col_d2 = st.columns(2)
                     with col_d1:
                         if 'Done BY' in comp_df_full.columns:
-                            st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
+                            st.markdown("#### ‍💼 Processed by Office (Done BY)")
                             off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count').sort_values('Count', ascending=False)
                             off_df['Percent'] = (off_df['Count'] / off_df['Count'].sum() * 100).round(1)
                             fig_off = px.bar(off_df, x='Done BY', y='Count', text='Count', title="Submittal Volume per Review Office", color='Done BY', color_discrete_sequence=NEON_COLORS)
@@ -1581,7 +1617,7 @@ def render_dashboard():
                 with tab_stockpile:
                     if battalion_col_stock:
                         avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
-                        selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats)
+                        selected_bat = st.selectbox(" Filter Sourcing Analysis by Battalion:", avail_bats)
                         
                         if selected_bat != "All Battalions":
                             comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
@@ -1635,7 +1671,7 @@ def render_dashboard():
                         elif progress_pct >= 70:
                             prog_color = "#f1c40f" 
                             status_color = "#f1c40f"
-                            status_icon = "⚠️"
+                            status_icon = "️"
                         else:
                             prog_color = "#e74c3c" 
                             status_color = "#e74c3c"
@@ -1931,7 +1967,7 @@ def render_dashboard():
                                         missing_str = ", ".join([f"Layer {l}" for l in missing_layers])
                                         st.markdown(f"""
                                         <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-                                            <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5>
+                                            <h5 style="color: #f1c40f; margin: 0;">️ Missing Compaction Layers Detected</h5>
                                             <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:{ui['text_main']};">{missing_str}</b></p>
                                         </div>
                                         """, unsafe_allow_html=True)
@@ -1948,11 +1984,11 @@ def render_dashboard():
                         st.divider()
 
                         if 'Sampling Location' in bh_df.columns:
-                            st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
+                            st.markdown("#### ️ Bottom of Excavation & Soil Quality")
                             boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
                             if not boe_df.empty:
                                 boe_count = len(boe_df)
-                                st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
+                                st.info(f" Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
                                 if 'Classification' in boe_df.columns:
                                     class_counts = boe_df['Classification'].value_counts().reset_index()
                                     class_counts.columns = ['Classification', 'Count']
