@@ -280,13 +280,11 @@ class HistoryManager:
         if not db_column or db_column not in history_df.columns:
             return ""
         
-        # 🔴 الفلترة الصارمة باسم الملف فقط 🔴
         file_history = history_df[history_df['file_name'] == current_file_name] if 'file_name' in history_df.columns else pd.DataFrame()
         
         if file_history.empty:
             return ""
         
-        # ترتيب حسب الـ id لضمان الحصول على آخر إدخال فعلي
         file_history = file_history.sort_values('id')
         last_val = file_history.iloc[-1][db_column]
         diff = current_val - last_val
@@ -313,27 +311,37 @@ class HistoryManager:
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
         
-        # خريطة مرنة لقراءة الملفات القديمة
+        # 🔴 الفلتر الذكي اللي بيستورد أي ملف بغض النظر عن ترتيب أو اسم أعمدته 🔴
+        df.columns = df.columns.str.strip().str.lower()
         col_map = {
-            'Timestamp': 'timestamp', 'File_Name': 'file_name', 
-            'Total_Requests': 'total_requests', 'Total_Tests': 'total_tests',
-            'Avg_DPL': 'avg_dpl', 'Avg_Duration': 'avg_duration', 'Total_Paperwork': 'total_paperwork'
+            'timestamp': 'timestamp', 'file_name': 'file_name', 
+            'total_requests': 'total_requests', 'total_tests': 'total_tests',
+            'avg_dpl': 'avg_dpl', 'avg_duration': 'avg_duration', 'total_paperwork': 'total_paperwork'
         }
-        df = df.rename(columns=col_map)
         
-        for _, row in df.iterrows():
+        for index, row in df.iterrows():
+            # استخراج ذكي للبيانات بناءً على أسماء الأعمدة أو ترتيبها التقريبي
+            req = row.get('total_requests', row.iloc[0] if len(row) > 0 else 0)
+            tst = row.get('total_tests', row.iloc[1] if len(row) > 1 else 0)
+            dpl = row.get('avg_dpl', row.iloc[2] if len(row) > 2 else 0)
+            dur = row.get('avg_duration', row.iloc[3] if len(row) > 3 else 0)
+            pap = row.get('total_paperwork', row.iloc[4] if len(row) > 4 else 0)
+            
+            ts = row.get('timestamp', row.iloc[5] if len(row) > 5 else datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"))
+            fn = row.get('file_name', row.iloc[6] if len(row) > 6 else 'Legacy_Import.csv')
+            
             conn.execute("""
                 INSERT INTO kpi_history 
                 (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
-                str(row.get('timestamp', '')),
-                str(row.get('file_name', 'Imported_Legacy_File')), # اسم افتراضي لو مش موجود
-                pd.to_numeric(row.get('total_requests', 0), errors='coerce') or 0,
-                pd.to_numeric(row.get('total_tests', 0), errors='coerce') or 0,
-                pd.to_numeric(row.get('avg_dpl', 0), errors='coerce') or 0,
-                pd.to_numeric(row.get('avg_duration', 0), errors='coerce') or 0,
-                pd.to_numeric(row.get('total_paperwork', 0), errors='coerce') or 0
+                str(ts),
+                str(fn).strip(),
+                pd.to_numeric(req, errors='coerce') or 0,
+                pd.to_numeric(tst, errors='coerce') or 0,
+                pd.to_numeric(dpl, errors='coerce') or 0,
+                pd.to_numeric(dur, errors='coerce') or 0,
+                pd.to_numeric(pap, errors='coerce') or 0
             ))
         conn.commit()
         conn.close()
@@ -637,7 +645,6 @@ def render_dashboard():
     with st.sidebar.expander("🗄️ History Database Management"):
         st.markdown(f"<span style='font-size:12px; color:{ui['text_muted']};'>Data is automatically saved to SQLite database and persists across sessions.</span>", unsafe_allow_html=True)
         
-        # 🔴 NEW: زرار المسح السحري لتنظيف قاعدة البيانات الملوثة بالتواريخ الخطأ 🔴
         if st.button("🗑️ Wipe Database & Start Fresh", type="primary", use_container_width=True):
             if os.path.exists(HistoryManager.DB_FILE):
                 os.remove(HistoryManager.DB_FILE)
@@ -685,7 +692,6 @@ def render_dashboard():
         history_df = HistoryManager.load_history()
         if not history_df.empty:
             st.markdown(f"📊 **Total Records:** {len(history_df)}")
-            # محاولة تنظيف آخر تاريخ مسجل للعرض بشياكة
             last_ts = str(history_df.iloc[-1]['timestamp'])
             try:
                 f_ts = float(last_ts)
@@ -1583,7 +1589,6 @@ def render_dashboard():
                         else:
                             st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
 
-                    # 🔴 1. FIX: Advanced Rejection & Rework Ledger (Layer-Based Tracking) 🔴
                     if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
                         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                         st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
@@ -1765,7 +1770,6 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
 
-                    # 🔴 2. NEW: Conditional AI Sampling Logic 🔴
                     if 'Date ( test)' in comp_bat_df.columns:
                         time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
                         time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
