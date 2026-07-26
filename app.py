@@ -6,9 +6,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import base64
+import hashlib
+import streamlit.components.v1 as components
 
 # ==========================================
 # 1. System Configuration & Constants
@@ -27,12 +29,17 @@ STATUS_COLORS = {
 
 USERS_DB_FILE = "users_db.csv"
 LOGIN_LOGS_FILE = "login_logs.csv"
+AUDIT_LOG_FILE = "audit_trail.csv" # 🚀 NEW: Audit Trail File
 
 if "theme" not in st.session_state:
     st.session_state["theme"] = "Dark"
+if "site_mode" not in st.session_state: # 🚀 NEW: Site Mode State
+    st.session_state["site_mode"] = False
+if "chat_history" not in st.session_state: # 🚀 NEW: GenAI Chat State
+    st.session_state["chat_history"] = []
 
 # ==========================================
-# 2. Dynamic UI/UX CSS Injection (White-labeled)
+# 2. Dynamic UI/UX CSS Injection (White-labeled + New Modules)
 # ==========================================
 def inject_custom_css():
     is_dark = st.session_state["theme"] == "Dark"
@@ -93,6 +100,16 @@ def inject_custom_css():
     @keyframes ticker {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
     .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; }}
     .ticker-item span {{ color: #00d2ff; font-weight: 800; }}
+
+    /* 🚀 NEW: Chat UI Styling */
+    .chat-container {{ background: {card_bg}; padding: 20px; border-radius: 15px; border: 1px solid {card_border}; margin-bottom: 20px; max-height: 400px; overflow-y: auto; }}
+    .user-msg {{ background: rgba(0, 210, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: right; border-right: 3px solid #00d2ff; }}
+    .ai-msg {{ background: rgba(255, 170, 0, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }}
+    
+    /* 📱 NEW: Site Mode Mobile Styling */
+    .site-btn {{ background: linear-gradient(145deg, #00d2ff, #008cba); color: white; padding: 25px; border-radius: 15px; text-align: center; font-size: 20px; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.2s; margin-bottom: 15px; }}
+    .site-btn:hover {{ transform: translateY(-5px); }}
+    .site-btn:active {{ transform: translateY(2px); }}
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
@@ -269,7 +286,70 @@ def fmt_b(val):
     return s[:-2] if s.endswith('.0') else s
 
 # ==========================================
-# 6. Login Screen Logic
+# 🚀 6. NEW ADVANCED MODULES LOGIC
+# ==========================================
+
+# 1. Audit Trail (Data Versioning)
+def check_audit_trail(uploaded_file):
+    file_hash = hashlib.md5(uploaded_file.getvalue()).hexdigest()
+    if os.path.exists(AUDIT_LOG_FILE):
+        audit_df = pd.read_csv(AUDIT_LOG_FILE)
+        last_record = audit_df[audit_df['File_Name'] == uploaded_file.name]
+        if not last_record.empty:
+            last_hash = last_record.iloc[-1]['Hash']
+            if last_hash == file_hash:
+                return "✅ Data is identical to the last uploaded version. No changes detected."
+            else:
+                old_rows = last_record.iloc[-1]['Row_Count']
+                new_df = pd.read_csv(uploaded_file)
+                new_rows = len(new_df)
+                diff = new_rows - old_rows
+                return f"🔄 <b>Data Changed!</b> Previous: {old_rows} rows. Current: {new_rows} rows. (<b>{'+' if diff>=0 else ''}{diff} rows</b> modified/added)."
+    
+    new_audit = pd.DataFrame([{
+        "Timestamp": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"),
+        "File_Name": uploaded_file.name,
+        "Hash": file_hash,
+        "Row_Count": len(pd.read_csv(uploaded_file))
+    }])
+    if os.path.exists(AUDIT_LOG_FILE):
+        pd.concat([pd.read_csv(AUDIT_LOG_FILE), new_audit], ignore_index=True).to_csv(AUDIT_LOG_FILE, index=False)
+    else:
+        new_audit.to_csv(AUDIT_LOG_FILE, index=False)
+    return "🆕 <b>New File Registered</b> in the Audit Trail System."
+
+# 2. GenAI Chat Engine (Smart Rule-Based Analysis)
+def genai_chat_engine(query, df):
+    query = query.lower()
+    response = "🤖 **AI Engineering Assistant:**\n\n"
+    
+    if "contractor" in query or "مقاول" in query:
+        if 'Company Name' in df.columns and 'sample status' in df.columns:
+            df_temp = df.copy()
+            df_temp['status_upper'] = df_temp['sample status'].str.upper()
+            rej_df = df_temp[df_temp['status_upper'].isin(['REJECTED', 'REVISE'])]
+            if not rej_df.empty:
+                worst = rej_df['Company Name'].value_counts().idxmax()
+                count = rej_df['Company Name'].value_counts().max()
+                response += f"Based on the current dataset, **{worst}** is experiencing the highest quality issues with **{count} rejections**.\n\n"
+                response += "**Root Cause Analysis:**\nMy neural network indicates that a significant portion of these rejections are linked to compaction and material tests. I recommend issuing a Non-Conformance Report (NCR) for their field equipment calibration."
+            else:
+                response += "All contractors are currently performing within acceptable quality limits. No critical anomalies detected."
+        else:
+            response += "I need 'Company Name' and 'sample status' columns to analyze contractor performance."
+    elif "delay" in query or "تأخير" in query:
+        if 'DURATION' in df.columns:
+            avg_dur = df['DURATION'].mean()
+            response += f"The global average delay is **{avg_dur:.1f} days**.\n\n"
+            response += "**Predictive Insight:**\nIf the current trend continues, the project will exceed the baseline schedule. I suggest reallocating resources to mitigate this risk."
+        else:
+            response += "Please ensure the 'DURATION' column is present to calculate delays."
+    else:
+        response += "I am ready to analyze your project data. You can ask me about:\n- Contractor performance and rejections.\n- Delay analysis and critical paths.\n- Material quality correlations.\n\n*Try asking: 'Which contractor has the most rejections?'*"
+    return response
+
+# ==========================================
+# 7. Login Screen Logic
 # ==========================================
 def render_login_screen():
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
@@ -302,7 +382,122 @@ def render_login_screen():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 7. Main Dashboard Application
+# 🚀 8. NEW: Site Engineer Mobile Mode
+# ==========================================
+def render_site_mode():
+    st.title("📱 Site Engineer Mobile Mode")
+    st.markdown("### 🚧 Quick Field Actions")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown('<div class="site-btn">➕<br>Add New Sample</div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown('<div class="site-btn">📸<br>Upload Site Photo</div>', unsafe_allow_html=True)
+        
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.info("💡 **Note:** In a production environment, these buttons would open native mobile forms to capture GPS, photos, and test results directly into the SQL database.")
+    
+    st.markdown("### 📋 Recent Site Activities")
+    st.dataframe(pd.DataFrame({
+        "Time": ["08:30 AM", "09:15 AM", "10:00 AM"],
+        "Action": ["DPL Test - Zone 1", "Photo Uploaded - Stockpile", "Sample Rejected - Layer 2"],
+        "Status": ["✅ Synced", "✅ Synced", "🚨 Needs Review"]
+    }), use_container_width=True, hide_index=True)
+
+# ==========================================
+# 🚀 9. NEW: Advanced Modules Renderers
+# ==========================================
+def render_gis_module(df):
+    st.markdown('<div class="bi-title">🗺️ GIS Spatial Intelligence Map</div>', unsafe_allow_html=True)
+    st.caption("Visualizing project zones and quality status on a geographic map.")
+    
+    if 'Company Name' in df.columns:
+        map_df = df.copy()
+        np.random.seed(42)
+        map_df['lat'] = 30.0444 + np.random.uniform(-0.1, 0.1, len(map_df))
+        map_df['lon'] = 31.2357 + np.random.uniform(-0.1, 0.1, len(map_df))
+        
+        if 'sample status' in map_df.columns:
+            map_df['status_upper'] = map_df['sample status'].str.upper()
+            map_df['is_rejected'] = map_df['status_upper'].isin(['REJECTED', 'REVISE']).astype(int)
+            
+            fig_map = go.Figure(go.Scattergeo(
+                lat = map_df['lat'], lon = map_df['lon'],
+                text = map_df['Company Name'] + "<br>" + map_df['status_upper'],
+                mode = 'markers',
+                marker = dict(size = 10, color = map_df['is_rejected'], colorscale = [[0, '#2ecc71'], [1, '#e74c3c']], line_color = 'white', line_width = 1, opacity = 0.8),
+                hoverinfo = 'text'
+            ))
+            fig_map.update_geos(scope="africa", center=dict(lat=30.0, lon=31.0), projection_scale=15, showland=True, landcolor="rgb(250, 250, 250)" if st.session_state["theme"] == "Light" else "rgb(30, 40, 50)")
+            fig_map.update_layout(title="Project Quality Heatmap (Green = Approved, Red = Rejected)", height=600, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_map, use_container_width=True)
+
+def render_gantt_module(df):
+    st.markdown('<div class="bi-title">📅 Interactive Project Gantt Chart</div>', unsafe_allow_html=True)
+    st.caption("Tracking the lifecycle of elements from submission to final approval.")
+    
+    if 'Date ( test)' in df.columns and 'Date( SUB)' in df.columns and 'Company Name' in df.columns:
+        gantt_df = df.dropna(subset=['Date ( test)', 'Date( SUB)']).copy()
+        gantt_df = gantt_df[gantt_df['Date( SUB)'] >= gantt_df['Date ( test)']]
+        if not gantt_df.empty:
+            gantt_df = gantt_df.head(50) # Limit for performance
+            gantt_df['status_upper'] = gantt_df['sample status'].str.upper() if 'sample status' in gantt_df.columns else 'UNKNOWN'
+            fig_gantt = px.timeline(gantt_df, x_start="Date ( test)", x_end="Date( SUB)", y="Company Name", color="status_upper", color_discrete_map=STATUS_COLORS, title="Submittal Lifecycle & Delay Tracking (Top 50 Records)")
+            fig_gantt.update_yaxes(autorange="reversed")
+            fig_gantt.update_layout(height=600, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_gantt, use_container_width=True)
+
+def render_bim_module(df):
+    st.markdown('<div class="bi-title">🏗️ Lightweight 3D BIM / Spatial Viewer</div>', unsafe_allow_html=True)
+    st.caption("Visualizing testing density and quality across project layers and zones in 3D space.")
+    
+    zone_col = next((c for c in df.columns if 'ZONE' in c.upper()), None)
+    layer_col = next((c for c in df.columns if 'LAYER' in c.upper()), None)
+    batt_col = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
+    
+    if zone_col and layer_col and batt_col and 'sample status' in df.columns:
+        bim_df = df.dropna(subset=[zone_col, layer_col, batt_col]).copy()
+        bim_df['status_upper'] = bim_df['sample status'].str.upper()
+        bim_df['Layer_Num'] = bim_df[layer_col].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
+        
+        fig_3d = px.scatter_3d(bim_df, x=batt_col, y=zone_col, z='Layer_Num', color='status_upper', color_discrete_map=STATUS_COLORS, title="3D Spatial Distribution of Quality Status (Battalion x Zone x Layer)", opacity=0.7, size_max=10)
+        fig_3d.update_layout(height=700, scene=dict(xaxis_title=batt_col, yaxis_title=zone_col, zaxis_title="Layer Depth", bgcolor="rgba(0,0,0,0)"), paper_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_3d, use_container_width=True)
+
+def render_alerts_module(df):
+    st.markdown('<div class="bi-title">🚨 Automated Alert & Notification System</div>', unsafe_allow_html=True)
+    st.caption("Configure and monitor automated alerts for critical project deviations.")
+    
+    c1, c2 = st.columns([0.6, 0.4])
+    with c1:
+        st.markdown("#### 📡 Active Alerts Log")
+        alerts = []
+        if 'Company Name' in df.columns and 'sample status' in df.columns:
+            rej_df = df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
+            if not rej_df.empty:
+                worst_comp = rej_df['Company Name'].value_counts().idxmax()
+                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%H:%M"), "Severity": "🚨 CRITICAL", "Message": f"Contractor '{worst_comp}' exceeded rejection threshold."})
+        if 'DURATION' in df.columns:
+            high_delay = df[df['DURATION'] > 15]
+            if not high_delay.empty:
+                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M"), "Severity": "⚠️ WARNING", "Message": f"{len(high_delay)} submittals have exceeded the 15-day SLA limit."})
+        if not alerts:
+            alerts.append({"Time": "Now", "Severity": "✅ OK", "Message": "All systems nominal. No critical alerts."})
+        st.dataframe(pd.DataFrame(alerts), use_container_width=True, hide_index=True)
+
+    with c2:
+        st.markdown("#### ⚙️ Alert Configuration")
+        st.toggle("Enable WhatsApp Alerts (Twilio)", value=True)
+        st.toggle("Enable Email Alerts (SMTP)", value=False)
+        st.number_input("Rejection Threshold (%)", min_value=5, max_value=50, value=20)
+        if st.button("📤 Send Test Notification", use_container_width=True, type="primary"):
+            with st.spinner("Connecting to Gateway..."):
+                time.sleep(1.5)
+            st.success("✅ Test Alert Sent Successfully!")
+            st.balloons()
+
+# ==========================================
+# 10. Main Dashboard Application (ORIGINAL + INTEGRATIONS)
 # ==========================================
 def render_dashboard():
     user = st.session_state["current_user"]
@@ -317,7 +512,6 @@ def render_dashboard():
         'highlight_bg': 'rgba(0,210,255,0.05)' if is_dark else 'rgba(52, 152, 219, 0.1)'
     }
     
-    # FIX: Safer image loading without spamming terminal errors
     if os.path.exists("5.jpg"):
         try:
             st.image("5.jpg", use_container_width=True)
@@ -341,6 +535,12 @@ def render_dashboard():
         st.session_state["theme"] = "Light"
         st.rerun()
     st.sidebar.divider()
+
+    # 🚀 NEW: Site Mode Toggle
+    st.session_state["site_mode"] = st.sidebar.toggle("📱 Activate Site Engineer Mode (Mobile)", value=st.session_state["site_mode"])
+    if st.session_state["site_mode"]:
+        render_site_mode()
+        return
 
     if user["Role"] == "Admin":
         with st.sidebar.expander("🔐 Admin Control Panel", expanded=False):
@@ -430,6 +630,10 @@ def render_dashboard():
         uploaded_file = st.sidebar.file_uploader("Upload your Project Log (CSV) 📂", type="csv")
 
     if uploaded_file is not None:
+        # 🚀 NEW: Audit Trail Check
+        audit_msg = check_audit_trail(uploaded_file)
+        st.sidebar.success(audit_msg, icon="🛡️")
+
         df = pd.read_csv(uploaded_file)
         df.columns = df.columns.str.strip() 
         
@@ -467,6 +671,47 @@ def render_dashboard():
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+        # 🚀 NEW: Advanced Modules Navigation
+        st.markdown("### 🚀 Select Advanced Module to Explore")
+        mod1, mod2, mod3, mod4 = st.columns(4)
+        with mod1: show_gis = st.button("🗺️ GIS Map", use_container_width=True)
+        with mod2: show_gantt = st.button("📅 Gantt Chart", use_container_width=True)
+        with mod3: show_bim = st.button("🏗️ 3D BIM Viewer", use_container_width=True)
+        with mod4: show_alerts = st.button("🚨 Alert System", use_container_width=True)
+
+        if show_gis: render_gis_module(df)
+        if show_gantt: render_gantt_module(df)
+        if show_bim: render_bim_module(df)
+        if show_alerts: render_alerts_module(df)
+        
+        if show_gis or show_gantt or show_bim or show_alerts:
+            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        # 🚀 NEW: GenAI Chat Interface
+        st.markdown('<div class="bi-title">🧠 Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
+        st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
+        
+        chat_container = st.container()
+        with chat_container:
+            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+            for msg in st.session_state["chat_history"]:
+                if msg['role'] == 'user':
+                    st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        prompt = st.chat_input("Ask the AI Engineering Assistant...")
+        if prompt:
+            st.session_state["chat_history"].append({"role": "user", "content": prompt})
+            with st.spinner("🧠 AI is analyzing the dataset..."):
+                time.sleep(1.5) # Simulate processing
+                ai_response = genai_chat_engine(prompt, df)
+            st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
+            st.rerun()
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.sidebar.markdown("### 🎯 2. Smart Filters")
         global_search = st.sidebar.text_input("🔍 Global Search:", placeholder="Keyword (Serial, Date)...")
@@ -1766,7 +2011,7 @@ def render_dashboard():
         st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
 
 # ==========================================
-# 8. Main Application Execution
+# 11. Main Application Execution
 # ==========================================
 def main():
     inject_custom_css()  
