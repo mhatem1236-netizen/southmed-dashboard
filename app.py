@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import base64
 import hashlib
@@ -241,7 +241,7 @@ class HistoryManager:
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (
             datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"),
-            metrics_dict.get("File_Name", ""),
+            metrics_dict.get("File_Name", "Unknown_File"),
             metrics_dict.get("Total_Requests", 0),
             metrics_dict.get("Total_Tests", 0),
             metrics_dict.get("Avg_DPL", 0),
@@ -256,7 +256,7 @@ class HistoryManager:
         HistoryManager.init_db()
         try:
             conn = sqlite3.connect(HistoryManager.DB_FILE)
-            df = pd.read_sql_query("SELECT * FROM kpi_history ORDER BY timestamp", conn)
+            df = pd.read_sql_query("SELECT * FROM kpi_history", conn)
             conn.close()
             return df
         except:
@@ -280,11 +280,14 @@ class HistoryManager:
         if not db_column or db_column not in history_df.columns:
             return ""
         
-        file_history = history_df[history_df['file_name'] == current_file_name] if 'file_name' in history_df.columns else history_df
+        # 🔴 الفلترة الصارمة باسم الملف فقط 🔴
+        file_history = history_df[history_df['file_name'] == current_file_name] if 'file_name' in history_df.columns else pd.DataFrame()
         
         if file_history.empty:
             return ""
         
+        # ترتيب حسب الـ id لضمان الحصول على آخر إدخال فعلي
+        file_history = file_history.sort_values('id')
         last_val = file_history.iloc[-1][db_column]
         diff = current_val - last_val
         pct_str = "0%" if last_val == 0 else f"{abs((diff / last_val) * 100):.1f}%"
@@ -310,7 +313,7 @@ class HistoryManager:
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
         
-        # 🔴 التعديل هنا: توحيد الأعمدة عشان الداتا القديمة تقرأها الداتا بيز الجديدة 🔴
+        # خريطة مرنة لقراءة الملفات القديمة
         col_map = {
             'Timestamp': 'timestamp', 'File_Name': 'file_name', 
             'Total_Requests': 'total_requests', 'Total_Tests': 'total_tests',
@@ -324,13 +327,13 @@ class HistoryManager:
                 (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
-                row.get('timestamp', ''),
-                row.get('file_name', ''),
-                row.get('total_requests', 0),
-                row.get('total_tests', 0),
-                row.get('avg_dpl', 0),
-                row.get('avg_duration', 0),
-                row.get('total_paperwork', 0)
+                str(row.get('timestamp', '')),
+                str(row.get('file_name', 'Imported_Legacy_File')), # اسم افتراضي لو مش موجود
+                pd.to_numeric(row.get('total_requests', 0), errors='coerce') or 0,
+                pd.to_numeric(row.get('total_tests', 0), errors='coerce') or 0,
+                pd.to_numeric(row.get('avg_dpl', 0), errors='coerce') or 0,
+                pd.to_numeric(row.get('avg_duration', 0), errors='coerce') or 0,
+                pd.to_numeric(row.get('total_paperwork', 0), errors='coerce') or 0
             ))
         conn.commit()
         conn.close()
@@ -634,6 +637,17 @@ def render_dashboard():
     with st.sidebar.expander("🗄️ History Database Management"):
         st.markdown(f"<span style='font-size:12px; color:{ui['text_muted']};'>Data is automatically saved to SQLite database and persists across sessions.</span>", unsafe_allow_html=True)
         
+        # 🔴 NEW: زرار المسح السحري لتنظيف قاعدة البيانات الملوثة بالتواريخ الخطأ 🔴
+        if st.button("🗑️ Wipe Database & Start Fresh", type="primary", use_container_width=True):
+            if os.path.exists(HistoryManager.DB_FILE):
+                os.remove(HistoryManager.DB_FILE)
+            HistoryManager.init_db()
+            if "restored_files" in st.session_state:
+                st.session_state["restored_files"] = set()
+            st.success("✅ Database Wiped Successfully! Start logging fresh data.")
+            time.sleep(1)
+            st.rerun()
+
         if st.button(" Download Backup CSV", use_container_width=True):
             backup_df = HistoryManager.export_to_csv()
             if not backup_df.empty:
@@ -648,7 +662,6 @@ def render_dashboard():
             else:
                 st.info("No history data to backup")
         
-        # 🔴 التعديل هنا: منع التكرار اللانهائي 🔴
         if "restored_files" not in st.session_state:
             st.session_state["restored_files"] = set()
             
@@ -656,7 +669,6 @@ def render_dashboard():
         
         if history_upload is not None:
             file_id = f"{history_upload.name}_{history_upload.size}"
-            
             if file_id not in st.session_state["restored_files"]:
                 try:
                     restored_df = pd.read_csv(history_upload)
@@ -673,7 +685,13 @@ def render_dashboard():
         history_df = HistoryManager.load_history()
         if not history_df.empty:
             st.markdown(f"📊 **Total Records:** {len(history_df)}")
-            st.markdown(f"📅 **Last Entry:** {history_df.iloc[-1]['timestamp']}")
+            # محاولة تنظيف آخر تاريخ مسجل للعرض بشياكة
+            last_ts = str(history_df.iloc[-1]['timestamp'])
+            try:
+                f_ts = float(last_ts)
+                if f_ts > 30000: last_ts = (datetime(1899, 12, 30) + timedelta(days=f_ts)).strftime("%Y-%m-%d %H:%M:%S")
+            except: pass
+            st.markdown(f"📅 **Last Entry:** {last_ts}")
     
     st.sidebar.divider()
 
@@ -691,7 +709,6 @@ def render_dashboard():
         
         try:
             df = pd.read_csv(uploaded_file)
-            
             if df.empty:
                 st.error("⚠️ الملف لا يحتوي على بيانات!")
                 st.stop()
@@ -1233,16 +1250,34 @@ def render_dashboard():
         # 🔴 بلوك الـ History Trend 🔴
         global_history_df = HistoryManager.load_history()
         if not global_history_df.empty:
-            if 'file_name' not in global_history_df.columns:
-                global_history_df['file_name'] = uploaded_file.name
-            file_trend_df = global_history_df[global_history_df['file_name'] == uploaded_file.name].copy()
+            def fix_ts(ts):
+                try:
+                    f = float(ts)
+                    if f > 30000:
+                        return (datetime(1899, 12, 30) + timedelta(days=f)).strftime("%Y-%m-%d %H:%M:%S")
+                except:
+                    pass
+                return str(ts)
+            
+            global_history_df['timestamp'] = global_history_df['timestamp'].apply(fix_ts)
+            global_history_df['timestamp_dt'] = pd.to_datetime(global_history_df['timestamp'], errors='coerce')
+            
+            if 'file_name' in global_history_df.columns:
+                file_trend_df = global_history_df[global_history_df['file_name'] == uploaded_file.name].copy()
+            else:
+                file_trend_df = pd.DataFrame()
             
             st.markdown(f"### 🚀 KPI Daily Growth Trend for `{uploaded_file.name}`")
             
             if len(file_trend_df) > 1:
+                file_trend_df = file_trend_df.sort_values('timestamp_dt')
+                file_trend_df = file_trend_df.drop_duplicates(subset=['timestamp_dt'], keep='last')
+                
                 file_trend_df['Added_Requests'] = file_trend_df['total_requests'].diff().fillna(0)
                 file_trend_df['Growth_Rate_%'] = ((file_trend_df['total_requests'].diff() / file_trend_df['total_requests'].shift(1)) * 100).fillna(0)
-                file_trend_df['Date_Time'] = pd.to_datetime(file_trend_df['timestamp']).dt.strftime('%m-%d %H:%M')
+                file_trend_df['Growth_Rate_%'] = file_trend_df['Growth_Rate_%'].replace([np.inf, -np.inf], 0)
+                file_trend_df['Date_Time'] = file_trend_df['timestamp_dt'].dt.strftime('%m-%d %H:%M')
+                
                 col_t1, col_t2 = st.columns(2)
                 with col_t1:
                     fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', title="Daily Added Submittals Trend", text_auto=True, color_discrete_sequence=['#00d2ff'])
@@ -1257,7 +1292,7 @@ def render_dashboard():
                     export_df.rename(columns={'Added_Requests': '+ Added', 'Growth_Rate_%': 'Growth %'}, inplace=True)
                     st.dataframe(export_df.round(2), use_container_width=True)
             else:
-                st.info("📊 **Trend Analysis Standby:** We need at least 2 historical snapshots to generate a growth trend. Please click '💾 Save to BI History' again after your next data update.")
+                st.info("📊 **Trend Analysis Standby:** We need at least 2 historical snapshots for this specific file to generate a growth trend. Please click '💾 Save to BI History' again after your next data update.")
                 
             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -1548,6 +1583,7 @@ def render_dashboard():
                         else:
                             st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
 
+                    # 🔴 1. FIX: Advanced Rejection & Rework Ledger (Layer-Based Tracking) 🔴
                     if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
                         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                         st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
@@ -1729,6 +1765,7 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
 
+                    # 🔴 2. NEW: Conditional AI Sampling Logic 🔴
                     if 'Date ( test)' in comp_bat_df.columns:
                         time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
                         time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
