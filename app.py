@@ -67,7 +67,6 @@ def inject_custom_css():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
     
-    /* 🔴 WHITE-LABELING: Hiding Streamlit Artifacts 🔴 */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stHeader"] {{background: transparent !important;}}
@@ -80,7 +79,6 @@ def inject_custom_css():
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
     
-    /* 🎨 NEW: Custom Scrollbar */
     ::-webkit-scrollbar {{
         width: 8px;
         height: 8px;
@@ -97,7 +95,6 @@ def inject_custom_css():
         background: linear-gradient(180deg, #ffaa00, #00d2ff);
     }}
     
-    /* 🎨 NEW: Hover Effects on Cards */
     .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card {{ 
         background: {card_bg} !important; 
         padding: 25px; 
@@ -131,7 +128,6 @@ def inject_custom_css():
         left: 100%;
     }}
     
-    /* 🎨 NEW: Gradient Text for Titles */
     .bi-title {{ 
         background: linear-gradient(135deg, #00d2ff 0%, #ffaa00 50%, #ff007f 100%);
         -webkit-background-clip: text;
@@ -166,7 +162,6 @@ def inject_custom_css():
     .delta-down {{ color: #e74c3c !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-neutral {{ color: {text_muted} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     
-    /* 🎨 NEW: Animated Gradient Divider */
     .gradient-divider {{ 
         height: 2px; 
         background: linear-gradient(90deg, transparent 0%, #00d2ff 20%, #ffaa00 50%, #00d2ff 80%, transparent 100%);
@@ -196,7 +191,6 @@ def inject_custom_css():
     .site-btn:hover {{ transform: translateY(-5px); }}
     .site-btn:active {{ transform: translateY(2px); }}
     
-    /* 🎨 NEW: Pulse Animation for Critical Values */
     @keyframes pulse-glow {{
         0%, 100% {{ box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); }}
         50% {{ box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }}
@@ -207,7 +201,6 @@ def inject_custom_css():
         color: #e74c3c !important;
     }}
     
-    /* 🎨 NEW: Live Indicator */
     @keyframes pulse {{
         0%, 100% {{ opacity: 1; transform: scale(1); }}
         50% {{ opacity: 0.5; transform: scale(1.2); }}
@@ -226,7 +219,6 @@ def inject_custom_css():
         animation: pulse 2s infinite;
     }}
     
-    /* 🎨 NEW: Animated Background Particles */
     [data-testid="stAppViewContainer"]::before {{
         content: '';
         position: fixed;
@@ -241,7 +233,6 @@ def inject_custom_css():
         z-index: -1;
     }}
     
-    /* 🎨 NEW: Enhanced Sidebar */
     [data-testid="stSidebar"] hr {{
         border: none;
         height: 1px;
@@ -249,7 +240,6 @@ def inject_custom_css():
         margin: 20px 0;
     }}
     
-    /* 🎨 NEW: Custom Data Table Styling */
     .dataframe {{
         border-radius: 12px !important;
         overflow: hidden;
@@ -273,10 +263,9 @@ def inject_custom_css():
     st.markdown(custom_css, unsafe_allow_html=True)
 
 # ==========================================
-# 3. NEW: Enhanced UI Components
+# 3. Enhanced UI Components
 # ==========================================
 def show_breadcrumbs(path):
-    """Display navigation breadcrumbs"""
     parts = path.split(" > ")
     breadcrumb_html = " > ".join([
         f'<span style="color: #00d2ff; cursor: pointer;">{p}</span>' 
@@ -293,12 +282,11 @@ def show_breadcrumbs(path):
         margin-bottom: 20px;
         font-size: 14px;
     ">
-         Home {breadcrumb_html}
+        🏠 Home {breadcrumb_html}
     </div>
     """, unsafe_allow_html=True)
 
 def live_indicator(status="online"):
-    """Display animated live status indicator"""
     colors = {
         "online": "#2ecc71",
         "offline": "#e74c3c",
@@ -311,35 +299,6 @@ def live_indicator(status="online"):
         <span style="color: {colors[status]}; font-size: 12px; text-transform: uppercase;">
             {status}
         </span>
-    </div>
-    """, unsafe_allow_html=True)
-
-def create_progress_ring(percentage, label):
-    """Create animated progress ring"""
-    color = "#2ecc71" if percentage > 80 else ("#f1c40f" if percentage > 50 else "#e74c3c")
-    
-    st.markdown(f"""
-    <div style="text-align: center; padding: 20px;">
-        <svg width="120" height="120" style="transform: rotate(-90deg);">
-            <circle cx="60" cy="60" r="50" 
-                    stroke="rgba(255,255,255,0.1)" 
-                    stroke-width="8" 
-                    fill="none"/>
-            <circle cx="60" cy="60" r="50" 
-                    stroke="{color}" 
-                    stroke-width="8" 
-                    fill="none"
-                    stroke-dasharray="{2 * 3.14 * 50}"
-                    stroke-dashoffset="{2 * 3.14 * 50 * (1 - percentage/100)}"
-                    stroke-linecap="round"
-                    style="transition: stroke-dashoffset 1s ease;"/>
-        </svg>
-        <div style="margin-top: -80px; font-size: 24px; font-weight: bold; color: {color};">
-            {percentage}%
-        </div>
-        <div style="color: #8da3b9; font-size: 12px; margin-top: 40px;">
-            {label}
-        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -438,7 +397,7 @@ def style_3d_glassy(fig, chart_type="bar"):
     return fig
 
 # ==========================================
-# 6. History Manager with SQLite (Persistent)
+# 6. History Manager with SQLite (FIXED)
 # ==========================================
 class HistoryManager:
     DB_FILE = "project_history.db"
@@ -488,7 +447,7 @@ class HistoryManager:
         HistoryManager.init_db()
         try:
             conn = sqlite3.connect(HistoryManager.DB_FILE)
-            df = pd.read_sql_query("SELECT * FROM kpi_history", conn)
+            df = pd.read_sql_query("SELECT * FROM kpi_history ORDER BY id", conn)
             conn.close()
             return df
         except:
@@ -534,40 +493,64 @@ class HistoryManager:
     def export_to_csv():
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
-        df = pd.read_sql_query("SELECT * FROM kpi_history", conn)
+        df = pd.read_sql_query("SELECT * FROM kpi_history ORDER BY id", conn)
         conn.close()
         return df
     
     @staticmethod
     def import_from_csv(df):
+        """Import data from CSV backup with proper column mapping"""
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
+        cursor = conn.cursor()
+        
+        # Normalize column names
         df.columns = df.columns.str.strip().str.lower()
         
+        # Map possible column name variations
+        col_map = {
+            'total_requests': None,
+            'total_tests': None,
+            'avg_dpl': None,
+            'avg_duration': None,
+            'total_paperwork': None,
+            'timestamp': None,
+            'file_name': None
+        }
+        
+        for col in df.columns:
+            if 'total_req' in col: col_map['total_requests'] = col
+            elif 'total_test' in col: col_map['total_tests'] = col
+            elif 'avg_dpl' in col: col_map['avg_dpl'] = col
+            elif 'avg_dur' in col or 'duration' in col: col_map['avg_duration'] = col
+            elif 'total_pap' in col: col_map['total_paperwork'] = col
+            elif 'timestamp' in col or 'time' in col: col_map['timestamp'] = col
+            elif 'file_name' in col or 'file' in col: col_map['file_name'] = col
+        
+        imported_count = 0
         for index, row in df.iterrows():
-            req = row.get('total_requests', 0)
-            tst = row.get('total_tests', 0)
-            dpl = row.get('avg_dpl', 0)
-            dur = row.get('avg_duration', 0)
-            pap = row.get('total_paperwork', 0)
-            ts = row.get('timestamp', datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"))
-            fn = row.get('file_name', 'Legacy_Import.csv')
-            
-            conn.execute("""
-                INSERT INTO kpi_history 
-                (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                str(ts),
-                str(fn).strip(),
-                pd.to_numeric(req, errors='coerce') or 0,
-                pd.to_numeric(tst, errors='coerce') or 0,
-                pd.to_numeric(dpl, errors='coerce') or 0,
-                pd.to_numeric(dur, errors='coerce') or 0,
-                pd.to_numeric(pap, errors='coerce') or 0
-            ))
+            try:
+                cursor.execute("""
+                    INSERT INTO kpi_history 
+                    (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get(col_map['timestamp'], datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"))),
+                    str(row.get(col_map['file_name'], 'Legacy_Import.csv')),
+                    pd.to_numeric(row.get(col_map['total_requests'], 0), errors='coerce') or 0,
+                    pd.to_numeric(row.get(col_map['total_tests'], 0), errors='coerce') or 0,
+                    pd.to_numeric(row.get(col_map['avg_dpl'], 0), errors='coerce') or 0,
+                    pd.to_numeric(row.get(col_map['avg_duration'], 0), errors='coerce') or 0,
+                    pd.to_numeric(row.get(col_map['total_paperwork'], 0), errors='coerce') or 0
+                ))
+                imported_count += 1
+            except Exception as e:
+                print(f"Error importing row {index}: {e}")
+                continue
+        
         conn.commit()
         conn.close()
+        return imported_count
 
 def create_card(column, label, value, delta_html="", progress=None):
     if progress is not None:
@@ -629,7 +612,7 @@ def check_audit_trail(uploaded_file):
         pd.concat([pd.read_csv(AUDIT_LOG_FILE), new_audit], ignore_index=True).to_csv(AUDIT_LOG_FILE, index=False)
     else:
         new_audit.to_csv(AUDIT_LOG_FILE, index=False)
-    return " <b>New File Registered</b> in the Audit Trail System."
+    return "🆕 <b>New File Registered</b> in the Audit Trail System."
 
 def genai_chat_engine(query, df):
     query = query.lower()
@@ -709,7 +692,7 @@ def render_site_mode():
     st.markdown("<br>", unsafe_allow_html=True)
     st.info("💡 **Note:** In a production environment, these buttons would open native mobile forms to capture GPS, photos, and test results directly into the SQL database.")
     
-    st.markdown("### 📋 Recent Site Activities")
+    st.markdown("###  Recent Site Activities")
     st.dataframe(pd.DataFrame({
         "Time": ["08:30 AM", "09:15 AM", "10:00 AM"],
         "Action": ["DPL Test - Zone 1", "Photo Uploaded - Stockpile", "Sample Rejected - Layer 2"],
@@ -731,11 +714,11 @@ def render_alerts_module(df):
             rej_df = df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
             if not rej_df.empty:
                 worst_comp = rej_df['Company Name'].value_counts().idxmax()
-                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%H:%M"), "Severity": " CRITICAL", "Message": f"Contractor '{worst_comp}' exceeded rejection threshold."})
+                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%H:%M"), "Severity": "🚨 CRITICAL", "Message": f"Contractor '{worst_comp}' exceeded rejection threshold."})
         if 'DURATION' in df.columns:
             high_delay = df[df['DURATION'] > 15]
             if not high_delay.empty:
-                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M"), "Severity": "⚠️ WARNING", "Message": f"{len(high_delay)} submittals have exceeded the 15-day SLA limit."})
+                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M"), "Severity": "️ WARNING", "Message": f"{len(high_delay)} submittals have exceeded the 15-day SLA limit."})
         if not alerts:
             alerts.append({"Time": "Now", "Severity": "✅ OK", "Message": "All systems nominal. No critical alerts."})
         st.dataframe(pd.DataFrame(alerts), use_container_width=True, hide_index=True)
@@ -745,7 +728,7 @@ def render_alerts_module(df):
         st.toggle("Enable WhatsApp Alerts (Twilio)", value=True)
         st.toggle("Enable Email Alerts (SMTP)", value=False)
         st.number_input("Rejection Threshold (%)", min_value=5, max_value=50, value=20)
-        if st.button("📤 Send Test Notification", use_container_width=True, type="primary"):
+        if st.button(" Send Test Notification", use_container_width=True, type="primary"):
             with st.spinner("Connecting to Gateway..."):
                 time.sleep(1.5)
             st.success("✅ Test Alert Sent Successfully!")
@@ -783,7 +766,7 @@ def render_dashboard():
 
     st.sidebar.markdown("### 🎨 UI/UX Mode")
     theme_col1, theme_col2 = st.sidebar.columns(2)
-    if theme_col1.button("🌙 Dark"):
+    if theme_col1.button(" Dark"):
         st.session_state["theme"] = "Dark"
         st.rerun()
     if theme_col2.button("☀️ Light"):
@@ -848,7 +831,7 @@ def render_dashboard():
             with tab_backup:
                 if os.path.exists(USERS_DB_FILE):
                     with open(USERS_DB_FILE, "rb") as f:
-                        st.download_button(" Download Users DB", data=f, file_name="users_db_backup.csv", mime="text/csv", use_container_width=True)
+                        st.download_button("📥 Download Users DB", data=f, file_name="users_db_backup.csv", mime="text/csv", use_container_width=True)
                 uploaded_db = st.file_uploader("📤 Restore Users DB", type="csv")
                 if uploaded_db is not None:
                     restored_df = pd.read_csv(uploaded_db)
@@ -901,9 +884,9 @@ def render_dashboard():
             if file_id not in st.session_state["restored_files"]:
                 try:
                     restored_df = pd.read_csv(history_upload)
-                    HistoryManager.import_from_csv(restored_df)
+                    imported_count = HistoryManager.import_from_csv(restored_df)
                     st.session_state["restored_files"].add(file_id)
-                    st.success("✅ History Restored Successfully!")
+                    st.success(f"✅ History Restored Successfully! {imported_count} records imported.")
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
@@ -913,13 +896,16 @@ def render_dashboard():
         
         history_df = HistoryManager.load_history()
         if not history_df.empty:
-            st.markdown(f" **Total Records:** {len(history_df)}")
+            st.markdown(f"📊 **Total Records:** {len(history_df)}")
             last_ts = str(history_df.iloc[-1]['timestamp'])
             try:
                 f_ts = float(last_ts)
                 if f_ts > 30000: last_ts = (datetime(1899, 12, 30) + timedelta(days=f_ts)).strftime("%Y-%m-%d %H:%M:%S")
             except: pass
-            st.markdown(f"📅 **Last Entry:** {last_ts}")
+            st.markdown(f" **Last Entry:** {last_ts}")
+            
+            with st.expander("👁️ Preview Database"):
+                st.dataframe(history_df.tail(10), use_container_width=True)
     
     st.sidebar.divider()
 
@@ -961,7 +947,7 @@ def render_dashboard():
         total_errors = missing_dates + missing_status + duplicate_serials
         health_score = max(0, 100 - (total_errors / (total_rows+1) * 100)) if total_rows > 0 else 0
         health_color = "#2ecc71" if health_score >= 95 else ("#f1c40f" if health_score >= 80 else "#e74c3c")
-        health_icon = "✅" if health_score >= 95 else ("️" if health_score >= 80 else "🚨")
+        health_icon = "✅" if health_score >= 95 else ("⚠️" if health_score >= 80 else "🚨")
         
         error_details = []
         if missing_dates > 0: error_details.append(f"{missing_dates} Missing Dates")
@@ -982,16 +968,14 @@ def render_dashboard():
             </div>
         """, unsafe_allow_html=True)
 
-        # 🚨 Alert System Button
-        st.markdown("###  Select Advanced Module to Explore")
-        mod1 = st.button("🚨 Alert System", use_container_width=True)
+        st.markdown("### 🚀 Select Advanced Module to Explore")
+        mod1 = st.button(" Alert System", use_container_width=True)
 
         if mod1:
             render_alerts_module(df)
             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        # 🧠 GenAI Chat Interface
-        st.markdown('<div class="bi-title"> Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🧠 Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
         st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
         
         chat_container = st.container()
@@ -1007,7 +991,7 @@ def render_dashboard():
         prompt = st.chat_input("Ask the AI Engineering Assistant...")
         if prompt:
             st.session_state["chat_history"].append({"role": "user", "content": prompt})
-            with st.spinner("🧠 AI is analyzing the dataset..."):
+            with st.spinner(" AI is analyzing the dataset..."):
                 time.sleep(1.5)
                 ai_response = genai_chat_engine(prompt, df)
             st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
@@ -1016,7 +1000,7 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.sidebar.markdown("### 🎯 2. Smart Filters")
-        global_search = st.sidebar.text_input("🔍 Global Search:", placeholder="Keyword (Serial, Date)...")
+        global_search = st.sidebar.text_input(" Global Search:", placeholder="Keyword (Serial, Date)...")
         if global_search:
             mask = df.astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
             df = df[mask]
@@ -1032,13 +1016,13 @@ def render_dashboard():
         selected_battalions = []
         if battalion_col_filter:
             battalions_list = df[battalion_col_filter].dropna().unique()
-            selected_battalions = st.sidebar.multiselect("🚩 Select Battalion:", options=battalions_list, default=battalions_list)
+            selected_battalions = st.sidebar.multiselect(" Select Battalion:", options=battalions_list, default=battalions_list)
 
         st.sidebar.markdown("### 🧠 3. AI & Simulation")
-        sim_days_saved = st.sidebar.slider("🎛️ Simulate Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
+        sim_days_saved = st.sidebar.slider("️ Simulate Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
         curr_avg_dpl = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in df.columns else 0
         curr_avg_dur = pd.to_numeric(df['DURATION'], errors='coerce').mean() if 'DURATION' in df.columns else 0
-        user_question = st.sidebar.text_input("🤖 Ask AI about any log issue:")
+        user_question = st.sidebar.text_input(" Ask AI about any log issue:")
         if user_question:
             summary = {"avg_dpl": round(curr_avg_dpl, 2), "avg_duration": round(curr_avg_dur, 1)}
             st.sidebar.info(f"AI Response: {ai_assistant(user_question, summary)}")
@@ -1088,7 +1072,6 @@ def render_dashboard():
         """
         st.markdown(ticker_html, unsafe_allow_html=True)
         
-        # 🎨 NEW: Live Indicator
         live_indicator("online")
         
         worst_office_name = "N/A"
@@ -1133,7 +1116,7 @@ def render_dashboard():
 
         col_btn, col_msg = st.columns([0.2, 0.8])
         with col_btn:
-            if st.button("💾 Save to BI History"):
+            if st.button(" Save to BI History"):
                 HistoryManager.save_metrics(current_metrics)
                 st.success("✅ Logged Successfully!")
                 st.rerun() 
@@ -1260,7 +1243,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
             cc1, cc2 = st.columns(2)
             c_a = cc1.selectbox("Select Contractor A", companies, index=0)
@@ -1299,7 +1282,7 @@ def render_dashboard():
             ch_col, txt_col = st.columns([0.7, 0.3])
             ch_col.plotly_chart(fig_vol, use_container_width=True)
             with txt_col:
-                st.markdown("#### 💡 AI Production Insights")
+                st.markdown("####  AI Production Insights")
                 if not monthly_summary.empty:
                     top_row = monthly_summary.loc[monthly_summary['Volume'].idxmax()]
                     st.info(f"📊 **Peak Activity:**\nIn **{top_row['Month']}**, the highest utilized test was **{top_row['Test Type']}** with **{top_row['Volume']}** submittals logged.")
@@ -1312,14 +1295,14 @@ def render_dashboard():
                         last_count = v_df[v_df['Month_Sort'] == last_month_sort].shape[0]
                         prev_count = v_df[v_df['Month_Sort'] == prev_month_sort].shape[0]
                         if last_count < prev_count:
-                            st.warning(f"⚠️ **Coverage Alert:**\nTotal log volume dropped from **{prev_count}** in {prev_month_name} to **{last_count}** in {last_month_name}. Verify potential field testing deficits.")
+                            st.warning(f"️ **Coverage Alert:**\nTotal log volume dropped from **{prev_count}** in {prev_month_name} to **{last_count}** in {last_month_name}. Verify potential field testing deficits.")
                         else:
                             st.success(f"✅ **Stable Volume:**\nTesting coverage is expanding smoothly from {prev_month_name} into {last_month_name}.")
                 else:
                     st.text("No data available for tracking.")
 
         if 'Date ( test)' in filtered_df.columns:
-            st.markdown('<div class="bi-title">️ Activity Heatmap Calendar</div>', unsafe_allow_html=True)
+            st.markdown('<div class="bi-title">🗓️ Activity Heatmap Calendar</div>', unsafe_allow_html=True)
             cal_df = filtered_df.dropna(subset=['Date ( test)']).copy()
             cal_df['Day'] = cal_df['Date ( test)'].dt.day
             cal_df['Month_Name'] = cal_df['Date ( test)'].dt.strftime('%b %Y')
@@ -1378,7 +1361,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
         if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             tree_df = filtered_df.copy()
             tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
@@ -1442,14 +1425,14 @@ def render_dashboard():
                     </div>
                 </div>
 
-                <div class="section-title">⚖️ 360° Accountability & Risk Assessment</div>
+                <div class="section-title">️ 360° Accountability & Risk Assessment</div>
                 <table>
                     <tr>
                         <th>Metric</th>
                         <th>Identified Node / Value</th>
                     </tr>
                     <tr>
-                        <td><strong> Top Performing Contractor</strong></td>
+                        <td><strong>🏆 Top Performing Contractor</strong></td>
                         <td class="highlight-green">{global_best_comp} ({global_best_rate:.1f}% Yield)</td>
                     </tr>
                     <tr>
@@ -1461,7 +1444,7 @@ def render_dashboard():
                         <td class="highlight-red">{worst_office_name} ({worst_office_delay} Days Avg Delay)</td>
                     </tr>
                     <tr>
-                        <td><strong>️ Pending Rejections</strong></td>
+                        <td><strong>⚠️ Pending Rejections</strong></td>
                         <td class="highlight-red">{rejected_count} Submittals</td>
                     </tr>
                     <tr>
@@ -1488,16 +1471,28 @@ def render_dashboard():
             file_trend_df = global_history_df[global_history_df['file_name'] == uploaded_file.name].copy()
             if len(file_trend_df) > 1:
                 st.markdown(f"### 🚀 KPI Daily Growth Trend for `{uploaded_file.name}`")
+                
+                file_trend_df = file_trend_df.sort_values('id')
                 file_trend_df['Added_Requests'] = file_trend_df['total_requests'].diff().fillna(0)
-                file_trend_df['Growth_Rate_%'] = ((file_trend_df['total_requests'].diff() / file_trend_df['total_requests'].shift(1)) * 100).fillna(0)
+                file_trend_df['Added_Requests'] = file_trend_df['Added_Requests'].clip(lower=0)
+                
+                file_trend_df['Growth_Rate_%'] = 0.0
+                for i in range(1, len(file_trend_df)):
+                    prev_val = file_trend_df.iloc[i-1]['total_requests']
+                    curr_val = file_trend_df.iloc[i]['total_requests']
+                    if prev_val > 0:
+                        file_trend_df.loc[file_trend_df.index[i], 'Growth_Rate_%'] = ((curr_val - prev_val) / prev_val) * 100
+                
                 file_trend_df['Date_Time'] = pd.to_datetime(file_trend_df['timestamp']).dt.strftime('%m-%d %H:%M')
+                trend_df = file_trend_df.iloc[1:].copy()
+                
                 col_t1, col_t2 = st.columns(2)
                 with col_t1:
-                    fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', title="Daily Added Submittals Trend", text_auto=True, color_discrete_sequence=['#00d2ff'])
+                    fig_added = px.bar(trend_df, x='Date_Time', y='Added_Requests', title="Daily Added Submittals Trend", text_auto=True, color_discrete_sequence=['#00d2ff'])
                     fig_added = style_3d_glassy(fig_added, chart_type="bar")
                     st.plotly_chart(fig_added, use_container_width=True)
                 with col_t2:
-                    fig_rate = px.line(file_trend_df.iloc[1:], x='Date_Time', y='Growth_Rate_%', title="Growth Rate Trend Percentage (%)", markers=True, color_discrete_sequence=['#2ecc71'])
+                    fig_rate = px.line(trend_df, x='Date_Time', y='Growth_Rate_%', title="Growth Rate Trend Percentage (%)", markers=True, color_discrete_sequence=['#2ecc71'])
                     fig_rate = style_3d_glassy(fig_rate, chart_type="line")
                     st.plotly_chart(fig_rate, use_container_width=True)
                 with st.expander("🖨️ View & Export History Log for this File"):
@@ -1525,7 +1520,7 @@ def render_dashboard():
                 st.plotly_chart(fig_dpl, use_container_width=True)
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown("### 💡 Strategic Insights & Recommendations")
+        st.markdown("###  Strategic Insights & Recommendations")
         ins_col1, ins_col2 = st.columns(2)
         with ins_col1:
             st.success("✅ **Quality Improvement:**\n* Maintain tight oversight on duration KPIs.\n* Stable DPL curves confirm materials testing compliance.")
@@ -1645,7 +1640,7 @@ def render_dashboard():
                         else:
                             target_dict[c_key] = c_qty
 
-            st.markdown("#### 📥 Master Stockpile Targets Report")
+            st.markdown("####  Master Stockpile Targets Report")
             report_data = []
             all_log_companies = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
             battalion_col_stock = next((c for c in mat_df.columns if 'BATTAL' in c.upper()), None)
@@ -1697,7 +1692,7 @@ def render_dashboard():
             st.dataframe(report_df, use_container_width=True)
             csv_export = report_df.to_csv(index=False).encode('utf-8-sig')
             st.download_button(
-                label=" Download Stockpile Master Report (CSV)",
+                label="📥 Download Stockpile Master Report (CSV)",
                 data=csv_export,
                 file_name=f"Stockpile_Targets_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
                 mime="text/csv",
@@ -1752,7 +1747,7 @@ def render_dashboard():
                             
                     with col_q2:
                         if elment_col_360:
-                            st.markdown("#### 🏗️ Workload by Element")
+                            st.markdown("#### ️ Workload by Element")
                             el_df = comp_df_full.groupby(elment_col_360).size().reset_index(name='Count').sort_values('Count', ascending=False)
                             fig_elment = px.bar(el_df.head(15), x=elment_col_360, y='Count', title="Top 15 Elements by Submittals", color=elment_col_360, color_discrete_sequence=NEON_COLORS)
                             fig_elment = style_3d_glassy(fig_elment, chart_type="bar")
@@ -1773,7 +1768,7 @@ def render_dashboard():
                             
                     with col_d2:
                         if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
-                            st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
+                            st.markdown("####  Smart Red Flags (Unresolved Layers)")
                             st.caption("Shows rejections ONLY IF the same Layer/Element wasn't approved later.")
                             rejected_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
                             accepted_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
@@ -1795,7 +1790,7 @@ def render_dashboard():
 
                     if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
                         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                        st.markdown("####  Rework & Delay Ledger (Rejected Items Analysis)")
+                        st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
                         
                         rework_df = comp_df_full.copy()
                         rejected_items = rework_df[rework_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
@@ -1835,7 +1830,7 @@ def render_dashboard():
                                 else:
                                     acc_date = pd.NaT
                                     delay_days = 0
-                                    status_text = "Pending "
+                                    status_text = "Pending 🚨"
                                     
                                 ledger_data.append({
                                     "Rejected Serial": serial,
@@ -1867,7 +1862,7 @@ def render_dashboard():
                         st.info("Requires 'sample status', 'layer', and 'Date( SUB)' columns to calculate rework delays.")
 
                     if battalion_col_360 and elment_col_360 and 'Date ( test)' in comp_df_full.columns:
-                        st.markdown("#### ⏱️ Inter-Battalion Element Timeline Analysis")
+                        st.markdown("#### ️ Inter-Battalion Element Timeline Analysis")
                         st.caption("Evaluates contractor speed and start/end dates for each element across different battalions.")
                         time_df = comp_df_full.dropna(subset=['Date ( test)'])
                         if not time_df.empty:
@@ -1887,7 +1882,7 @@ def render_dashboard():
                 with tab_stockpile:
                     if battalion_col_stock:
                         avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
-                        selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats)
+                        selected_bat = st.selectbox(" Filter Sourcing Analysis by Battalion:", avail_bats)
                         
                         if selected_bat != "All Battalions":
                             comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
@@ -1941,7 +1936,7 @@ def render_dashboard():
                         elif progress_pct >= 70:
                             prog_color = "#f1c40f" 
                             status_color = "#f1c40f"
-                            status_icon = "️"
+                            status_icon = "⚠️"
                         else:
                             prog_color = "#e74c3c" 
                             status_color = "#e74c3c"
@@ -1969,7 +1964,7 @@ def render_dashboard():
                     else:
                         st.markdown(f"""
                         <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
-                            <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;">🎯 Stockpile Target Achievement</h4>
+                            <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;"> Stockpile Target Achievement</h4>
                             <p style="color: {ui['text_muted']}; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
                         </div>
                         """, unsafe_allow_html=True)
@@ -2131,14 +2126,14 @@ def render_dashboard():
                     bh_df = None
                     if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
                         available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
-                        st.warning(f"️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
+                        st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
                         selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
                         if selected_zone:
                             bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
-                            st.markdown(f"####  Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
+                            st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
                     else:
                         bh_df = bh_df_raw
-                        st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
+                        st.markdown(f"####  Investigation Report: `{selected_bh}`")
                     
                     if bh_df is not None:
                         if 'layer' in bh_df.columns:
@@ -2186,13 +2181,13 @@ def render_dashboard():
                             approved_layers = set(bh_df[accepted_mask]['layer'].dropna().astype(str).unique())
                             unresolved_alerts = list(set([(str(row.get('layer', 'Unknown')), row.get('Test Type', 'N/A'), row.get('serial', 'N/A')) for _, row in bh_df[rejected_mask].iterrows() if str(row.get('layer', 'Unknown')) not in approved_layers]))
                             if unresolved_alerts:
-                                st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
+                                st.markdown("####  Critical Quality Alerts (Unresolved Submittals)")
                                 alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
                                 for idx, alert in enumerate(unresolved_alerts[:8]): 
                                     l, t_type, ser = alert
                                     alert_cols[idx % 4].markdown(f"""
                                         <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
-                                            <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">️ Action Required</div>
+                                            <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
                                             <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
                                                 <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
                                                 <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
@@ -2242,7 +2237,7 @@ def render_dashboard():
                                         </div>
                                         """, unsafe_allow_html=True)
                                     if logic_errors:
-                                        errors_html = "<br>".join([f"🚨 {err}" for err in logic_errors])
+                                        errors_html = "<br>".join([f" {err}" for err in logic_errors])
                                         st.markdown(f"""
                                         <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                                             <h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5>
