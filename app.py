@@ -39,7 +39,7 @@ if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
 # ==========================================
-# 2. Dynamic UI/UX CSS Injection
+# 2. Dynamic UI/UX CSS Injection (ENHANCED)
 # ==========================================
 def inject_custom_css():
     is_dark = st.session_state["theme"] == "Dark"
@@ -67,6 +67,7 @@ def inject_custom_css():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
     
+    /* 🔴 WHITE-LABELING: Hiding Streamlit Artifacts 🔴 */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stHeader"] {{background: transparent !important;}}
@@ -79,27 +80,114 @@ def inject_custom_css():
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
     
-    .metric-card, .simulator-card, .leaderboard-card, .health-card, .custom-card {{ 
-        background: {card_bg} !important; padding: 25px; border-radius: 16px; border: 1px solid {card_border}; 
-        box-shadow: {card_shadow}; margin-bottom: 15px; 
+    /* 🎨 NEW: Custom Scrollbar */
+    ::-webkit-scrollbar {{
+        width: 8px;
+        height: 8px;
+    }}
+    ::-webkit-scrollbar-track {{
+        background: rgba(0,0,0,0.1);
+        border-radius: 10px;
+    }}
+    ::-webkit-scrollbar-thumb {{
+        background: linear-gradient(180deg, #00d2ff, #ffaa00);
+        border-radius: 10px;
+    }}
+    ::-webkit-scrollbar-thumb:hover {{
+        background: linear-gradient(180deg, #ffaa00, #00d2ff);
+    }}
+    
+    /* 🎨 NEW: Hover Effects on Cards */
+    .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card {{ 
+        background: {card_bg} !important; 
+        padding: 25px; 
+        border-radius: 16px; 
+        border: 1px solid {card_border}; 
+        box-shadow: {card_shadow}; 
+        margin-bottom: 15px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        position: relative;
+        overflow: hidden;
+    }}
+    
+    .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover {{
+        transform: translateY(-5px) scale(1.02) !important;
+        box-shadow: 0 20px 40px rgba(0, 210, 255, 0.3) !important;
+        border-color: #00d2ff !important;
+    }}
+    
+    .metric-card::before, .leaderboard-card::before {{
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        transition: left 0.5s;
+    }}
+    
+    .metric-card:hover::before, .leaderboard-card:hover::before {{
+        left: 100%;
+    }}
+    
+    /* 🎨 NEW: Gradient Text for Titles */
+    .bi-title {{ 
+        background: linear-gradient(135deg, #00d2ff 0%, #ffaa00 50%, #ff007f 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 26px; 
+        font-weight: 800; 
+        margin-top: 40px; 
+        margin-bottom: 20px;
+        position: relative;
+    }}
+    
+    .bi-title::after {{
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #00d2ff, #ffaa00);
+        transition: width 0.5s ease;
+    }}
+    
+    .bi-title:hover::after {{
+        width: 100%;
     }}
     
     .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; font-family: 'Montserrat', sans-serif; }}
     .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; font-family: 'Montserrat', sans-serif; }}
-    .bi-title {{ color: {title_color} !important; font-size: 26px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; }}
     
     .delta-up {{ color: #2ecc71 !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-down {{ color: #e74c3c !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-neutral {{ color: {text_muted} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     
-    .gradient-divider {{ height: 2px; background: linear-gradient(90deg, transparent 0%, {title_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
+    /* 🎨 NEW: Animated Gradient Divider */
+    .gradient-divider {{ 
+        height: 2px; 
+        background: linear-gradient(90deg, transparent 0%, #00d2ff 20%, #ffaa00 50%, #00d2ff 80%, transparent 100%);
+        background-size: 200% 100%;
+        animation: shimmer-divider 3s linear infinite;
+        margin: 40px 0; 
+        border: none; 
+        opacity: 0.5; 
+    }}
+    
+    @keyframes shimmer-divider {{
+        0% {{ background-position: 200% 0; }}
+        100% {{ background-position: -200% 0; }}
+    }}
     
     .ticker-wrap {{ background: {card_bg}; border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
     .ticker {{ display: inline-block; padding-right: 100%; animation: ticker 35s linear infinite; }}
     @keyframes ticker {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
     .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; }}
     .ticker-item span {{ color: #00d2ff; font-weight: 800; }}
-
+    
     .chat-container {{ background: {card_bg}; padding: 20px; border-radius: 15px; border: 1px solid {card_border}; margin-bottom: 20px; max-height: 400px; overflow-y: auto; }}
     .user-msg {{ background: rgba(0, 210, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: right; border-right: 3px solid #00d2ff; }}
     .ai-msg {{ background: rgba(255, 170, 0, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }}
@@ -107,12 +195,156 @@ def inject_custom_css():
     .site-btn {{ background: linear-gradient(145deg, #00d2ff, #008cba); color: white; padding: 25px; border-radius: 15px; text-align: center; font-size: 20px; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.2s; margin-bottom: 15px; }}
     .site-btn:hover {{ transform: translateY(-5px); }}
     .site-btn:active {{ transform: translateY(2px); }}
+    
+    /* 🎨 NEW: Pulse Animation for Critical Values */
+    @keyframes pulse-glow {{
+        0%, 100% {{ box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); }}
+        50% {{ box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }}
+    }}
+    
+    .metric-value.critical {{
+        animation: pulse-glow 2s infinite;
+        color: #e74c3c !important;
+    }}
+    
+    /* 🎨 NEW: Live Indicator */
+    @keyframes pulse {{
+        0%, 100% {{ opacity: 1; transform: scale(1); }}
+        50% {{ opacity: 0.5; transform: scale(1.2); }}
+    }}
+    
+    .live-indicator {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }}
+    
+    .live-dot {{
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }}
+    
+    /* 🎨 NEW: Animated Background Particles */
+    [data-testid="stAppViewContainer"]::before {{
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            radial-gradient(circle at 20% 50%, rgba(0, 210, 255, 0.03) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(255, 170, 0, 0.03) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: -1;
+    }}
+    
+    /* 🎨 NEW: Enhanced Sidebar */
+    [data-testid="stSidebar"] hr {{
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent 0%, #00d2ff 50%, transparent 100%);
+        margin: 20px 0;
+    }}
+    
+    /* 🎨 NEW: Custom Data Table Styling */
+    .dataframe {{
+        border-radius: 12px !important;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+    }}
+    
+    .dataframe th {{
+        background: linear-gradient(135deg, #00d2ff, #008cba) !important;
+        color: white !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        font-size: 12px !important;
+        letter-spacing: 1px;
+    }}
+    
+    .dataframe tr:hover {{
+        background: rgba(0, 210, 255, 0.05) !important;
+    }}
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
 
 # ==========================================
-# 3. Authentication & User Management
+# 3. NEW: Enhanced UI Components
+# ==========================================
+def show_breadcrumbs(path):
+    """Display navigation breadcrumbs"""
+    parts = path.split(" > ")
+    breadcrumb_html = " > ".join([
+        f'<span style="color: #00d2ff; cursor: pointer;">{p}</span>' 
+        if i < len(parts) - 1 
+        else f'<span style="color: #ffaa00; font-weight: bold;">{p}</span>'
+        for i, p in enumerate(parts)
+    ])
+    
+    st.markdown(f"""
+    <div style="
+        background: rgba(255,255,255,0.05);
+        padding: 10px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    ">
+         Home {breadcrumb_html}
+    </div>
+    """, unsafe_allow_html=True)
+
+def live_indicator(status="online"):
+    """Display animated live status indicator"""
+    colors = {
+        "online": "#2ecc71",
+        "offline": "#e74c3c",
+        "warning": "#f1c40f"
+    }
+    
+    st.markdown(f"""
+    <div class="live-indicator">
+        <div class="live-dot" style="background: {colors[status]}; box-shadow: 0 0 10px {colors[status]};"></div>
+        <span style="color: {colors[status]}; font-size: 12px; text-transform: uppercase;">
+            {status}
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+def create_progress_ring(percentage, label):
+    """Create animated progress ring"""
+    color = "#2ecc71" if percentage > 80 else ("#f1c40f" if percentage > 50 else "#e74c3c")
+    
+    st.markdown(f"""
+    <div style="text-align: center; padding: 20px;">
+        <svg width="120" height="120" style="transform: rotate(-90deg);">
+            <circle cx="60" cy="60" r="50" 
+                    stroke="rgba(255,255,255,0.1)" 
+                    stroke-width="8" 
+                    fill="none"/>
+            <circle cx="60" cy="60" r="50" 
+                    stroke="{color}" 
+                    stroke-width="8" 
+                    fill="none"
+                    stroke-dasharray="{2 * 3.14 * 50}"
+                    stroke-dashoffset="{2 * 3.14 * 50 * (1 - percentage/100)}"
+                    stroke-linecap="round"
+                    style="transition: stroke-dashoffset 1s ease;"/>
+        </svg>
+        <div style="margin-top: -80px; font-size: 24px; font-weight: bold; color: {color};">
+            {percentage}%
+        </div>
+        <div style="color: #8da3b9; font-size: 12px; margin-top: 40px;">
+            {label}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ==========================================
+# 4. Authentication & User Management
 # ==========================================
 @st.cache_data(ttl=30)
 def _load_users_db():
@@ -173,7 +405,7 @@ def authenticate_user(email, password):
     return False, "Invalid Email or Password."
 
 # ==========================================
-# 4. 3D Glassy Chart Styling Function
+# 5. 3D Glassy Chart Styling Function
 # ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
@@ -206,7 +438,7 @@ def style_3d_glassy(fig, chart_type="bar"):
     return fig
 
 # ==========================================
-# 5. History Manager with SQLite (Persistent)
+# 6. History Manager with SQLite (Persistent)
 # ==========================================
 class HistoryManager:
     DB_FILE = "project_history.db"
@@ -291,11 +523,11 @@ class HistoryManager:
         pct_str = "0%" if last_val == 0 else f"{abs((diff / last_val) * 100):.1f}%"
         diff_fmt = f"{int(diff)}" if isinstance(current_val, (int, float)) and float(current_val).is_integer() else f"{diff:.2f}"
         
-        if diff > 0: 
+        if diff > 0:
             return f'<div class="delta-up">▲ +{diff_fmt} ({pct_str})</div>'
-        elif diff < 0: 
+        elif diff < 0:
             return f'<div class="delta-down">▼ {diff_fmt} ({pct_str})</div>'
-        else: 
+        else:
             return f'<div class="delta-neutral">➖ No change</div>'
     
     @staticmethod
@@ -310,23 +542,16 @@ class HistoryManager:
     def import_from_csv(df):
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
-        
         df.columns = df.columns.str.strip().str.lower()
-        col_map = {
-            'timestamp': 'timestamp', 'file_name': 'file_name', 
-            'total_requests': 'total_requests', 'total_tests': 'total_tests',
-            'avg_dpl': 'avg_dpl', 'avg_duration': 'avg_duration', 'total_paperwork': 'total_paperwork'
-        }
         
         for index, row in df.iterrows():
-            req = row.get('total_requests', row.iloc[0] if len(row) > 0 else 0)
-            tst = row.get('total_tests', row.iloc[1] if len(row) > 1 else 0)
-            dpl = row.get('avg_dpl', row.iloc[2] if len(row) > 2 else 0)
-            dur = row.get('avg_duration', row.iloc[3] if len(row) > 3 else 0)
-            pap = row.get('total_paperwork', row.iloc[4] if len(row) > 4 else 0)
-            
-            ts = row.get('timestamp', row.iloc[5] if len(row) > 5 else datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"))
-            fn = row.get('file_name', row.iloc[6] if len(row) > 6 else 'Legacy_Import.csv')
+            req = row.get('total_requests', 0)
+            tst = row.get('total_tests', 0)
+            dpl = row.get('avg_dpl', 0)
+            dur = row.get('avg_duration', 0)
+            pap = row.get('total_paperwork', 0)
+            ts = row.get('timestamp', datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"))
+            fn = row.get('file_name', 'Legacy_Import.csv')
             
             conn.execute("""
                 INSERT INTO kpi_history 
@@ -373,7 +598,7 @@ def fmt_b(val):
     return s[:-2] if s.endswith('.0') else s
 
 # ==========================================
-# 6. Audit Trail & GenAI
+# 7. Audit Trail & GenAI
 # ==========================================
 def check_audit_trail(uploaded_file):
     original_pos = uploaded_file.tell()
@@ -404,7 +629,7 @@ def check_audit_trail(uploaded_file):
         pd.concat([pd.read_csv(AUDIT_LOG_FILE), new_audit], ignore_index=True).to_csv(AUDIT_LOG_FILE, index=False)
     else:
         new_audit.to_csv(AUDIT_LOG_FILE, index=False)
-    return "🆕 <b>New File Registered</b> in the Audit Trail System."
+    return " <b>New File Registered</b> in the Audit Trail System."
 
 def genai_chat_engine(query, df):
     query = query.lower()
@@ -436,7 +661,7 @@ def genai_chat_engine(query, df):
     return response
 
 # ==========================================
-# 7. Login Screen Logic
+# 8. Login Screen Logic
 # ==========================================
 def render_login_screen():
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
@@ -469,7 +694,7 @@ def render_login_screen():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 8. Site Engineer Mobile Mode
+# 9. Site Engineer Mobile Mode
 # ==========================================
 def render_site_mode():
     st.title("📱 Site Engineer Mobile Mode")
@@ -492,7 +717,7 @@ def render_site_mode():
     }), use_container_width=True, hide_index=True)
 
 # ==========================================
-# 9. Alert System Module (ONLY)
+# 10. Alert System Module
 # ==========================================
 def render_alerts_module(df):
     st.markdown('<div class="bi-title">🚨 Automated Alert & Notification System</div>', unsafe_allow_html=True)
@@ -506,11 +731,11 @@ def render_alerts_module(df):
             rej_df = df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
             if not rej_df.empty:
                 worst_comp = rej_df['Company Name'].value_counts().idxmax()
-                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%H:%M"), "Severity": "🚨 CRITICAL", "Message": f"Contractor '{worst_comp}' exceeded rejection threshold."})
+                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%H:%M"), "Severity": " CRITICAL", "Message": f"Contractor '{worst_comp}' exceeded rejection threshold."})
         if 'DURATION' in df.columns:
             high_delay = df[df['DURATION'] > 15]
             if not high_delay.empty:
-                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M"), "Severity": "️ WARNING", "Message": f"{len(high_delay)} submittals have exceeded the 15-day SLA limit."})
+                alerts.append({"Time": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M"), "Severity": "⚠️ WARNING", "Message": f"{len(high_delay)} submittals have exceeded the 15-day SLA limit."})
         if not alerts:
             alerts.append({"Time": "Now", "Severity": "✅ OK", "Message": "All systems nominal. No critical alerts."})
         st.dataframe(pd.DataFrame(alerts), use_container_width=True, hide_index=True)
@@ -527,7 +752,7 @@ def render_alerts_module(df):
             st.balloons()
 
 # ==========================================
-# 10. Main Dashboard Application
+# 11. Main Dashboard Application
 # ==========================================
 def render_dashboard():
     user = st.session_state["current_user"]
@@ -558,7 +783,7 @@ def render_dashboard():
 
     st.sidebar.markdown("### 🎨 UI/UX Mode")
     theme_col1, theme_col2 = st.sidebar.columns(2)
-    if theme_col1.button(" Dark"):
+    if theme_col1.button("🌙 Dark"):
         st.session_state["theme"] = "Dark"
         st.rerun()
     if theme_col2.button("☀️ Light"):
@@ -623,7 +848,7 @@ def render_dashboard():
             with tab_backup:
                 if os.path.exists(USERS_DB_FILE):
                     with open(USERS_DB_FILE, "rb") as f:
-                        st.download_button("📥 Download Users DB", data=f, file_name="users_db_backup.csv", mime="text/csv", use_container_width=True)
+                        st.download_button(" Download Users DB", data=f, file_name="users_db_backup.csv", mime="text/csv", use_container_width=True)
                 uploaded_db = st.file_uploader("📤 Restore Users DB", type="csv")
                 if uploaded_db is not None:
                     restored_df = pd.read_csv(uploaded_db)
@@ -646,19 +871,19 @@ def render_dashboard():
         if st.button("🗑️ Wipe Database & Start Fresh", type="primary", use_container_width=True):
             if os.path.exists(HistoryManager.DB_FILE):
                 os.remove(HistoryManager.DB_FILE)
-            HistoryManager.init_db()
-            if "restored_files" in st.session_state:
-                st.session_state["restored_files"] = set()
-            st.success("✅ Database Wiped Successfully! Start logging fresh data.")
-            time.sleep(1)
-            st.rerun()
-
-        if st.button(" Download Backup CSV", use_container_width=True):
+                HistoryManager.init_db()
+                if "restored_files" in st.session_state:
+                    st.session_state["restored_files"] = set()
+                st.success("✅ Database Wiped Successfully! Start logging fresh data.")
+                time.sleep(1)
+                st.rerun()
+        
+        if st.button("📥 Download Backup CSV", use_container_width=True):
             backup_df = HistoryManager.export_to_csv()
             if not backup_df.empty:
                 csv_backup = backup_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label=" Download Now",
+                    label="💾 Download Now",
                     data=csv_backup,
                     file_name=f"history_backup_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
                     mime="text/csv",
@@ -669,9 +894,8 @@ def render_dashboard():
         
         if "restored_files" not in st.session_state:
             st.session_state["restored_files"] = set()
-            
-        history_upload = st.file_uploader(" Restore from Backup (Optional)", type="csv")
         
+        history_upload = st.file_uploader("📤 Restore from Backup (Optional)", type="csv")
         if history_upload is not None:
             file_id = f"{history_upload.name}_{history_upload.size}"
             if file_id not in st.session_state["restored_files"]:
@@ -689,7 +913,7 @@ def render_dashboard():
         
         history_df = HistoryManager.load_history()
         if not history_df.empty:
-            st.markdown(f"📊 **Total Records:** {len(history_df)}")
+            st.markdown(f" **Total Records:** {len(history_df)}")
             last_ts = str(history_df.iloc[-1]['timestamp'])
             try:
                 f_ts = float(last_ts)
@@ -737,7 +961,7 @@ def render_dashboard():
         total_errors = missing_dates + missing_status + duplicate_serials
         health_score = max(0, 100 - (total_errors / (total_rows+1) * 100)) if total_rows > 0 else 0
         health_color = "#2ecc71" if health_score >= 95 else ("#f1c40f" if health_score >= 80 else "#e74c3c")
-        health_icon = "✅" if health_score >= 95 else ("⚠️" if health_score >= 80 else "🚨")
+        health_icon = "✅" if health_score >= 95 else ("️" if health_score >= 80 else "🚨")
         
         error_details = []
         if missing_dates > 0: error_details.append(f"{missing_dates} Missing Dates")
@@ -758,16 +982,16 @@ def render_dashboard():
             </div>
         """, unsafe_allow_html=True)
 
-        # 🚨 Alert System Button (ONLY)
-        st.markdown("### 🚀 Select Advanced Module to Explore")
-        mod1 = st.button(" Alert System", use_container_width=True)
+        # 🚨 Alert System Button
+        st.markdown("###  Select Advanced Module to Explore")
+        mod1 = st.button("🚨 Alert System", use_container_width=True)
 
         if mod1:
             render_alerts_module(df)
             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         # 🧠 GenAI Chat Interface
-        st.markdown('<div class="bi-title">🧠 Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title"> Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
         st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
         
         chat_container = st.container()
@@ -783,7 +1007,7 @@ def render_dashboard():
         prompt = st.chat_input("Ask the AI Engineering Assistant...")
         if prompt:
             st.session_state["chat_history"].append({"role": "user", "content": prompt})
-            with st.spinner(" AI is analyzing the dataset..."):
+            with st.spinner("🧠 AI is analyzing the dataset..."):
                 time.sleep(1.5)
                 ai_response = genai_chat_engine(prompt, df)
             st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
@@ -858,11 +1082,15 @@ def render_dashboard():
                 <div class="ticker-item">✅ <b>Current Global Yield:</b> <span>{overall_rate:.1f}%</span></div>
                 <div class="ticker-item">⏱️ <b>Sector Avg Delay:</b> <span>{avg_duration_value} Days</span></div>
                 <div class="ticker-item">🚨 <b>Pending Rejections:</b> <span>{rejected_count}</span></div>
-                <div class="ticker-item"> <b>Total Field Tests:</b> <span>{total_tests_count:,}</span></div>
+                <div class="ticker-item">🧪 <b>Total Field Tests:</b> <span>{total_tests_count:,}</span></div>
             </div>
         </div>
         """
         st.markdown(ticker_html, unsafe_allow_html=True)
+        
+        # 🎨 NEW: Live Indicator
+        live_indicator("online")
+        
         worst_office_name = "N/A"
         worst_office_delay = 0
         if 'Done BY' in filtered_df.columns and 'DURATION' in filtered_df.columns:
@@ -993,7 +1221,7 @@ def render_dashboard():
             comp_dur = filtered_df.groupby('Company Name')['DURATION'].mean()
             for comp, dur in comp_dur.items():
                 if dur > avg_duration_value + 5:
-                    anomalies.append(f"⚠️ <b>Anomaly Detected:</b> <b>{comp}</b> is showing severe delays ({dur:.1f} days) compared to the global average ({avg_duration_value:.1f} days).")
+                    anomalies.append(f"️ <b>Anomaly Detected:</b> <b>{comp}</b> is showing severe delays ({dur:.1f} days) compared to the global average ({avg_duration_value:.1f} days).")
         if 'sample status' in filtered_df.columns and 'Test Type' in filtered_df.columns:
             rejections_df = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
             if not rejections_df.empty:
@@ -1001,7 +1229,7 @@ def render_dashboard():
                 top_fail_comp = rejections_df['Company Name'].value_counts().idxmax() if 'Company Name' in rejections_df.columns else "Unknown"
                 fail_pct = (len(rejections_df) / total_requests_count * 100) if total_requests_count > 0 else 0
                 if fail_pct > 10:
-                    anomalies.append(f"🔍 <b>Root Cause Insight:</b> Global rejection rate is high ({fail_pct:.1f}%). The primary contributor is the <b>{top_fail_test}</b> test, most frequently failing under contractor <b>{top_fail_comp}</b>.")
+                    anomalies.append(f" <b>Root Cause Insight:</b> Global rejection rate is high ({fail_pct:.1f}%). The primary contributor is the <b>{top_fail_test}</b> test, most frequently failing under contractor <b>{top_fail_comp}</b>.")
         if anomalies:
             for anomaly in anomalies:
                 st.markdown(f'<div style="background: rgba(231,76,60,0.1); border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: {ui["text_main"]};">{anomaly}</div>', unsafe_allow_html=True)
@@ -1091,7 +1319,7 @@ def render_dashboard():
                     st.text("No data available for tracking.")
 
         if 'Date ( test)' in filtered_df.columns:
-            st.markdown('<div class="bi-title">🗓️ Activity Heatmap Calendar</div>', unsafe_allow_html=True)
+            st.markdown('<div class="bi-title">️ Activity Heatmap Calendar</div>', unsafe_allow_html=True)
             cal_df = filtered_df.dropna(subset=['Date ( test)']).copy()
             cal_df['Day'] = cal_df['Date ( test)'].dt.day
             cal_df['Month_Name'] = cal_df['Date ( test)'].dt.strftime('%b %Y')
@@ -1147,6 +1375,8 @@ def render_dashboard():
                     st.error(f"🚨 **Warning:** The recent workflow trend is rising ({latest_trend:.1f} days) compared to the overall average. Bottlenecks are forming.")
                 else:
                     st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
         if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
@@ -1219,7 +1449,7 @@ def render_dashboard():
                         <th>Identified Node / Value</th>
                     </tr>
                     <tr>
-                        <td><strong>🏆 Top Performing Contractor</strong></td>
+                        <td><strong> Top Performing Contractor</strong></td>
                         <td class="highlight-green">{global_best_comp} ({global_best_rate:.1f}% Yield)</td>
                     </tr>
                     <tr>
@@ -1231,7 +1461,7 @@ def render_dashboard():
                         <td class="highlight-red">{worst_office_name} ({worst_office_delay} Days Avg Delay)</td>
                     </tr>
                     <tr>
-                        <td><strong>⚠️ Pending Rejections</strong></td>
+                        <td><strong>️ Pending Rejections</strong></td>
                         <td class="highlight-red">{rejected_count} Submittals</td>
                     </tr>
                     <tr>
@@ -1250,6 +1480,31 @@ def render_dashboard():
         st.markdown(href, unsafe_allow_html=True)
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        global_history_df = HistoryManager.load_history()
+        if not global_history_df.empty:
+            if 'file_name' not in global_history_df.columns:
+                global_history_df['file_name'] = uploaded_file.name
+            file_trend_df = global_history_df[global_history_df['file_name'] == uploaded_file.name].copy()
+            if len(file_trend_df) > 1:
+                st.markdown(f"### 🚀 KPI Daily Growth Trend for `{uploaded_file.name}`")
+                file_trend_df['Added_Requests'] = file_trend_df['total_requests'].diff().fillna(0)
+                file_trend_df['Growth_Rate_%'] = ((file_trend_df['total_requests'].diff() / file_trend_df['total_requests'].shift(1)) * 100).fillna(0)
+                file_trend_df['Date_Time'] = pd.to_datetime(file_trend_df['timestamp']).dt.strftime('%m-%d %H:%M')
+                col_t1, col_t2 = st.columns(2)
+                with col_t1:
+                    fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', title="Daily Added Submittals Trend", text_auto=True, color_discrete_sequence=['#00d2ff'])
+                    fig_added = style_3d_glassy(fig_added, chart_type="bar")
+                    st.plotly_chart(fig_added, use_container_width=True)
+                with col_t2:
+                    fig_rate = px.line(file_trend_df.iloc[1:], x='Date_Time', y='Growth_Rate_%', title="Growth Rate Trend Percentage (%)", markers=True, color_discrete_sequence=['#2ecc71'])
+                    fig_rate = style_3d_glassy(fig_rate, chart_type="line")
+                    st.plotly_chart(fig_rate, use_container_width=True)
+                with st.expander("🖨️ View & Export History Log for this File"):
+                    export_df = file_trend_df[['timestamp', 'total_requests', 'Added_Requests', 'Growth_Rate_%', 'avg_dpl', 'avg_duration']].copy()
+                    export_df.rename(columns={'Added_Requests': '+ Added', 'Growth_Rate_%': 'Growth %'}, inplace=True)
+                    st.dataframe(export_df.round(2), use_container_width=True)
+                st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         if num_tests_col and 'Test Type' in filtered_df.columns:
             st.markdown("### 🧪 Detailed Test Counts by Type")
@@ -1442,7 +1697,7 @@ def render_dashboard():
             st.dataframe(report_df, use_container_width=True)
             csv_export = report_df.to_csv(index=False).encode('utf-8-sig')
             st.download_button(
-                label="📥 Download Stockpile Master Report (CSV)",
+                label=" Download Stockpile Master Report (CSV)",
                 data=csv_export,
                 file_name=f"Stockpile_Targets_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
                 mime="text/csv",
@@ -1540,7 +1795,7 @@ def render_dashboard():
 
                     if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
                         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                        st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
+                        st.markdown("####  Rework & Delay Ledger (Rejected Items Analysis)")
                         
                         rework_df = comp_df_full.copy()
                         rejected_items = rework_df[rework_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
@@ -1580,7 +1835,7 @@ def render_dashboard():
                                 else:
                                     acc_date = pd.NaT
                                     delay_days = 0
-                                    status_text = "Pending 🚨"
+                                    status_text = "Pending "
                                     
                                 ledger_data.append({
                                     "Rejected Serial": serial,
@@ -1686,7 +1941,7 @@ def render_dashboard():
                         elif progress_pct >= 70:
                             prog_color = "#f1c40f" 
                             status_color = "#f1c40f"
-                            status_icon = "⚠️"
+                            status_icon = "️"
                         else:
                             prog_color = "#e74c3c" 
                             status_color = "#e74c3c"
@@ -1738,7 +1993,7 @@ def render_dashboard():
 
                             if not st.session_state[scan_key]:
                                 st.markdown("<br>", unsafe_allow_html=True)
-                                if st.button("🧠 Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
+                                if st.button(" Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
                                     with st.container():
                                         progress_bar = st.progress(0)
                                         status_text = st.empty()
@@ -1773,7 +2028,7 @@ def render_dashboard():
                                     else:
                                         directive = f"SYSTEM.HALT: Cannot calculate required samples. No Target 'Required Quantity' is registered for this contractor. Update records to enable exact sampling estimates."
                                 elif ai_ratio < 0.15:
-                                    status_level, status_color, status_bg, status_icon = "COVERAGE GAP", "#f1c40f", "rgba(241, 196, 15, 0.1)", "⚠️"
+                                    status_level, status_color, status_bg, status_icon = "COVERAGE GAP", "#f1c40f", "rgba(241, 196, 15, 0.1)", "️"
                                     quality_insight = f"Material approval rate is lagging behind fill execution speed. A minor gap in material source validation is forming."
                                     directive = f"ADVISORY: Schedule routine stockpile sampling to restore balance with field operations."
                                 else:
@@ -1876,11 +2131,11 @@ def render_dashboard():
                     bh_df = None
                     if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
                         available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
-                        st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
+                        st.warning(f"️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
                         selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
                         if selected_zone:
                             bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
-                            st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
+                            st.markdown(f"####  Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
                     else:
                         bh_df = bh_df_raw
                         st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
@@ -1937,7 +2192,7 @@ def render_dashboard():
                                     l, t_type, ser = alert
                                     alert_cols[idx % 4].markdown(f"""
                                         <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
-                                            <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
+                                            <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">️ Action Required</div>
                                             <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
                                                 <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
                                                 <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
@@ -2062,7 +2317,7 @@ def render_dashboard():
         st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
 
 # ==========================================
-# 11. Main Application Execution
+# 12. Main Application Execution
 # ==========================================
 def main():
     inject_custom_css()  
