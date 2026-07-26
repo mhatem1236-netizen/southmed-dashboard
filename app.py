@@ -67,10 +67,10 @@ def inject_custom_css():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
     
-    /* 🔴 WHITE-LABELING: Hiding Streamlit Artifacts 🔴 */
+   /* 🔴 WHITE-LABELING: Hiding Streamlit Artifacts 🔴 */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
-    [data-testid="stHeader"] {{display: none;}}
+    [data-testid="stHeader"] {{background: transparent !important;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
     html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
