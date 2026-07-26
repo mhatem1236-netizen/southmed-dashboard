@@ -311,7 +311,6 @@ class HistoryManager:
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
         
-        # 🔴 الفلتر الذكي اللي بيستورد أي ملف بغض النظر عن ترتيب أو اسم أعمدته 🔴
         df.columns = df.columns.str.strip().str.lower()
         col_map = {
             'timestamp': 'timestamp', 'file_name': 'file_name', 
@@ -320,7 +319,6 @@ class HistoryManager:
         }
         
         for index, row in df.iterrows():
-            # استخراج ذكي للبيانات بناءً على أسماء الأعمدة أو ترتيبها التقريبي
             req = row.get('total_requests', row.iloc[0] if len(row) > 0 else 0)
             tst = row.get('total_tests', row.iloc[1] if len(row) > 1 else 0)
             dpl = row.get('avg_dpl', row.iloc[2] if len(row) > 2 else 0)
@@ -1252,55 +1250,6 @@ def render_dashboard():
         st.markdown(href, unsafe_allow_html=True)
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-        # 🔴 بلوك الـ History Trend 🔴
-        global_history_df = HistoryManager.load_history()
-        if not global_history_df.empty:
-            def fix_ts(ts):
-                try:
-                    f = float(ts)
-                    if f > 30000:
-                        return (datetime(1899, 12, 30) + timedelta(days=f)).strftime("%Y-%m-%d %H:%M:%S")
-                except:
-                    pass
-                return str(ts)
-            
-            global_history_df['timestamp'] = global_history_df['timestamp'].apply(fix_ts)
-            global_history_df['timestamp_dt'] = pd.to_datetime(global_history_df['timestamp'], errors='coerce')
-            
-            if 'file_name' in global_history_df.columns:
-                file_trend_df = global_history_df[global_history_df['file_name'] == uploaded_file.name].copy()
-            else:
-                file_trend_df = pd.DataFrame()
-            
-            st.markdown(f"### 🚀 KPI Daily Growth Trend for `{uploaded_file.name}`")
-            
-            if len(file_trend_df) > 1:
-                file_trend_df = file_trend_df.sort_values('timestamp_dt')
-                file_trend_df = file_trend_df.drop_duplicates(subset=['timestamp_dt'], keep='last')
-                
-                file_trend_df['Added_Requests'] = file_trend_df['total_requests'].diff().fillna(0)
-                file_trend_df['Growth_Rate_%'] = ((file_trend_df['total_requests'].diff() / file_trend_df['total_requests'].shift(1)) * 100).fillna(0)
-                file_trend_df['Growth_Rate_%'] = file_trend_df['Growth_Rate_%'].replace([np.inf, -np.inf], 0)
-                file_trend_df['Date_Time'] = file_trend_df['timestamp_dt'].dt.strftime('%m-%d %H:%M')
-                
-                col_t1, col_t2 = st.columns(2)
-                with col_t1:
-                    fig_added = px.bar(file_trend_df.iloc[1:], x='Date_Time', y='Added_Requests', title="Daily Added Submittals Trend", text_auto=True, color_discrete_sequence=['#00d2ff'])
-                    fig_added = style_3d_glassy(fig_added, chart_type="bar")
-                    st.plotly_chart(fig_added, use_container_width=True)
-                with col_t2:
-                    fig_rate = px.line(file_trend_df.iloc[1:], x='Date_Time', y='Growth_Rate_%', title="Growth Rate Trend Percentage (%)", markers=True, color_discrete_sequence=['#2ecc71'])
-                    fig_rate = style_3d_glassy(fig_rate, chart_type="line")
-                    st.plotly_chart(fig_rate, use_container_width=True)
-                with st.expander("🖨️ View & Export History Log for this File"):
-                    export_df = file_trend_df[['timestamp', 'total_requests', 'Added_Requests', 'Growth_Rate_%', 'avg_dpl', 'avg_duration']].copy()
-                    export_df.rename(columns={'Added_Requests': '+ Added', 'Growth_Rate_%': 'Growth %'}, inplace=True)
-                    st.dataframe(export_df.round(2), use_container_width=True)
-            else:
-                st.info("📊 **Trend Analysis Standby:** We need at least 2 historical snapshots for this specific file to generate a growth trend. Please click '💾 Save to BI History' again after your next data update.")
-                
-            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         if num_tests_col and 'Test Type' in filtered_df.columns:
             st.markdown("### 🧪 Detailed Test Counts by Type")
