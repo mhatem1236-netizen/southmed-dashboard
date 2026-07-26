@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 import base64
 import hashlib
@@ -309,6 +309,15 @@ class HistoryManager:
     def import_from_csv(df):
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
+        
+        # 🔴 التعديل هنا: توحيد الأعمدة عشان الداتا القديمة تقرأها الداتا بيز الجديدة 🔴
+        col_map = {
+            'Timestamp': 'timestamp', 'File_Name': 'file_name', 
+            'Total_Requests': 'total_requests', 'Total_Tests': 'total_tests',
+            'Avg_DPL': 'avg_dpl', 'Avg_Duration': 'avg_duration', 'Total_Paperwork': 'total_paperwork'
+        }
+        df = df.rename(columns=col_map)
+        
         for _, row in df.iterrows():
             conn.execute("""
                 INSERT INTO kpi_history 
@@ -639,15 +648,27 @@ def render_dashboard():
             else:
                 st.info("No history data to backup")
         
+        # 🔴 التعديل هنا: منع التكرار اللانهائي 🔴
+        if "restored_files" not in st.session_state:
+            st.session_state["restored_files"] = set()
+            
         history_upload = st.file_uploader(" Restore from Backup (Optional)", type="csv")
+        
         if history_upload is not None:
-            try:
-                restored_df = pd.read_csv(history_upload)
-                HistoryManager.import_from_csv(restored_df)
+            file_id = f"{history_upload.name}_{history_upload.size}"
+            
+            if file_id not in st.session_state["restored_files"]:
+                try:
+                    restored_df = pd.read_csv(history_upload)
+                    HistoryManager.import_from_csv(restored_df)
+                    st.session_state["restored_files"].add(file_id)
+                    st.success("✅ History Restored Successfully!")
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error restoring backup: {str(e)}")
+            else:
                 st.success("✅ History Restored Successfully!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error restoring backup: {str(e)}")
         
         history_df = HistoryManager.load_history()
         if not history_df.empty:
@@ -990,7 +1011,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
             cc1, cc2 = st.columns(2)
             c_a = cc1.selectbox("Select Contractor A", companies, index=0)
@@ -1106,9 +1127,7 @@ def render_dashboard():
                 else:
                     st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
 
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="bi-title">️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
         if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             tree_df = filtered_df.copy()
             tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
@@ -1211,13 +1230,16 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
+        # 🔴 بلوك الـ History Trend 🔴
         global_history_df = HistoryManager.load_history()
         if not global_history_df.empty:
             if 'file_name' not in global_history_df.columns:
                 global_history_df['file_name'] = uploaded_file.name
             file_trend_df = global_history_df[global_history_df['file_name'] == uploaded_file.name].copy()
+            
+            st.markdown(f"### 🚀 KPI Daily Growth Trend for `{uploaded_file.name}`")
+            
             if len(file_trend_df) > 1:
-                st.markdown(f"###  KPI Daily Growth Trend for `{uploaded_file.name}`")
                 file_trend_df['Added_Requests'] = file_trend_df['total_requests'].diff().fillna(0)
                 file_trend_df['Growth_Rate_%'] = ((file_trend_df['total_requests'].diff() / file_trend_df['total_requests'].shift(1)) * 100).fillna(0)
                 file_trend_df['Date_Time'] = pd.to_datetime(file_trend_df['timestamp']).dt.strftime('%m-%d %H:%M')
@@ -1234,10 +1256,13 @@ def render_dashboard():
                     export_df = file_trend_df[['timestamp', 'total_requests', 'Added_Requests', 'Growth_Rate_%', 'avg_dpl', 'avg_duration']].copy()
                     export_df.rename(columns={'Added_Requests': '+ Added', 'Growth_Rate_%': 'Growth %'}, inplace=True)
                     st.dataframe(export_df.round(2), use_container_width=True)
-                st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+            else:
+                st.info("📊 **Trend Analysis Standby:** We need at least 2 historical snapshots to generate a growth trend. Please click '💾 Save to BI History' again after your next data update.")
+                
+            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         if num_tests_col and 'Test Type' in filtered_df.columns:
-            st.markdown("###  Detailed Test Counts by Type")
+            st.markdown("### 🧪 Detailed Test Counts by Type")
             test_summary = filtered_df.groupby('Test Type')[num_tests_col].sum().reset_index()
             t_cols = st.columns(len(test_summary))
             for i, row in test_summary.iterrows():
@@ -1309,7 +1334,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             comp_stats = []
             for comp in filtered_df['Company Name'].dropna().unique():
@@ -1326,7 +1351,7 @@ def render_dashboard():
                 l_col1, l_col2 = st.columns(2)
                 l_col1.markdown(f"""
                     <div class="leaderboard-card" style="border-left-color: #2ecc71;">
-                        <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;"> Top Performer Contractor</h4>
+                        <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
                         <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{best_comp['Company']}</h2>
                         <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
                     </div>
@@ -1349,7 +1374,7 @@ def render_dashboard():
                 else: return 'Other'
             mat_df['Loc_Category'] = mat_df['Sampling_Lower'].apply(categorize_location)
             
-            st.markdown("####  Consolidated Contractors Summary (Ready for Print)")
+            st.markdown("#### 📑 Consolidated Contractors Summary (Ready for Print)")
             summary_pivot = pd.crosstab(mat_df['Company Name'], mat_df['Loc_Category'], margins=True, margins_name="Total")
             cols_order = ['Stockpile', 'Bottom of Excavation', 'Fill', 'Other', 'Total']
             existing_cols = [c for c in cols_order if c in summary_pivot.columns]
@@ -1493,7 +1518,7 @@ def render_dashboard():
                     col_d1, col_d2 = st.columns(2)
                     with col_d1:
                         if 'Done BY' in comp_df_full.columns:
-                            st.markdown("#### ‍💼 Processed by Office (Done BY)")
+                            st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
                             off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count').sort_values('Count', ascending=False)
                             off_df['Percent'] = (off_df['Count'] / off_df['Count'].sum() * 100).round(1)
                             fig_off = px.bar(off_df, x='Done BY', y='Count', text='Count', title="Submittal Volume per Review Office", color='Done BY', color_discrete_sequence=NEON_COLORS)
@@ -1617,7 +1642,7 @@ def render_dashboard():
                 with tab_stockpile:
                     if battalion_col_stock:
                         avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
-                        selected_bat = st.selectbox(" Filter Sourcing Analysis by Battalion:", avail_bats)
+                        selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats)
                         
                         if selected_bat != "All Battalions":
                             comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
@@ -1671,7 +1696,7 @@ def render_dashboard():
                         elif progress_pct >= 70:
                             prog_color = "#f1c40f" 
                             status_color = "#f1c40f"
-                            status_icon = "️"
+                            status_icon = "⚠️"
                         else:
                             prog_color = "#e74c3c" 
                             status_color = "#e74c3c"
@@ -1967,7 +1992,7 @@ def render_dashboard():
                                         missing_str = ", ".join([f"Layer {l}" for l in missing_layers])
                                         st.markdown(f"""
                                         <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-                                            <h5 style="color: #f1c40f; margin: 0;">️ Missing Compaction Layers Detected</h5>
+                                            <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5>
                                             <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:{ui['text_main']};">{missing_str}</b></p>
                                         </div>
                                         """, unsafe_allow_html=True)
@@ -1984,11 +2009,11 @@ def render_dashboard():
                         st.divider()
 
                         if 'Sampling Location' in bh_df.columns:
-                            st.markdown("#### ️ Bottom of Excavation & Soil Quality")
+                            st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
                             boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
                             if not boe_df.empty:
                                 boe_count = len(boe_df)
-                                st.info(f" Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
+                                st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
                                 if 'Classification' in boe_df.columns:
                                     class_counts = boe_df['Classification'].value_counts().reset_index()
                                     class_counts.columns = ['Classification', 'Count']
