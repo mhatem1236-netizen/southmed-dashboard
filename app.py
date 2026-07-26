@@ -69,7 +69,7 @@ def inject_custom_css():
     
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
-    [data-testid="stHeader"] {{display: none;}}
+    [data-testid="stHeader"] {{background: transparent !important;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
     html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
