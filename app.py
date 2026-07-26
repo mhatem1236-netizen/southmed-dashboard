@@ -18,7 +18,6 @@ st.set_page_config(page_title="Command Center BI Dashboard", layout="wide", init
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
 
-# توحيد صارم للألوان حسب حالة العينة لراحة العين
 STATUS_COLORS = {
     'ACCEPTED': '#2ecc71', 
     'APPROVED AS NOTED': '#00d2ff', 
@@ -29,7 +28,6 @@ STATUS_COLORS = {
 USERS_DB_FILE = "users_db.csv"
 LOGIN_LOGS_FILE = "login_logs.csv"
 
-# Theme Initialization
 if "theme" not in st.session_state:
     st.session_state["theme"] = "Dark"
 
@@ -68,32 +66,26 @@ def inject_custom_css():
     [data-testid="stHeader"] {{display: none;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
-    /* منع الفونت من بوظان الأيقونات */
     html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
     h1, h2, h3, h4, h5, h6, .login-title {{ font-family: 'Montserrat', sans-serif !important; color: {text_main} !important; }}
     p, .stMarkdown, label {{ color: {text_main} !important; }}
     
-    /* Core Layout */
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
     
-    /* Global Cards */
     .metric-card, .simulator-card, .leaderboard-card, .health-card, .custom-card {{ 
         background: {card_bg} !important; padding: 25px; border-radius: 16px; border: 1px solid {card_border}; 
         box-shadow: {card_shadow}; margin-bottom: 15px; 
     }}
     
-    /* Typography */
     .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; font-family: 'Montserrat', sans-serif; }}
     .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; font-family: 'Montserrat', sans-serif; }}
     .bi-title {{ color: {title_color} !important; font-size: 26px; font-weight: 800; margin-top: 40px; margin-bottom: 20px; }}
     
-    /* Deltas & Alerts */
     .delta-up {{ color: #2ecc71 !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-down {{ color: #e74c3c !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-neutral {{ color: {text_muted} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     
-    /* Dividers */
     .gradient-divider {{ height: 2px; background: linear-gradient(90deg, transparent 0%, {title_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
     
     .ticker-wrap {{ background: {card_bg}; border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
@@ -106,8 +98,26 @@ def inject_custom_css():
     st.markdown(custom_css, unsafe_allow_html=True)
 
 # ==========================================
-# 3. Authentication & User Management
+# 3. Authentication & User Management (Optimized with Caching)
 # ==========================================
+@st.cache_data(ttl=30)
+def _load_users_db():
+    if os.path.exists(USERS_DB_FILE):
+        return pd.read_csv(USERS_DB_FILE)
+    return pd.DataFrame()
+
+@st.cache_data(ttl=30)
+def _load_login_logs():
+    if os.path.exists(LOGIN_LOGS_FILE):
+        return pd.read_csv(LOGIN_LOGS_FILE)
+    return pd.DataFrame(columns=["Timestamp", "Name", "Email", "Role"])
+
+def clear_users_cache():
+    _load_users_db.clear()
+
+def clear_logs_cache():
+    _load_login_logs.clear()
+
 def init_auth_system():
     if not os.path.exists(USERS_DB_FILE):
         default_users = pd.DataFrame([
@@ -115,13 +125,15 @@ def init_auth_system():
             {"Email": "engineer@kk.com", "Password": "123", "Name": "Site Engineer", "Role": "User", "Status": "Active"}
         ])
         default_users.to_csv(USERS_DB_FILE, index=False)
+        clear_users_cache()
     
     if not os.path.exists(LOGIN_LOGS_FILE):
         logs_df = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Role"])
         logs_df.to_csv(LOGIN_LOGS_FILE, index=False)
+        clear_logs_cache()
 
 def log_user_entry(user_info):
-    logs_df = pd.read_csv(LOGIN_LOGS_FILE)
+    logs_df = _load_login_logs()
     new_log = pd.DataFrame([{
         "Timestamp": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"),
         "Name": user_info["Name"],
@@ -130,9 +142,10 @@ def log_user_entry(user_info):
     }])
     updated_logs = pd.concat([logs_df, new_log], ignore_index=True)
     updated_logs.to_csv(LOGIN_LOGS_FILE, index=False)
+    clear_logs_cache()
 
 def authenticate_user(email, password):
-    users_df = pd.read_csv(USERS_DB_FILE)
+    users_df = _load_users_db()
     user = users_df[(users_df["Email"].str.lower() == email.lower()) & (users_df["Password"] == password)]
     if not user.empty:
         user_data = user.iloc[0]
@@ -179,10 +192,18 @@ def style_3d_glassy(fig, chart_type="bar"):
     return fig
 
 # ==========================================
-# 5. History Manager
+# 5. History Manager (Optimized & Safer)
 # ==========================================
 class HistoryManager:
     FILE_NAME = "project_history_log.csv"
+    
+    @staticmethod
+    @st.cache_data(ttl=30)
+    def load_history():
+        if os.path.exists(HistoryManager.FILE_NAME):
+            return pd.read_csv(HistoryManager.FILE_NAME)
+        return pd.DataFrame()
+
     @staticmethod
     def save_metrics(metrics_dict):
         metrics_dict['Timestamp'] = datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S")
@@ -193,26 +214,28 @@ class HistoryManager:
         else:
             df_combined = df_new
         df_combined.to_csv(HistoryManager.FILE_NAME, index=False)
-
-    @staticmethod
-    def load_history():
-        if os.path.exists(HistoryManager.FILE_NAME):
-            return pd.read_csv(HistoryManager.FILE_NAME)
-        return pd.DataFrame()
+        HistoryManager.load_history.clear() # Clear cache after saving
 
     @staticmethod
     def get_delta_html(current_val, metric_key, current_file_name):
-        if not os.path.exists(HistoryManager.FILE_NAME): return "" 
-        history_df = pd.read_csv(HistoryManager.FILE_NAME)
-        if history_df.empty or metric_key not in history_df.columns: return ""
-        if 'File_Name' not in history_df.columns:
-            history_df['File_Name'] = current_file_name
-        file_history = history_df[history_df['File_Name'] == current_file_name]
-        if file_history.empty: return "" 
+        history_df = HistoryManager.load_history()
+        if history_df.empty or metric_key not in history_df.columns: 
+            return "" 
+        
+        # FIX: Safer handling of missing 'File_Name' column
+        if 'File_Name' in history_df.columns:
+            file_history = history_df[history_df['File_Name'] == current_file_name]
+        else:
+            file_history = history_df # Fallback to global history
+            
+        if file_history.empty: 
+            return "" 
+            
         last_val = file_history.iloc[-1][metric_key]
         diff = current_val - last_val
         pct_str = "0%" if last_val == 0 else f"{abs((diff / last_val) * 100):.1f}%"
-        diff_fmt = f"{int(diff)}" if isinstance(current_val, int) or float(current_val).is_integer() else f"{diff:.2f}"
+        diff_fmt = f"{int(diff)}" if isinstance(current_val, (int, float)) and float(current_val).is_integer() else f"{diff:.2f}"
+        
         if diff > 0: return f'<div class="delta-up">▲ +{diff_fmt} ({pct_str})</div>'
         elif diff < 0: return f'<div class="delta-down">▼ {diff_fmt} ({pct_str})</div>'
         else: return f'<div class="delta-neutral">➖ No change</div>'
@@ -265,7 +288,7 @@ def render_login_screen():
                 <hr style="border: 0.5px solid #eee; margin-bottom: 30px;">
         """, unsafe_allow_html=True)
         st.markdown('<div class="login-title">SIGN IN</div>', unsafe_allow_html=True)
-        email = st.text_input("Email Address", placeholder="@ Mohamedhatem@kk.com")
+        email = st.text_input("Email Address", placeholder="e.g., Mohamedhatem@kk.com")
         password = st.text_input("Password", type="password", placeholder="••••••••••••")
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Secure Login", use_container_width=True, type="primary"):
@@ -294,8 +317,12 @@ def render_dashboard():
         'highlight_bg': 'rgba(0,210,255,0.05)' if is_dark else 'rgba(52, 152, 219, 0.1)'
     }
     
-    try: st.image("5.jpg", use_container_width=True)
-    except: pass
+    # FIX: Safer image loading without spamming terminal errors
+    if os.path.exists("5.jpg"):
+        try:
+            st.image("5.jpg", use_container_width=True)
+        except Exception:
+            pass
 
     col_h1, col_h2 = st.columns([0.8, 0.2])
     with col_h1: st.title("Mega Infrastructure Command Center 🏗️⚡")
@@ -318,7 +345,7 @@ def render_dashboard():
     if user["Role"] == "Admin":
         with st.sidebar.expander("🔐 Admin Control Panel", expanded=False):
             st.markdown("#### User Management")
-            users_df = pd.read_csv(USERS_DB_FILE)
+            users_df = _load_users_db()
             st.dataframe(users_df[["Name", "Email", "Role", "Status"]], use_container_width=True)
             tab_add, tab_edit, tab_backup = st.tabs(["➕ Add", "✏️ Edit", "💾 Backup"])
             with tab_add:
@@ -333,6 +360,7 @@ def render_dashboard():
                         else:
                             new_u = pd.DataFrame([{"Email": new_email, "Password": new_pass, "Name": new_name, "Role": new_role, "Status": "Active"}])
                             pd.concat([users_df, new_u], ignore_index=True).to_csv(USERS_DB_FILE, index=False)
+                            clear_users_cache()
                             st.success("User Added Successfully!")
                             st.rerun()
             with tab_edit:
@@ -351,6 +379,7 @@ def render_dashboard():
                         users_df.at[target_idx, 'Role'] = edit_role
                         users_df.at[target_idx, 'Status'] = edit_status
                         users_df.to_csv(USERS_DB_FILE, index=False)
+                        clear_users_cache()
                         st.success(f"Account updated successfully!")
                         st.rerun()
                     if col_del.button("🗑️ Delete User", key=f"del_btn_{target_email}"):
@@ -359,6 +388,7 @@ def render_dashboard():
                         else:
                             users_df = users_df.drop(target_idx)
                             users_df.to_csv(USERS_DB_FILE, index=False)
+                            clear_users_cache()
                             st.success(f"User deleted permanently!")
                             st.rerun()
             with tab_backup:
@@ -369,10 +399,11 @@ def render_dashboard():
                 if uploaded_db is not None:
                     restored_df = pd.read_csv(uploaded_db)
                     restored_df.to_csv(USERS_DB_FILE, index=False)
+                    clear_users_cache()
                     st.success("Users Restored Successfully!")
                     st.rerun()
             st.markdown("#### System Access Logs")
-            logs_df = pd.read_csv(LOGIN_LOGS_FILE)
+            logs_df = _load_login_logs()
             st.dataframe(logs_df.tail(10), use_container_width=True)
             
     st.sidebar.divider()
@@ -386,6 +417,7 @@ def render_dashboard():
         if history_upload is not None:
             restored_df = pd.read_csv(history_upload)
             restored_df.to_csv(HistoryManager.FILE_NAME, index=False)
+            HistoryManager.load_history.clear()
             st.success("✅ History Restored!")
         if os.path.exists(HistoryManager.FILE_NAME):
             with open(HistoryManager.FILE_NAME, "rb") as f:
@@ -517,7 +549,6 @@ def render_dashboard():
                 worst_office_name = worst_office['Done BY']
                 worst_office_delay = round(worst_office['DURATION'], 1)
 
-        # 🔴 NEW: Global Best/Worst Contractor (Accountability Logic) 🔴
         global_best_comp, global_worst_comp = "N/A", "N/A"
         global_best_rate, global_worst_delay = 0, 0
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns and 'DURATION' in filtered_df.columns:
@@ -537,7 +568,7 @@ def render_dashboard():
                 global_worst_delay = valid_g.loc[valid_g['Delay'].idxmax()]['Delay']
 
         st.markdown(f"""
-            <div class="alert-banner">
+            <div class="alert-banner" style="background: linear-gradient(90deg, #e74c3c, #c0392b); padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; color: white;">
                 <div>
                     <h3 style="margin:0; font-size:22px; color:white;">🚨 Command Center Live Alerts</h3>
                     <p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">Top issues requiring immediate management attention today.</p>
@@ -571,7 +602,6 @@ def render_dashboard():
         d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
         create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
 
-        # 🔴 360° Accountability Board 🔴
         st.markdown('<div class="bi-title" style="margin-top: 20px;">⚖️ 360° Accountability Board (Eye in the Sky)</div>', unsafe_allow_html=True)
         acc_c1, acc_c2 = st.columns(2)
         acc_c1.markdown(f"""
@@ -794,6 +824,8 @@ def render_dashboard():
                     st.error(f"🚨 **Warning:** The recent workflow trend is rising ({latest_trend:.1f} days) compared to the overall average. Bottlenecks are forming.")
                 else:
                     st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
         if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
@@ -1210,7 +1242,6 @@ def render_dashboard():
                         else:
                             st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
 
-                    # 🔴 1. FIX: Advanced Rejection & Rework Ledger (Layer-Based Tracking) 🔴
                     if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
                         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                         st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
@@ -1392,7 +1423,6 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
 
-                    # 🔴 2. NEW: Conditional AI Sampling Logic 🔴
                     if 'Date ( test)' in comp_bat_df.columns:
                         time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
                         time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
@@ -1436,7 +1466,6 @@ def render_dashboard():
 
                                 ai_ratio = stock_in_peak / peak_fill_val if peak_fill_val > 0 else 1
                                 
-                                # التعديل هنا: الذكاء الاصطناعي بيشيك هل في كمية مطلوبة مسجلة ولا لأ
                                 has_target_qty = pd.notna(req_qty) and req_qty > 0
                                 
                                 if ai_ratio < 0.05:
