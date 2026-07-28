@@ -2855,6 +2855,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-الكود دا بقا كدا مش عاوز يظهرلى الشاشه الرئيسيه  ولما برفع الداتا مبتظهرش 
-
-There is a file you can reference named "Capture.JPG". Refer to this file by its name verbatim.
