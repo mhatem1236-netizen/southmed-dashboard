@@ -37,6 +37,9 @@ if "site_mode" not in st.session_state:
     st.session_state["site_mode"] = False
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
+#  NEW: Navigation State
+if "current_page" not in st.session_state:
+    st.session_state["current_page"] = "home"
 
 # ==========================================
 # 2. Dynamic UI/UX CSS Injection (ENHANCED FOR BOTH MODES)
@@ -289,6 +292,29 @@ def inject_custom_css():
     
     .dataframe tr:hover {{
         background: rgba(0, 210, 255, 0.05) !important;
+    }}
+    
+    /* 🆕 NEW: Navigation Card Styles */
+    .navigation-card {{
+        background: {card_bg} !important;
+        padding: 40px;
+        border-radius: 20px;
+        border: 2px solid {card_border};
+        box-shadow: {card_shadow};
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }}
+    
+    .navigation-card:hover {{
+        transform: translateY(-10px) scale(1.05);
+        border-color: #00d2ff !important;
+        box-shadow: 0 30px 60px rgba(0, 210, 255, 0.4) !important;
     }}
     </style>
     """
@@ -547,7 +573,7 @@ class HistoryManager:
         elif diff < 0:
             return f'<div class="delta-down">▼ {diff_fmt} ({pct_str})</div>'
         else:
-            return f'<div class="delta-neutral">➖ No change</div>'
+            return f'<div class="delta-neutral"> No change</div>'
     
     @staticmethod
     def export_to_csv():
@@ -667,7 +693,7 @@ def check_audit_trail(uploaded_file):
         pd.concat([pd.read_csv(AUDIT_LOG_FILE), new_audit], ignore_index=True).to_csv(AUDIT_LOG_FILE, index=False)
     else:
         new_audit.to_csv(AUDIT_LOG_FILE, index=False)
-    return " <b>New File Registered</b> in the Audit Trail System."
+    return "🆕 <b>New File Registered</b> in the Audit Trail System."
 
 def genai_chat_engine(query, df):
     query = query.lower()
@@ -732,10 +758,301 @@ def render_login_screen():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
+# 🆕 NEW: Home/Navigation Page
+# ==========================================
+def render_home_page():
+    """Main navigation page after login"""
+    user = st.session_state["current_user"]
+    
+    is_dark = st.session_state.get("theme", "Dark") == "Dark"
+    ui = {
+        'text_main': '#ffffff' if is_dark else '#1a1a1a',
+        'text_muted': '#8da3b9' if is_dark else '#4a5568',
+    }
+    
+    # Header
+    col_h1, col_h2 = st.columns([0.8, 0.2])
+    with col_h1:
+        st.title("🏗️ Mega Infrastructure Command Center")
+    with col_h2:
+        st.markdown(f"""
+        <div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center;'>
+            <span style='color:{ui["text_muted"]}; font-size:12px;'>Logged in as</span><br>
+            <b style='color:#ffaa00;'>{user["Name"]}</b><br>
+            <span style='color:#2ecc71; font-size:12px;'>{user["Role"]} Account</span>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Logout", use_container_width=True):
+            st.session_state["authenticated"] = False
+            st.rerun()
+    
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+    
+    # Welcome Message
+    st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 50px;">
+        <h2 style="color: {ui['text_main']}; font-size: 32px; margin-bottom: 10px;">
+            Welcome Back, {user['Name'].split()[0]}! 👋
+        </h2>
+        <p style="color: {ui['text_muted']}; font-size: 18px;">
+            Choose your workspace to get started
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Navigation Cards
+    card_col1, card_col2 = st.columns(2)
+    
+    with card_col1:
+        st.markdown("""
+        <div class="navigation-card">
+            <div style="font-size: 80px; margin-bottom: 20px;"></div>
+            <h3 style="color: #00d2ff; font-size: 28px; margin-bottom: 15px;">Main Dashboard</h3>
+            <p style="color: #8da3b9; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                Access the full operational dashboard with KPIs, charts, filters, and real-time monitoring
+            </p>
+            <div style="background: linear-gradient(135deg, #00d2ff, #008cba); padding: 12px 30px; border-radius: 8px; color: white; font-weight: bold; font-size: 16px;">
+                Enter Dashboard →
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("📊 Enter Main Dashboard", use_container_width=True, type="primary", key="btn_dashboard"):
+            st.session_state["current_page"] = "dashboard"
+            st.rerun()
+    
+    with card_col2:
+        st.markdown("""
+        <div class="navigation-card">
+            <div style="font-size: 80px; margin-bottom: 20px;">🔬</div>
+            <h3 style="color: #ffaa00; font-size: 28px; margin-bottom: 15px;">Advanced Analytics Hub</h3>
+            <p style="color: #8da3b9; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                Explore the 4 levels of analytics: Descriptive, Diagnostic, Predictive, and Prescriptive
+            </p>
+            <div style="background: linear-gradient(135deg, #ffaa00, #ff8c00); padding: 12px 30px; border-radius: 8px; color: white; font-weight: bold; font-size: 16px;">
+                Enter Analytics Hub →
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔬 Enter Advanced Analytics", use_container_width=True, type="primary", key="btn_analytics"):
+            st.session_state["current_page"] = "analytics"
+            st.rerun()
+    
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+    
+    # Quick Stats
+    st.markdown("### 📈 Quick Overview")
+    stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
+    
+    with stats_col1:
+        st.markdown("""
+        <div class="metric-card" style="text-align: center;">
+            <div style="font-size: 40px; color: #00d2ff;"></div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffffff; margin-top: 10px;">0</div>
+            <div style="color: #8da3b9; font-size: 14px;">Active Projects</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with stats_col2:
+        st.markdown("""
+        <div class="metric-card" style="text-align: center;">
+            <div style="font-size: 40px; color: #2ecc71;">✅</div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffffff; margin-top: 10px;">0</div>
+            <div style="color: #8da3b9; font-size: 14px;">Completed Tests</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with stats_col3:
+        st.markdown("""
+        <div class="metric-card" style="text-align: center;">
+            <div style="font-size: 40px; color: #ffaa00;">⚠️</div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffffff; margin-top: 10px;">0</div>
+            <div style="color: #8da3b9; font-size: 14px;">Pending Reviews</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with stats_col4:
+        st.markdown("""
+        <div class="metric-card" style="text-align: center;">
+            <div style="font-size: 40px; color: #e74c3c;">🚨</div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffffff; margin-top: 10px;">0</div>
+            <div style="color: #8da3b9; font-size: 14px;">Critical Alerts</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# ==========================================
+#  NEW: Analytics Hub (4 Levels)
+# ==========================================
+def render_analytics_hub(df):
+    """4-level analytics system"""
+    
+    st.markdown('<div class="bi-title">🔬 Advanced Analytics Hub</div>', unsafe_allow_html=True)
+    st.caption("Explore data through 4 levels of analytical intelligence")
+    
+    # Tabs for the 4 analytics types
+    analytics_tab1, analytics_tab2, analytics_tab3, analytics_tab4 = st.tabs([
+        "📊 Descriptive",
+        " Diagnostic",
+        "🔮 Predictive",
+        "💡 Prescriptive"
+    ])
+    
+    with analytics_tab1:
+        st.markdown("### 📊 Descriptive Analytics - What Happened?")
+        st.info("This section shows historical data and current status")
+        
+        # KPI Cards
+        kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
+        
+        total_samples = len(df)
+        accepted = len(df[df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in df.columns else 0
+        rejected = len(df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) if 'sample status' in df.columns else 0
+        avg_duration = df['DURATION'].mean() if 'DURATION' in df.columns else 0
+        
+        with kpi_col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Total Samples</div>
+                <div class="metric-value">{total_samples:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with kpi_col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Accepted</div>
+                <div class="metric-value" style="color: #2ecc71;">{accepted:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with kpi_col3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Rejected</div>
+                <div class="metric-value" style="color: #e74c3c;">{rejected:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with kpi_col4:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Avg Duration</div>
+                <div class="metric-value">{avg_duration:.1f}</div>
+                <div style="color: #8da3b9; font-size: 14px;">Days</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Charts
+        if 'sample status' in df.columns:
+            fig_pie = px.pie(df, names='sample status', title="Status Distribution", hole=0.4)
+            st.plotly_chart(fig_pie, use_container_width=True)
+    
+    with analytics_tab2:
+        st.markdown("###  Diagnostic Analytics - Why Did It Happen?")
+        st.info("This section identifies root causes and patterns")
+        
+        # Pareto Analysis
+        if 'Company Name' in df.columns and 'sample status' in df.columns:
+            st.markdown("#### Pareto Analysis: Top Problem Sources")
+            
+            rej_df = df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
+            if not rej_df.empty:
+                pareto_data = rej_df['Company Name'].value_counts().reset_index()
+                pareto_data.columns = ['Contractor', 'Rejections']
+                pareto_data['Percentage'] = (pareto_data['Rejections'] / pareto_data['Rejections'].sum() * 100).round(2)
+                pareto_data['Cumulative_Percentage'] = pareto_data['Percentage'].cumsum().round(2)
+                
+                fig_pareto = px.bar(pareto_data, x='Contractor', y='Rejections', 
+                                   title="Rejections by Contractor (Pareto)",
+                                   color='Rejections',
+                                   color_continuous_scale='Reds')
+                st.plotly_chart(fig_pareto, use_container_width=True)
+                
+                st.markdown(f"""
+                <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px;">
+                    <b> Key Insight:</b> The top contractors are responsible for the majority of rejections.
+                    Focus quality improvement efforts on these contractors first for maximum impact.
+                </div>
+                """, unsafe_allow_html=True)
+    
+    with analytics_tab3:
+        st.markdown("### 🔮 Predictive Analytics - What Will Happen?")
+        st.info("This section forecasts future trends and risks")
+        
+        # Trend Analysis
+        if 'Date ( test)' in df.columns and 'DURATION' in df.columns:
+            st.markdown("#### Duration Trend Forecasting")
+            
+            pred_df = df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
+            pred_df['7-Day Trend'] = pred_df['DURATION'].rolling(window=7, min_periods=1).mean()
+            
+            fig_trend = px.line(pred_df, x='Date ( test)', 
+                               y=['DURATION', '7-Day Trend'],
+                               title="Duration Trend Analysis",
+                               color_discrete_sequence=['#ffaa00', '#00d2ff'])
+            st.plotly_chart(fig_trend, use_container_width=True)
+            
+            latest_trend = pred_df['7-Day Trend'].iloc[-1]
+            avg_dur = df['DURATION'].mean()
+            
+            if latest_trend > avg_dur:
+                st.error(f"🚨 **Warning:** Recent trend ({latest_trend:.1f} days) is rising above average ({avg_dur:.1f} days)")
+            else:
+                st.success(f"✅ **Stable:** Recent trend ({latest_trend:.1f} days) is within normal range")
+    
+    with analytics_tab4:
+        st.markdown("### 💡 Prescriptive Analytics - What Should We Do?")
+        st.info("This section provides actionable recommendations")
+        
+        st.markdown("#### 🎯 Smart Recommendations")
+        
+        recommendations = []
+        
+        # Check rejection rate
+        if 'sample status' in df.columns:
+            rej_rate = len(df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) / len(df) * 100
+            if rej_rate > 20:
+                recommendations.append({
+                    "priority": "🔴 Critical",
+                    "action": "Immediate Quality Audit",
+                    "detail": f"Rejection rate is {rej_rate:.1f}%. Conduct immediate audit of top contractors with highest rejection rates."
+                })
+        
+        # Check duration
+        if 'DURATION' in df.columns:
+            avg_dur = df['DURATION'].mean()
+            if avg_dur > 15:
+                recommendations.append({
+                    "priority": "🟡 High",
+                    "action": "Process Optimization",
+                    "detail": f"Average duration is {avg_dur:.1f} days. Review workflow bottlenecks and consider adding review resources."
+                })
+        
+        if recommendations:
+            for rec in recommendations:
+                st.markdown(f"""
+                <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <b style="color: #00d2ff; font-size: 18px;">{rec['priority']}: {rec['action']}</b>
+                    </div>
+                    <p style="color: #ffffff; font-size: 14px; line-height: 1.6;">{rec['detail']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.success("✅ No critical issues detected. Continue monitoring.")
+    
+    # Back Button
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+    if st.button("🏠 Back to Home", use_container_width=True):
+        st.session_state["current_page"] = "home"
+        st.rerun()
+
+# ==========================================
 # 9. Site Engineer Mobile Mode
 # ==========================================
 def render_site_mode():
-    st.title("📱 Site Engineer Mobile Mode")
+    st.title(" Site Engineer Mobile Mode")
     st.markdown("### 🚧 Quick Field Actions")
     
     c1, c2 = st.columns(2)
@@ -812,7 +1129,7 @@ def render_dashboard():
             pass
 
     col_h1, col_h2 = st.columns([0.8, 0.2])
-    with col_h1: st.title("Mega Infrastructure Command Center ️")
+    with col_h1: st.title("🏗️ Mega Infrastructure Command Center")
     with col_h2:
         st.markdown(f"<div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center;'><span style='color:{ui['text_muted']}; font-size:12px;'>Logged in as</span><br><b style='color:#ffaa00;'>{user['Name']}</b><br><span style='color:#2ecc71; font-size:12px;'>{user['Role']} Account</span></div>", unsafe_allow_html=True)
         if st.button("Logout", use_container_width=True):
@@ -887,7 +1204,7 @@ def render_dashboard():
                 if os.path.exists(USERS_DB_FILE):
                     with open(USERS_DB_FILE, "rb") as f:
                         st.download_button("📥 Download Users DB", data=f, file_name="users_db_backup.csv", mime="text/csv", use_container_width=True)
-                uploaded_db = st.file_uploader(" Restore Users DB", type="csv")
+                uploaded_db = st.file_uploader("📤 Restore Users DB", type="csv")
                 if uploaded_db is not None:
                     restored_df = pd.read_csv(uploaded_db)
                     restored_df.to_csv(USERS_DB_FILE, index=False)
@@ -903,7 +1220,7 @@ def render_dashboard():
     st.sidebar.markdown("### 📁 1. Data Source")
     data_source = st.sidebar.selectbox("Connection Type:", ["Local CSV Upload", "Live SQL Database (Pending)"])
 
-    with st.sidebar.expander("️ History Database Management"):
+    with st.sidebar.expander("🗄️ History Database Management"):
         st.markdown(f"<span style='font-size:12px; color:{ui['text_muted']};'>Data is automatically saved to SQLite database and persists across sessions.</span>", unsafe_allow_html=True)
         
         if st.button("🗑️ Wipe Database & Start Fresh", type="primary", use_container_width=True):
@@ -951,7 +1268,7 @@ def render_dashboard():
         
         history_df = HistoryManager.load_history()
         if not history_df.empty:
-            st.markdown(f" **Total Records:** {len(history_df)}")
+            st.markdown(f"📊 **Total Records:** {len(history_df)}")
             last_ts = str(history_df.iloc[-1]['timestamp'])
             try:
                 f_ts = float(last_ts)
@@ -966,7 +1283,7 @@ def render_dashboard():
 
     uploaded_file = None
     if data_source == "Local CSV Upload":
-        uploaded_file = st.sidebar.file_uploader("Upload your Project Log (CSV) ", type="csv")
+        uploaded_file = st.sidebar.file_uploader("Upload your Project Log (CSV) 📂", type="csv")
 
     if uploaded_file is not None:
         uploaded_file.seek(0)
@@ -985,6 +1302,9 @@ def render_dashboard():
             st.error(f"❌ خطأ في قراءة الملف: {str(e)}")
             st.info("💡 تأكد أن الملف بصيغة CSV وأن البيانات منسقة بشكل صحيح.")
             st.stop()
+        
+        # 🆕 NEW: Save data for analytics hub
+        st.session_state["analytics_df"] = df.copy()
         
         df.columns = df.columns.str.strip() 
         
@@ -1040,13 +1360,13 @@ def render_dashboard():
                 if msg['role'] == 'user':
                     st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="ai-msg"><b> AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         prompt = st.chat_input("Ask the AI Engineering Assistant...")
         if prompt:
             st.session_state["chat_history"].append({"role": "user", "content": prompt})
-            with st.spinner(" AI is analyzing the dataset..."):
+            with st.spinner("🧠 AI is analyzing the dataset..."):
                 time.sleep(1.5)
                 ai_response = genai_chat_engine(prompt, df)
             st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
@@ -1054,8 +1374,8 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.sidebar.markdown("### 🎯 2. Smart Filters")
-        global_search = st.sidebar.text_input(" Global Search:", placeholder="Keyword (Serial, Date)...")
+        st.sidebar.markdown("###  2. Smart Filters")
+        global_search = st.sidebar.text_input("🔍 Global Search:", placeholder="Keyword (Serial, Date)...")
         if global_search:
             mask = df.astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
             df = df[mask]
@@ -1071,13 +1391,13 @@ def render_dashboard():
         selected_battalions = []
         if battalion_col_filter:
             battalions_list = df[battalion_col_filter].dropna().unique()
-            selected_battalions = st.sidebar.multiselect(" Select Battalion:", options=battalions_list, default=battalions_list)
+            selected_battalions = st.sidebar.multiselect("🚩 Select Battalion:", options=battalions_list, default=battalions_list)
 
         st.sidebar.markdown("### 🧠 3. AI & Simulation")
-        sim_days_saved = st.sidebar.slider("️ Simulate Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
+        sim_days_saved = st.sidebar.slider("🎛️ Simulate Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
         curr_avg_dpl = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in df.columns else 0
         curr_avg_dur = pd.to_numeric(df['DURATION'], errors='coerce').mean() if 'DURATION' in df.columns else 0
-        user_question = st.sidebar.text_input(" Ask AI about any log issue:")
+        user_question = st.sidebar.text_input("🤖 Ask AI about any log issue:")
         if user_question:
             summary = {"avg_dpl": round(curr_avg_dpl, 2), "avg_duration": round(curr_avg_dur, 1)}
             st.sidebar.info(f"AI Response: {ai_assistant(user_question, summary)}")
@@ -1240,7 +1560,7 @@ def render_dashboard():
             else:
                 st.markdown(f"""
                     <div class="simulator-card" style="border-color: {ui['border_color']}; background: {ui['card_bg']};">
-                        <h4 style="color: {ui['text_muted']}; margin: 0; font-size: 18px;">️ Optimization Simulator Inactive</h4>
+                        <h4 style="color: {ui['text_muted']}; margin: 0; font-size: 18px;">🎛️ Optimization Simulator Inactive</h4>
                         <p style="font-size: 14px; color: {ui['text_muted']}; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1259,7 +1579,7 @@ def render_dashboard():
             comp_dur = filtered_df.groupby('Company Name')['DURATION'].mean()
             for comp, dur in comp_dur.items():
                 if dur > avg_duration_value + 5:
-                    anomalies.append(f"⚠️ <b>Anomaly Detected:</b> <b>{comp}</b> is showing severe delays ({dur:.1f} days) compared to the global average ({avg_duration_value:.1f} days).")
+                    anomalies.append(f"️ <b>Anomaly Detected:</b> <b>{comp}</b> is showing severe delays ({dur:.1f} days) compared to the global average ({avg_duration_value:.1f} days).")
         if 'sample status' in filtered_df.columns and 'Test Type' in filtered_df.columns:
             rejections_df = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
             if not rejections_df.empty:
@@ -1267,7 +1587,7 @@ def render_dashboard():
                 top_fail_comp = rejections_df['Company Name'].value_counts().idxmax() if 'Company Name' in rejections_df.columns else "Unknown"
                 fail_pct = (len(rejections_df) / total_requests_count * 100) if total_requests_count > 0 else 0
                 if fail_pct > 10:
-                    anomalies.append(f"🔍 <b>Root Cause Insight:</b> Global rejection rate is high ({fail_pct:.1f}%). The primary contributor is the <b>{top_fail_test}</b> test, most frequently failing under contractor <b>{top_fail_comp}</b>.")
+                    anomalies.append(f" <b>Root Cause Insight:</b> Global rejection rate is high ({fail_pct:.1f}%). The primary contributor is the <b>{top_fail_test}</b> test, most frequently failing under contractor <b>{top_fail_comp}</b>.")
         if anomalies:
             for anomaly in anomalies:
                 st.markdown(f'<div style="background: rgba(231,76,60,0.1); border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: {ui["text_main"]};">{anomaly}</div>', unsafe_allow_html=True)
@@ -1276,7 +1596,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🏆 Benchmark Engine</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title"> Benchmark Engine</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns:
             bm_comp = st.selectbox("Select Contractor for Benchmarking against Global Averages:", companies, key="bm_engine")
             if bm_comp:
@@ -1298,7 +1618,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
             cc1, cc2 = st.columns(2)
             c_a = cc1.selectbox("Select Contractor A", companies, index=0)
@@ -1340,7 +1660,7 @@ def render_dashboard():
                 st.markdown("#### 💡 AI Production Insights")
                 if not monthly_summary.empty:
                     top_row = monthly_summary.loc[monthly_summary['Volume'].idxmax()]
-                    st.info(f"📊 **Peak Activity:**\nIn **{top_row['Month']}**, the highest utilized test was **{top_row['Test Type']}** with **{top_row['Volume']}** submittals logged.")
+                    st.info(f" **Peak Activity:**\nIn **{top_row['Month']}**, the highest utilized test was **{top_row['Test Type']}** with **{top_row['Volume']}** submittals logged.")
                     months_ordered = monthly_summary['Month_Sort'].drop_duplicates().sort_values().tolist()
                     if len(months_ordered) > 1:
                         last_month_sort = months_ordered[-1]
@@ -1350,7 +1670,7 @@ def render_dashboard():
                         last_count = v_df[v_df['Month_Sort'] == last_month_sort].shape[0]
                         prev_count = v_df[v_df['Month_Sort'] == prev_month_sort].shape[0]
                         if last_count < prev_count:
-                            st.warning(f"⚠️ **Coverage Alert:**\nTotal log volume dropped from **{prev_count}** in {prev_month_name} to **{last_count}** in {last_month_name}. Verify potential field testing deficits.")
+                            st.warning(f"️ **Coverage Alert:**\nTotal log volume dropped from **{prev_count}** in {prev_month_name} to **{last_count}** in {last_month_name}. Verify potential field testing deficits.")
                         else:
                             st.success(f"✅ **Stable Volume:**\nTesting coverage is expanding smoothly from {prev_month_name} into {last_month_name}.")
                 else:
@@ -1480,14 +1800,14 @@ def render_dashboard():
                     </div>
                 </div>
 
-                <div class="section-title">️ 360° Accountability & Risk Assessment</div>
+                <div class="section-title">⚖️ 360° Accountability & Risk Assessment</div>
                 <table>
                     <tr>
                         <th>Metric</th>
                         <th>Identified Node / Value</th>
                     </tr>
                     <tr>
-                        <td><strong>🏆 Top Performing Contractor</strong></td>
+                        <td><strong> Top Performing Contractor</strong></td>
                         <td class="highlight-green">{global_best_comp} ({global_best_rate:.1f}% Yield)</td>
                     </tr>
                     <tr>
@@ -1499,7 +1819,7 @@ def render_dashboard():
                         <td class="highlight-red">{worst_office_name} ({worst_office_delay} Days Avg Delay)</td>
                     </tr>
                     <tr>
-                        <td><strong>⚠️ Pending Rejections</strong></td>
+                        <td><strong>️ Pending Rejections</strong></td>
                         <td class="highlight-red">{rejected_count} Submittals</td>
                     </tr>
                     <tr>
@@ -1527,7 +1847,7 @@ def render_dashboard():
                 create_card(t_cols[i], row['Test Type'], int(row[num_tests_col]))
             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown("### 📈 Quality Metrics Distribution (DPL & Average Values)")
+        st.markdown("###  Quality Metrics Distribution (DPL & Average Values)")
         if 'AVERAGE VALUE' in filtered_df.columns:
             dpl_df = filtered_df.dropna(subset=['AVERAGE VALUE']).copy()
             dpl_df['AVERAGE VALUE'] = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce')
@@ -1536,276 +1856,6 @@ def render_dashboard():
                 fig_dpl = px.histogram(dpl_df, x='AVERAGE VALUE', color='Test Type' if 'Test Type' in dpl_df.columns else None, marginal='box', title="Statistical Distribution & Outlier Detection for Test Values", nbins=30, color_discrete_sequence=NEON_COLORS)
                 fig_dpl = style_3d_glassy(fig_dpl, chart_type="histogram")
                 st.plotly_chart(fig_dpl, use_container_width=True)
-
-        # ==========================================
-        # 🎯 NEW: SPC (Statistical Process Control) Charts
-        # ==========================================
-        st.markdown('<div class="bi-title">📊 Statistical Process Control (SPC) - Control Charts</div>', unsafe_allow_html=True)
-        st.caption("Monitor process stability and detect special cause variations using industry-standard control limits.")
-        
-        if 'AVERAGE VALUE' in filtered_df.columns and 'Company Name' in filtered_df.columns:
-            spc_df = filtered_df.dropna(subset=['AVERAGE VALUE']).copy()
-            spc_df['AVERAGE VALUE'] = pd.to_numeric(spc_df['AVERAGE VALUE'], errors='coerce')
-            spc_df = spc_df.dropna(subset=['AVERAGE VALUE'])
-            
-            if not spc_df.empty:
-                # Calculate control limits
-                mean_val = spc_df['AVERAGE VALUE'].mean()
-                std_val = spc_df['AVERAGE VALUE'].std()
-                ucl = mean_val + 3 * std_val  # Upper Control Limit
-                lcl = mean_val - 3 * std_val  # Lower Control Limit
-                
-                # Identify out-of-control points
-                spc_df['out_of_control'] = (spc_df['AVERAGE VALUE'] > ucl) | (spc_df['AVERAGE VALUE'] < lcl)
-                out_of_control_count = spc_df['out_of_control'].sum()
-                total_points = len(spc_df)
-                control_percentage = ((total_points - out_of_control_count) / total_points * 100) if total_points > 0 else 0
-                
-                # Display SPC metrics
-                spc_col1, spc_col2, spc_col3, spc_col4 = st.columns(4)
-                create_card(spc_col1, "Process Mean", f"{mean_val:.2f}")
-                create_card(spc_col2, "Std Deviation", f"{std_val:.2f}")
-                create_card(spc_col3, "Control Limits", f"UCL: {ucl:.2f}<br>LCL: {lcl:.2f}")
-                create_card(spc_col4, "In Control %", f"{control_percentage:.1f}%")
-                
-                # Create Control Chart
-                fig_spc = go.Figure()
-                
-                # Add data points
-                fig_spc.add_trace(go.Scatter(
-                    x=spc_df.index,
-                    y=spc_df['AVERAGE VALUE'],
-                    mode='markers',
-                    name='Data Points',
-                    marker=dict(
-                        size=8,
-                        color=['#e74c3c' if oc else '#00d2ff' for oc in spc_df['out_of_control']],
-                        line=dict(width=1, color='white')
-                    ),
-                    hovertemplate='<b>Index:</b> %{x}<br><b>Value:</b> %{y:.2f}<br><b>Status:</b> %{marker.color}<extra></extra>'
-                ))
-                
-                # Add center line
-                fig_spc.add_hline(
-                    y=mean_val,
-                    line_dash="solid",
-                    line_color="#2ecc71",
-                    line_width=2,
-                    annotation_text=f"Mean: {mean_val:.2f}",
-                    annotation_position="top right"
-                )
-                
-                # Add UCL
-                fig_spc.add_hline(
-                    y=ucl,
-                    line_dash="dash",
-                    line_color="#e74c3c",
-                    line_width=2,
-                    annotation_text=f"UCL: {ucl:.2f}",
-                    annotation_position="top right"
-                )
-                
-                # Add LCL
-                fig_spc.add_hline(
-                    y=lcl,
-                    line_dash="dash",
-                    line_color="#e74c3c",
-                    line_width=2,
-                    annotation_text=f"LCL: {lcl:.2f}",
-                    annotation_position="bottom right"
-                )
-                
-                fig_spc.update_layout(
-                    title="Control Chart - Process Stability Analysis",
-                    xaxis_title="Sample Index",
-                    yaxis_title="AVERAGE VALUE",
-                    showlegend=False,
-                    height=500
-                )
-                
-                fig_spc = style_3d_glassy(fig_spc, chart_type="line")
-                st.plotly_chart(fig_spc, use_container_width=True)
-                
-                # SPC Insights
-                if out_of_control_count > 0:
-                    st.warning(f"⚠️ **Process Alert:** {out_of_control_count} out of {total_points} samples ({100-control_percentage:.1f}%) are outside control limits. This indicates **special cause variation** that requires immediate investigation.")
-                    
-                    # Show out-of-control samples
-                    ooc_samples = spc_df[spc_df['out_of_control']].head(10)
-                    if not ooc_samples.empty:
-                        st.markdown("**Top Out-of-Control Samples:**")
-                        st.dataframe(ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']].head(10), use_container_width=True)
-                else:
-                    st.success("✅ **Process Stable:** All samples are within control limits. The process is under statistical control with only common cause variation present.")
-                
-                # Process Capability Analysis
-                st.markdown("#### 🎯 Process Capability Analysis")
-                cap_col1, cap_col2 = st.columns(2)
-                
-                with cap_col1:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="metric-label">Process Performance</div>
-                        <div class="metric-value" style="font-size: 24px;">{control_percentage:.1f}%</div>
-                        <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 10px;">
-                            of samples within ±3σ control limits
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with cap_col2:
-                    if std_val > 0:
-                        # Calculate Cpk (assuming specification limits at ±3σ)
-                        cpk = min((ucl - mean_val) / (3 * std_val), (mean_val - lcl) / (3 * std_val))
-                        cpk_color = "#2ecc71" if cpk >= 1.33 else ("#f1c40f" if cpk >= 1.0 else "#e74c3c")
-                        cpk_status = "Excellent" if cpk >= 1.33 else ("Good" if cpk >= 1.0 else "Needs Improvement")
-                        
-                        st.markdown(f"""
-                        <div class="metric-card">
-                            <div class="metric-label">Process Capability (Cpk)</div>
-                            <div class="metric-value" style="font-size: 24px; color: {cpk_color};">{cpk:.2f}</div>
-                            <div style="color: {cpk_color}; font-size: 14px; margin-top: 10px; font-weight: bold;">
-                                {cpk_status}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-        
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-        # ==========================================
-        # 🎯 NEW: Pareto Analysis (80/20 Rule)
-        # ==========================================
-        st.markdown('<div class="bi-title">📊 Pareto Analysis - 80/20 Rule</div>', unsafe_allow_html=True)
-        st.caption("Identify the vital few causes that contribute to the majority of problems. Focus your improvement efforts where they matter most.")
-        
-        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
-            # Calculate rejections by contractor
-            rej_by_comp = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])].groupby('Company Name').size().reset_index(name='Rejections')
-            rej_by_comp = rej_by_comp.sort_values('Rejections', ascending=False)
-            
-            if not rej_by_comp.empty:
-                total_rejections = rej_by_comp['Rejections'].sum()
-                rej_by_comp['Percentage'] = (rej_by_comp['Rejections'] / total_rejections * 100).round(2)
-                rej_by_comp['Cumulative_Percentage'] = rej_by_comp['Percentage'].cumsum().round(2)
-                
-                # Identify critical contractors (top 20% causing 80% of problems)
-                critical_threshold = 80
-                critical_contractors = rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]
-                critical_count = len(critical_contractors)
-                total_contractors = len(rej_by_comp)
-                critical_percentage = (critical_count / total_contractors * 100) if total_contractors > 0 else 0
-                
-                # Display Pareto metrics
-                pareto_col1, pareto_col2, pareto_col3 = st.columns(3)
-                create_card(pareto_col1, "Total Contractors", f"{total_contractors}")
-                create_card(pareto_col2, "Critical Contractors", f"{critical_count} ({critical_percentage:.0f}%)")
-                create_card(pareto_col3, "Total Rejections", f"{total_rejections}")
-                
-                # Create Pareto Chart
-                fig_pareto = make_subplots(specs=[[{"secondary_y": True}]])
-                
-                # Add bars for rejections
-                fig_pareto.add_trace(
-                    go.Bar(
-                        x=rej_by_comp['Company Name'],
-                        y=rej_by_comp['Rejections'],
-                        name='Rejections',
-                        marker_color='#e74c3c',
-                        opacity=0.7,
-                        hovertemplate='<b>Contractor:</b> %{x}<br><b>Rejections:</b> %{y}<extra></extra>'
-                    ),
-                    secondary_y=False
-                )
-                
-                # Add line for cumulative percentage
-                fig_pareto.add_trace(
-                    go.Scatter(
-                        x=rej_by_comp['Company Name'],
-                        y=rej_by_comp['Cumulative_Percentage'],
-                        mode='lines+markers',
-                        name='Cumulative %',
-                        line=dict(color='#00d2ff', width=3),
-                        marker=dict(size=8, color='#00d2ff'),
-                        hovertemplate='<b>Contractor:</b> %{x}<br><b>Cumulative %:</b> %{y:.1f}%<extra></extra>'
-                    ),
-                    secondary_y=True
-                )
-                
-                # Add 80% threshold line
-                fig_pareto.add_hline(
-                    y=80,
-                    line_dash="dash",
-                    line_color="#ffaa00",
-                    line_width=2,
-                    annotation_text="80% Threshold",
-                    annotation_position="top right",
-                    secondary_y=True
-                )
-                
-                fig_pareto.update_layout(
-                    title="Pareto Chart - Rejections by Contractor",
-                    xaxis_title="Contractor",
-                    yaxis_title="Number of Rejections",
-                    yaxis2_title="Cumulative Percentage (%)",
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    height=500
-                )
-                
-                fig_pareto.update_yaxes(title_text="Rejections", secondary_y=False)
-                fig_pareto.update_yaxes(title_text="Cumulative %", secondary_y=True, range=[0, 100])
-                
-                fig_pareto = style_3d_glassy(fig_pareto, chart_type="combo")
-                st.plotly_chart(fig_pareto, use_container_width=True)
-                
-                # Pareto Insights
-                st.markdown("#### 🎯 Strategic Insights")
-                
-                insight_col1, insight_col2 = st.columns(2)
-                
-                with insight_col1:
-                    st.markdown(f"""
-                    <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                        <h4 style="color: #e74c3c; margin: 0 0 10px 0;"> Critical Focus Area</h4>
-                        <p style="color: {ui['text_main']}; margin: 0; font-size: 14px; line-height: 1.6;">
-                            The top <b style="color: #ffaa00;">{critical_count} contractors</b> ({critical_percentage:.0f}% of total) are responsible for 
-                            <b style="color: #ffaa00;">{rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]['Cumulative_Percentage'].max():.1f}%</b> of all rejections.
-                        </p>
-                        <p style="color: {ui['text_muted']}; margin: 10px 0 0 0; font-size: 13px;">
-                            💡 <b>Recommendation:</b> Focus your quality improvement efforts on these contractors first for maximum impact.
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with insight_col2:
-                    # Show top 5 contractors
-                    top_5 = rej_by_comp.head(5)
-                    top_5_html = "<br>".join([
-                        f"<div style='display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 5px;'>"
-                        f"<span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span>"
-                        f"<span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span>"
-                        f"</div>"
-                        for _, row in top_5.iterrows()
-                    ])
-                    
-                    st.markdown(f"""
-                    <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 10px;">
-                        <h4 style="color: #00d2ff; margin: 0 0 10px 0;">📊 Top 5 Contractors by Rejections</h4>
-                        {top_5_html}
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Detailed Pareto Table
-                with st.expander("📋 View Detailed Pareto Analysis Table"):
-                    st.dataframe(
-                        rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={
-                            'Company Name': 'Contractor',
-                            'Rejections': 'Total Rejections',
-                            'Percentage': '% of Total',
-                            'Cumulative_Percentage': 'Cumulative %'
-                        }),
-                        use_container_width=True
-                    )
-        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.markdown("### 💡 Strategic Insights & Recommendations")
@@ -1862,7 +1912,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             comp_stats = []
             for comp in filtered_df['Company Name'].dropna().unique():
@@ -1928,7 +1978,7 @@ def render_dashboard():
                         else:
                             target_dict[c_key] = c_qty
 
-            st.markdown("####  Master Stockpile Targets Report")
+            st.markdown("#### 📥 Master Stockpile Targets Report")
             report_data = []
             all_log_companies = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
             battalion_col_stock = next((c for c in mat_df.columns if 'BATTAL' in c.upper()), None)
@@ -1988,7 +2038,7 @@ def render_dashboard():
             )
             st.divider()
 
-            st.markdown("#### 🏢 Individual Contractor Deep Dive")
+            st.markdown("####  Individual Contractor Deep Dive")
             if all_log_companies:
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies)
                 comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
@@ -2035,7 +2085,7 @@ def render_dashboard():
                             
                     with col_q2:
                         if elment_col_360:
-                            st.markdown("#### ️ Workload by Element")
+                            st.markdown("#### 🏗️ Workload by Element")
                             el_df = comp_df_full.groupby(elment_col_360).size().reset_index(name='Count').sort_values('Count', ascending=False)
                             fig_elment = px.bar(el_df.head(15), x=elment_col_360, y='Count', title="Top 15 Elements by Submittals", color=elment_col_360, color_discrete_sequence=NEON_COLORS)
                             fig_elment = style_3d_glassy(fig_elment, chart_type="bar")
@@ -2056,7 +2106,7 @@ def render_dashboard():
                             
                     with col_d2:
                         if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
-                            st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
+                            st.markdown("####  Smart Red Flags (Unresolved Layers)")
                             st.caption("Shows rejections ONLY IF the same Layer/Element wasn't approved later.")
                             rejected_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
                             accepted_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
@@ -2252,7 +2302,7 @@ def render_dashboard():
                     else:
                         st.markdown(f"""
                         <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
-                            <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;"> Stockpile Target Achievement</h4>
+                            <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;">🎯 Stockpile Target Achievement</h4>
                             <p style="color: {ui['text_muted']}; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
                         </div>
                         """, unsafe_allow_html=True)
@@ -2276,7 +2326,7 @@ def render_dashboard():
 
                             if not st.session_state[scan_key]:
                                 st.markdown("<br>", unsafe_allow_html=True)
-                                if st.button("🧠 Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
+                                if st.button(" Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
                                     with st.container():
                                         progress_bar = st.progress(0)
                                         status_text = st.empty()
@@ -2414,11 +2464,11 @@ def render_dashboard():
                     bh_df = None
                     if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
                         available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
-                        st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
+                        st.warning(f"️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
                         selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
                         if selected_zone:
                             bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
-                            st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
+                            st.markdown(f"####  Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
                     else:
                         bh_df = bh_df_raw
                         st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
@@ -2537,7 +2587,7 @@ def render_dashboard():
                         st.divider()
 
                         if 'Sampling Location' in bh_df.columns:
-                            st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
+                            st.markdown("#### ️ Bottom of Excavation & Soil Quality")
                             boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
                             if not boe_df.empty:
                                 boe_count = len(boe_df)
@@ -2587,17 +2637,23 @@ def render_dashboard():
                                 fig_el = style_3d_glassy(fig_el, chart_type="line")
                                 st.plotly_chart(fig_el, use_container_width=True)
                         
-                        with st.expander(f" View Raw Detailed Audit Log for `{selected_bh}`"):
+                        with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
                             st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
         else:
-            st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
+            st.warning("️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         with st.expander("📂 View Complete Operational Records (Raw Data)"):
             st.dataframe(filtered_df, use_container_width=True)
 
+        #  NEW: Back to Home Button
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
+            st.session_state["current_page"] = "home"
+            st.rerun()
+
     else:
-        st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
+        st.info(" Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
 
 # ==========================================
 # 12. Main Application Execution
@@ -2605,13 +2661,28 @@ def render_dashboard():
 def main():
     inject_custom_css()  
     init_auth_system()
+    
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
 
     if not st.session_state["authenticated"]:
         render_login_screen()
     else:
-        render_dashboard()
+        #  NEW: Navigation Logic
+        current_page = st.session_state.get("current_page", "home")
+        
+        if current_page == "home":
+            render_home_page()
+        elif current_page == "dashboard":
+            render_dashboard()
+        elif current_page == "analytics":
+            if "analytics_df" in st.session_state:
+                render_analytics_hub(st.session_state["analytics_df"])
+            else:
+                st.warning("⚠️ Please upload a CSV file from the Main Dashboard first to use Analytics Hub")
+                if st.button("📊 Go to Main Dashboard", use_container_width=True, type="primary"):
+                    st.session_state["current_page"] = "dashboard"
+                    st.rerun()
 
 if __name__ == "__main__":
     main()
