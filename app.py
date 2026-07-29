@@ -2004,6 +2004,9 @@ def render_dashboard():
                             st.info("No valid dates found for timeline analysis.")
 
                 with tab_stockpile:
+                    # السطر الجديد اللي هيحل المشكلة
+                    battalion_col_stock = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
+                    
                     req_qty = target_dict.get(selected_comp.strip().lower(), np.nan)
                     
                     comp_bat_df = comp_df_full
