@@ -608,20 +608,21 @@ class HistoryManager:
         conn.commit()
         conn.close()
 
+# 💡 التعديل هنا: منع مسافات بداية السطور جوا الـ string عشان الـ markdown مايعتبروش code block
 def create_card(column, label, value, delta_html="", progress=None):
     if progress is not None:
         prog_color = "#2ecc71" if progress > 80 else ("#f1c40f" if progress > 50 else "#e74c3c")
         prog_html = f'<div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 15px;"><div class="prog-fill" style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 10px;"></div></div>'
     else:
         prog_html = ""
-    column.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">{label}</div>
-            <div class="metric-value">{value}</div>
-            {delta_html}
-            {prog_html}
-        </div>
-        """, unsafe_allow_html=True)
+    
+    html_str = f"""<div class="metric-card">
+<div class="metric-label">{label}</div>
+<div class="metric-value">{value}</div>
+{delta_html}
+{prog_html}
+</div>"""
+    column.markdown(html_str, unsafe_allow_html=True)
 
 def ai_assistant(query, data_summary):
     query = query.lower()
@@ -864,7 +865,9 @@ def render_analytics_hub(df):
     
     # --- 🛠️ Data Cleaning Injection ---
     df = df.copy()
-    df.columns = df.columns.str.strip() 
+    df.columns = df.columns.astype(str).str.replace('\n', ' ').str.replace('\r', '').str.strip()
+    df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
+    
     if 'Company Name' not in df.columns and 'Company' in df.columns:
         df.rename(columns={'Company': 'Company Name'}, inplace=True)
     if 'DURATION' in df.columns:
@@ -1346,8 +1349,8 @@ def render_dashboard():
         
         try:
             if uploaded_file.name.endswith('.xlsx'):
-                # Read the main log (TABLE 1) - ضفنا header=1 لتخطي صف اللوجوهات
-                df = pd.read_excel(uploaded_file, sheet_name=0, header=1)
+                # 💡 التعديل 1: قراءة اللوج الأساسي بشكل طبيعي وبدون تخطي أول صف (الصور الإكسيل بيتجاهلها أوتوماتيك)
+                df = pd.read_excel(uploaded_file, sheet_name=0)
                 
                 # Dynamic merging of all other sheets (Production Ledgers)
                 excel_file = pd.ExcelFile(uploaded_file)
@@ -1356,22 +1359,22 @@ def render_dashboard():
                 if len(excel_file.sheet_names) > 1:
                     for sheet_name in excel_file.sheet_names[1:]:
                         try:
-                            # Read ledger sheet, skipping the first row (total quantities) to make 'Company' the header
+                            # Read ledger sheet
                             rates_df_raw = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=1)
                             
-                            # Clean the columns (remove unnamed ones)
-                            rates_df_raw = rates_df_raw.loc[:, ~rates_df_raw.columns.str.contains('^Unnamed')]
+                            # 💡 التعديل 2: حماية الكود من الإيرور الأحمر (استخدام astype(str))
+                            rates_df_raw = rates_df_raw.loc[:, ~rates_df_raw.columns.astype(str).str.contains('^Unnamed', case=False, na=False)]
                             
-                            # Identify the date column and element row
-                            date_col = next((c for c in rates_df_raw.columns if 'تاريخ' in str(c) or 'Date' in str(c) or 'date' in str(c)), None)
+                            # Identify the date column
+                            date_col = next((c for c in rates_df_raw.columns if 'تاريخ' in str(c).lower() or 'date' in str(c).lower()), None)
                             
                             if not date_col:
-                                continue # Skip sheet if no date column found
+                                continue # Skip sheet if no date column found (زي شيت الـ Dashboard)
                             
-                            # Extract elements mapping (which is the first row after the header in your image)
+                            # Extract elements mapping
                             elements_mapping = rates_df_raw.iloc[0].to_dict()
                             
-                            # Clean up the dataframe (remove the element row and totals rows)
+                            # Clean up the dataframe
                             clean_rates = rates_df_raw.iloc[1:].dropna(subset=[date_col]).copy()
                             clean_rates = clean_rates[~clean_rates[date_col].astype(str).str.contains('سبوع|Week', case=False, na=False)]
                             clean_rates[date_col] = pd.to_datetime(clean_rates[date_col], errors='coerce')
@@ -1417,7 +1420,9 @@ def render_dashboard():
         st.session_state["analytics_df"] = df.copy()
         
         # --- 🛠️ Data Cleaning (Global for Dashboard) ---
-        df.columns = df.columns.str.strip() 
+        # 💡 التعديل 3: تنظيف قوي جداً لأسماء العواميد (عشان مفيش حاجة تقرا أصفار)
+        df.columns = df.columns.astype(str).str.replace('\n', ' ').str.replace('\r', '').str.strip()
+        df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
         
         if 'Company Name' not in df.columns and 'Company' in df.columns:
             df.rename(columns={'Company': 'Company Name'}, inplace=True)
