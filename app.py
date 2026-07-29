@@ -1911,7 +1911,15 @@ def render_dashboard():
                     """, unsafe_allow_html=True)
                 
                 with st.expander("📋 View Detailed Pareto Analysis Table"):
-                    st.dataframe(rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={'Company Name': 'Contractor', 'Rejections': 'Total Rejections', 'Percentage': '% of Total', 'Cumulative_Percentage': 'Cumulative %'}), use_container_width=True)
+                    st.dataframe(
+                        rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={
+                            'Company Name': 'Contractor',
+                            'Rejections': 'Total Rejections',
+                            'Percentage': '% of Total',
+                            'Cumulative_Percentage': 'Cumulative %'
+                        }),
+                        use_container_width=True
+                    )
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -2606,9 +2614,27 @@ def render_dashboard():
                         
                     c1, c2, c3, c4 = st.columns(4)
                     create_card(c1, "Total Target Qty", f"{tot_qty:,.0f}" if pd.notna(tot_qty) and tot_qty>0 else "N/A")
-                    create_card(c2, "Executed Qty", f"{exe_qty:,.0f}" if pd.notna(exe_qty) and exe_qty>0 else "0")
+                    
+                    # 💡 التعديل هنا: شلنا كود الـ HTML المزعج ورجعناها Progress Bar حقيقي أو قيمة نظيفة بدون شوائب
+                    prog_color_exec = "#2ecc71" if prog_pct > 80 else ("#f1c40f" if prog_pct > 50 else "#e74c3c")
+                    prog_html_exec = f'<div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 15px;"><div class="prog-fill" style="height: 100%; width: {min(100, prog_pct)}%; background: {prog_color_exec}; border-radius: 10px;"></div></div>'
+                    c2.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Executed Qty</div>
+                            <div class="metric-value">{exe_qty:,.0f}</div>
+                            {prog_html_exec}
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
                     pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
-                    create_card(c3, "Total Compaction Points", f"{total_test_points:,}", delta_html=pts_html)
+                    c3.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Total Compaction Points</div>
+                            <div class="metric-value">{total_test_points:,}</div>
+                            {pts_html}
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
                     create_card(c4, "Average DPL Value", f"{avg_dpl:.2f}" if pd.notna(avg_dpl) else "N/A")
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -2655,19 +2681,85 @@ def render_dashboard():
                             
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                     
-                    st.markdown("#### 📈 Monthly Compaction Trend Analysis")
+                    # 💡 التعديل هنا: الشارت المزدوج والجدول الزمني للإنتاجية
+                    st.markdown("#### 📈 Monthly Compaction Trend (Submittals vs. Test Points)")
                     if not compaction_df.empty and 'Date ( test)' in compaction_df.columns:
                         compaction_df['Month'] = compaction_df['Date ( test)'].dt.strftime('%b %Y')
                         compaction_df['Month_Sort'] = compaction_df['Date ( test)'].dt.to_period('M')
-                        monthly_comp = compaction_df.groupby(['Month_Sort', 'Month', test_col]).size().reset_index(name='Count').sort_values('Month_Sort')
                         
-                        fig_comp_trend = px.bar(monthly_comp, x='Month', y='Count', color=test_col, barmode='group', color_discrete_sequence=NEON_COLORS)
-                        fig_comp_trend.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Tests:</b> %{y}')
-                        fig_comp_trend = style_3d_glassy(fig_comp_trend, chart_type="bar")
-                        fig_comp_trend.update_layout(height=350)
-                        st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_bar_{selected_comp}")
+                        submittals_trend = compaction_df.groupby(['Month_Sort', 'Month', test_col]).size().reset_index(name='Submittals')
+                        
+                        if num_tests_col_exec:
+                            points_trend = compaction_df.groupby(['Month_Sort', 'Month', test_col])[num_tests_col_exec].sum().reset_index(name='Test_Points')
+                        else:
+                            points_trend = submittals_trend.copy().rename(columns={'Submittals': 'Test_Points'})
+                            
+                        trend_merged = pd.merge(submittals_trend, points_trend, on=['Month_Sort', 'Month', test_col])
+                        trend_merged = trend_merged.sort_values('Month_Sort')
+
+                        fig_comp_trend = make_subplots(specs=[[{"secondary_y": True}]])
+                        
+                        for i, t_type in enumerate(trend_merged[test_col].unique()):
+                            df_t = trend_merged[trend_merged[test_col] == t_type]
+                            color = NEON_COLORS[i % len(NEON_COLORS)]
+                            fig_comp_trend.add_trace(
+                                go.Bar(x=df_t['Month'], y=df_t['Test_Points'], name=f"{t_type} (Points)", marker_color=color, hovertemplate='<b>Month:</b> %{x}<br><b>Test Points:</b> %{y}'),
+                                secondary_y=False
+                            )
+                            
+                        total_subs_per_month = trend_merged.groupby('Month')['Submittals'].sum().reset_index()
+                        total_subs_per_month['Month_Sort'] = pd.to_datetime(total_subs_per_month['Month'], format='%b %Y').dt.to_period('M')
+                        total_subs_per_month = total_subs_per_month.sort_values('Month_Sort')
+                        
+                        fig_comp_trend.add_trace(
+                            go.Scatter(x=total_subs_per_month['Month'], y=total_subs_per_month['Submittals'], name="Total Submittals", mode='lines+markers', line=dict(color='#ffffff', width=3, dash='dot'), marker=dict(size=8, color='#ffffff'), hovertemplate='<b>Month:</b> %{x}<br><b>Total Submittals:</b> %{y}'),
+                            secondary_y=True
+                        )
+
+                        fig_comp_trend.update_layout(title="Test Points Volume vs. Paperwork Submittals", barmode='group', height=400)
+                        fig_comp_trend.update_yaxes(title_text="Actual Test Points (Bars)", secondary_y=False)
+                        fig_comp_trend.update_yaxes(title_text="Submittals Count (Line)", secondary_y=True)
+                        fig_comp_trend = style_3d_glassy(fig_comp_trend, chart_type="combo")
+                        
+                        st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_dual_{selected_comp}")
+
+                        st.markdown("#### 📅 Monthly Production & Velocity Ledger")
+                        ledger_data = []
+                        months_list = compaction_df['Month_Sort'].sort_values().unique()
+                        for m_sort in months_list:
+                            month_str = m_sort.strftime('%b %Y')
+                            month_df = compaction_df[compaction_df['Month_Sort'] == m_sort]
+                            
+                            m_subs = len(month_df)
+                            m_pts = int(month_df[num_tests_col_exec].sum()) if num_tests_col_exec else m_subs
+                            
+                            m_dates = month_df['Date ( test)'].dropna()
+                            m_velocity = 0
+                            if len(m_dates) >= 2:
+                                days_in_month_worked = (m_dates.max() - m_dates.min()).days + 1
+                                if days_in_month_worked > 0:
+                                    m_velocity = m_pts / days_in_month_worked
+                            elif len(m_dates) == 1:
+                                m_velocity = m_pts 
+                                
+                            ledger_data.append({
+                                "Month": month_str,
+                                "Submittals Count": m_subs,
+                                "Actual Test Points": m_pts,
+                                "Avg. Points/Day (Velocity)": round(m_velocity, 1)
+                            })
+                            
+                        ledger_df = pd.DataFrame(ledger_data)
+                        
+                        def highlight_max(s):
+                            is_max = s == s.max()
+                            return ['background-color: rgba(46, 204, 113, 0.2)' if v else '' for v in is_max]
+                            
+                        styled_ledger = ledger_df.style.apply(highlight_max, subset=['Actual Test Points', 'Avg. Points/Day (Velocity)']).format({"Avg. Points/Day (Velocity)": "{:.1f}"})
+                        st.dataframe(styled_ledger, use_container_width=True)
+
                     else:
-                        st.info("No Date data found for Compaction Trend.")
+                        st.info("No Compaction (DPL or Plate Load) data found for this contractor to generate Executive Progress.")
                         
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                     st.markdown("#### 🧠 Executive AI Insights & Alerts")
