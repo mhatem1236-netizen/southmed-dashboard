@@ -1826,7 +1826,6 @@ def render_dashboard():
             st.dataframe(summary_pivot, use_container_width=True)
             st.divider()
 
-            # --- 🛠️ التعديل الجذري: قاموس التارجت بناءً على اسم الشركة فقط بدون الكتيبة ---
             target_dict = {}
             if 'Company' in df.columns and 'Required Quantity' in df.columns:
                 lookup_df = df[['Company', 'Required Quantity']].dropna(subset=['Company'])
@@ -1903,7 +1902,6 @@ def render_dashboard():
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies, key="deepdive_comp_sel")
                 comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
                 
-                # 💡 التعديل هنا: التابات الجديدة
                 tab_360, tab_stockpile, tab_execution, tab_quantities = st.tabs([
                     "🌐 360° Corporate Profile", 
                     "⛰️ Stockpile Sourcing", 
@@ -2501,6 +2499,195 @@ def render_dashboard():
                     else:
                         st.info("🚨 **No Production Ledger found.** Please upload an Excel file containing the production sheets to activate this module.")
 
+        # --- 🔍 Advanced Element Quality Auditor ---
+        st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
+        bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
+        zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
+        if bh_col_name:
+            filtered_df[bh_col_name] = filtered_df[bh_col_name].fillna('').astype(str).str.strip()
+            bh_list = [bh for bh in filtered_df[bh_col_name].unique() if str(bh).upper() != 'NAN' and str(bh) != '']
+            if len(bh_list) > 0:
+                selected_bh = st.selectbox(f"Select an Element ({bh_col_name}) to investigate:", ["-- Select Element --"] + sorted(bh_list))
+                if selected_bh != "-- Select Element --":
+                    bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
+                    bh_df = None
+                    if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
+                        available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
+                        st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
+                        selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
+                        if selected_zone:
+                            bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
+                            st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
+                    else:
+                        bh_df = bh_df_raw
+                        st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
+                    
+                    if bh_df is not None:
+                        if 'layer' in bh_df.columns:
+                            bh_df['Layer_Num'] = bh_df['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
+                            bh_df = bh_df.sort_values(['Layer_Num', 'Date ( test)'])
+                        
+                        bh_total_submittals = len(bh_df) 
+                        num_tests_col_bh = next((c for c in bh_df.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
+                        bh_total_tests = int(pd.to_numeric(bh_df[num_tests_col_bh], errors='coerce').fillna(0).sum()) if num_tests_col_bh else bh_total_submittals 
+                        bh_accepted = len(bh_df[bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bh_df.columns else 0
+                        bh_pass_rate = (bh_accepted / bh_total_submittals * 100) if bh_total_submittals > 0 else 0
+                        bh_avg_dpl = pd.to_numeric(bh_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in bh_df.columns else 0
+                        start_date = bh_df['Date ( test)'].min().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].min()) else "N/A"
+                        end_date = bh_df['Date ( test)'].max().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].max()) else "N/A"
+                        
+                        c1, c2, c3, c4 = st.columns(4)
+                        create_card(c1, "Total Submittals", bh_total_submittals)
+                        create_card(c2, "Total Tests", bh_total_tests)
+                        create_card(c3, "First Test Date", start_date)
+                        create_card(c4, "Last Test Date", end_date)
+                        c5, c6, c7, c8 = st.columns(4)
+                        create_card(c5, "Passed/Approved", bh_accepted)
+                        create_card(c6, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
+                        create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
+                        create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
+
+                        if 'Company Name' in bh_df.columns:
+                            if 'Date ( test)' in bh_df.columns:
+                                comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
+                                comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:{ui['text_muted']};'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
+                                companies_str = "<br>".join(comp_details) if comp_details else "N/A"
+                            else:
+                                companies_worked = bh_df['Company Name'].dropna().unique()
+                                companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
+                            st.markdown(f"""
+                                <div class="custom-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
+                                    <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element</div>
+                                    <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500; color:{ui['text_main']};">{companies_str}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                        if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
+                            rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
+                            accepted_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                            approved_layers = set(bh_df[accepted_mask]['layer'].dropna().astype(str).unique())
+                            unresolved_alerts = list(set([(str(row.get('layer', 'Unknown')), row.get('Test Type', 'N/A'), row.get('serial', 'N/A')) for _, row in bh_df[rejected_mask].iterrows() if str(row.get('layer', 'Unknown')) not in approved_layers]))
+                            if unresolved_alerts:
+                                st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
+                                alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
+                                for idx, alert in enumerate(unresolved_alerts[:8]): 
+                                    l, t_type, ser = alert
+                                    alert_cols[idx % 4].markdown(f"""
+                                        <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
+                                            <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                                <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
+                                                <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
+                                            </div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                        st.divider()
+
+                        if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
+                            st.markdown("#### 🧠 AI Engineering Sequence Inspector (Compaction Only)")
+                            seq_df = bh_df.dropna(subset=['Date ( test)']).copy()
+                            if 'Test Type' in seq_df.columns:
+                                seq_df = seq_df[seq_df['Test Type'].astype(str).str.contains('SANDCONE|SAND CONE|DPL', case=False, na=False)]
+                            seq_df['Layer_Int'] = seq_df['layer'].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
+                            seq_df = seq_df[seq_df['Layer_Int'] > 0]
+                            if not seq_df.empty:
+                                layer_timeline = seq_df.groupby('Layer_Int')['Date ( test)'].min().reset_index()
+                                layer_timeline = layer_timeline.sort_values('Layer_Int')
+                                logic_errors = []
+                                missing_layers = []
+                                min_layer = layer_timeline['Layer_Int'].min()
+                                max_layer = layer_timeline['Layer_Int'].max()
+                                expected_layers = set(range(min_layer, max_layer + 1))
+                                actual_layers = set(layer_timeline['Layer_Int'])
+                                missing_layers = sorted(list(expected_layers - actual_layers))
+                                for i in range(len(layer_timeline) - 1):
+                                    curr_L = layer_timeline.iloc[i]['Layer_Int']
+                                    next_L = layer_timeline.iloc[i+1]['Layer_Int']
+                                    curr_D = layer_timeline.iloc[i]['Date ( test)']
+                                    next_D = layer_timeline.iloc[i+1]['Date ( test)']
+                                    if curr_D > next_D:
+                                        logic_errors.append(f"<b>Layer {curr_L}</b> was tested on <span style='color:#ffaa00;'>{curr_D.date()}</span>, which is AFTER <b>Layer {next_L}</b> tested on <span style='color:#ffaa00;'>{next_D.date()}</span>.")
+                                if not missing_layers and not logic_errors:
+                                    st.markdown(f"""
+                                    <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                                        <h5 style="color: #2ecc71; margin: 0;">✅ Sequence Verified</h5>
+                                        <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">All compaction layers are chronologically correct with no missing intermediate layers.</p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                else:
+                                    if missing_layers:
+                                        missing_str = ", ".join([f"Layer {l}" for l in missing_layers])
+                                        st.markdown(f"""
+                                        <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                                            <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5>
+                                            <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:{ui['text_main']};">{missing_str}</b></p>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    if logic_errors:
+                                        errors_html = "<br>".join([f"🚨 {err}" for err in logic_errors])
+                                        st.markdown(f"""
+                                        <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                                            <h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5>
+                                            <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px; line-height:1.8;">{errors_html}</p>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                            else:
+                                st.info("No compaction tests (SANDCONE or DPL) found to evaluate sequence.")
+                        st.divider()
+
+                        if 'Sampling Location' in bh_df.columns:
+                            st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
+                            boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
+                            if not boe_df.empty:
+                                boe_count = len(boe_df)
+                                st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
+                                if 'Classification' in boe_df.columns:
+                                    class_counts = boe_df['Classification'].value_counts().reset_index()
+                                    class_counts.columns = ['Classification', 'Count']
+                                    fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True, color_discrete_sequence=NEON_COLORS)
+                                    fig_sc = style_3d_glassy(fig_sc, chart_type="bar")
+                                    st.plotly_chart(fig_sc, use_container_width=True, key=f"sc_{selected_bh}")
+                            else:
+                                st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
+                        st.divider()
+
+                        if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
+                            layer_col = bh_df['layer'] if 'layer' in bh_df.columns else pd.Series([''] * len(bh_df), index=bh_df.index)
+                            samp_loc = bh_df['Sampling Location'] if 'Sampling Location' in bh_df.columns else pd.Series(['General Location'] * len(bh_df), index=bh_df.index)
+                            bh_df['Execution_Node'] = np.where(layer_col.astype(str).str.contains(r'\d'), layer_col, samp_loc)
+                            bh_df['Execution_Node'] = bh_df['Execution_Node'].replace(r'^\s*$', 'General Location', regex=True).fillna('General Location')
+                            fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], title=f"Who did What & Where in {selected_bh}", color='Done BY', color_discrete_sequence=NEON_COLORS)
+                            fig_matrix.update_traces(textinfo="label+value")
+                            fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
+                            st.plotly_chart(fig_matrix, use_container_width=True, key=f"mat_{selected_bh}")
+                        st.divider()
+
+                        b_col1, b_col2 = st.columns(2)
+                        with b_col1:
+                            if 'sample status' in bh_df.columns:
+                                bh_df['status_upper'] = bh_df['sample status'].str.upper()
+                                fig_ep = px.pie(bh_df, names='status_upper', title=f"Status Breakdown for {selected_bh}", hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
+                                fig_ep.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
+                                fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
+                                st.plotly_chart(fig_ep, use_container_width=True, key=f"ep_{selected_bh}")
+                        with b_col2:
+                            if 'layer' in bh_df.columns:
+                                layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
+                                layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
+                                layer_reqs = layer_reqs.sort_values('Layer_Num')
+                                fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
+                                fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
+                                st.plotly_chart(fig_eb, use_container_width=True, key=f"eb_{selected_bh}")
+
+                        if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
+                            trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
+                            if not trend_df.empty:
+                                fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}", color_discrete_sequence=NEON_COLORS)
+                                fig_el = style_3d_glassy(fig_el, chart_type="line")
+                                st.plotly_chart(fig_el, use_container_width=True, key=f"el_{selected_bh}")
+                        
+                        with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
+                            st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
         else:
             st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
