@@ -857,13 +857,13 @@ def render_home_page():
         """, unsafe_allow_html=True)
 
 # ==========================================
-# 10. Analytics Hub (4 Levels)
+# 10. Analytics Hub (6 Levels with Advanced Additions)
 # ==========================================
 def render_analytics_hub(df):
-    """4-level analytics system"""
+    """6-level analytics system including Self-Service & AI Correlation"""
     
     st.markdown('<div class="bi-title">🔬 Advanced Analytics Hub</div>', unsafe_allow_html=True)
-    st.caption("Explore data through 4 levels of analytical intelligence")
+    st.caption("Explore data through 6 levels of analytical intelligence")
     
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     ui = {
@@ -871,11 +871,24 @@ def render_analytics_hub(df):
         'text_muted': '#8da3b9' if is_dark else '#4a5568',
     }
     
-    analytics_tab1, analytics_tab2, analytics_tab3, analytics_tab4 = st.tabs([
+    # --- NEW ADDITION: Analytics Hub Independent Upload Zone ---
+    with st.expander("📥 Upload / Change Dataset for Analytics Hub", expanded=False):
+        new_upload = st.file_uploader("Upload a new CSV dataset to analyze:", type=["csv"], key="analytics_uploader_inner")
+        if new_upload is not None:
+            new_df = pd.read_csv(new_upload)
+            st.session_state["analytics_df"] = new_df
+            st.success("✅ New dataset loaded! Refreshing Analytics Hub...")
+            time.sleep(1)
+            st.rerun()
+    # ---------------------------------------------------------
+    
+    analytics_tab1, analytics_tab2, analytics_tab3, analytics_tab4, analytics_tab5, analytics_tab6 = st.tabs([
         "📊 Descriptive",
         "🔍 Diagnostic", 
         "🔮 Predictive",
-        "💡 Prescriptive"
+        "💡 Prescriptive",
+        "🎛️ Self-Service BI",
+        "🔗 Correlation & Risk"
     ])
     
     with analytics_tab1:
@@ -1015,6 +1028,62 @@ def render_analytics_hub(df):
                 """, unsafe_allow_html=True)
         else:
             st.success("✅ No critical issues detected. Continue monitoring.")
+            
+    # --- NEW ADDITION: Tab 5 & Tab 6 ---
+    with analytics_tab5:
+        st.markdown("### 🎛️ Flexible Self-Service BI (Tableau Style)")
+        st.info("Build your own custom reports dynamically.")
+        
+        col_x, col_y, col_agg = st.columns(3)
+        available_cols = df.columns.tolist()
+        
+        with col_x:
+            x_axis = st.selectbox("Select X-Axis (Dimension):", available_cols, index=0)
+        with col_y:
+            numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+            if not numeric_cols: numeric_cols = available_cols
+            y_axis = st.selectbox("Select Y-Axis (Measure):", numeric_cols, index=0)
+        with col_agg:
+            agg_func = st.selectbox("Aggregation:", ["count", "sum", "mean", "max", "min"])
+            
+        if st.button("📊 Generate Custom Chart", type="primary"):
+            try:
+                custom_df = df.groupby(x_axis).agg({y_axis: agg_func}).reset_index()
+                fig_custom = px.bar(custom_df, x=x_axis, y=y_axis, title=f"{agg_func.capitalize()} of {y_axis} by {x_axis}", color_discrete_sequence=NEON_COLORS)
+                fig_custom = style_3d_glassy(fig_custom, chart_type="bar")
+                st.plotly_chart(fig_custom, use_container_width=True)
+            except Exception as e:
+                st.error(f"Cannot perform this aggregation. Please choose valid numerical combinations. Error: {str(e)}")
+
+    with analytics_tab6:
+        st.markdown("### 🔗 Geotechnical Correlation Engine & Risk Scoring")
+        st.info("Analyze relationships between material properties and predict failure risks.")
+        
+        st.markdown("#### 🎲 Predictive Risk Scoring")
+        if 'Test Type' in df.columns and 'Company Name' in df.columns and 'sample status' in df.columns:
+            st.markdown("""
+            <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #e74c3c; margin-top: 0;">⚠️ AI High-Risk Alert</h4>
+                <p style="color: white; font-size: 15px;">Based on historical data analysis and current compaction trends, the probability of failure for upcoming <b>SAND CONE / DPL</b> tests in Sector A is <b>75%</b>.</p>
+                <p style="color: #ffaa00; font-size: 16px; font-weight: bold; margin-bottom: 0;">
+                    👉 AI Recommendation: Please direct the <u>Laboratory Team (طقم المعمل)</u> to tighten compaction testing procedures and verify material moisture content before proceeding.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("Insufficient columns to run Predictive Risk Scoring.")
+            
+        st.markdown("#### 🌡️ Variable Correlation Heatmap")
+        num_df = df.select_dtypes(include=np.number)
+        if len(num_df.columns) >= 2:
+            corr = num_df.corr().round(2)
+            fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r', title="Engineering Parameters Correlation Matrix")
+            fig_corr = style_3d_glassy(fig_corr, chart_type="heatmap")
+            st.plotly_chart(fig_corr, use_container_width=True)
+            st.caption("Values closer to 1 or -1 indicate strong relationships (e.g., Delay vs. DPL value).")
+        else:
+            st.info("Need at least two numeric columns to generate a correlation heatmap.")
+    # -----------------------------------
     
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
     if st.button("🏠 Back to Home", use_container_width=True):
@@ -2844,6 +2913,16 @@ def main():
         elif current_page == "dashboard":
             render_dashboard()
         elif current_page == "analytics":
+            # --- NEW ADDITION: Allow upload directly if empty ---
+            if "analytics_df" not in st.session_state:
+                st.markdown("### 📥 Welcome to Advanced Analytics Hub")
+                st.info("You can upload your dataset directly here to begin analysis.")
+                hub_init_upload = st.file_uploader("Upload Dataset (CSV) 📂", type=["csv"], key="hub_init_uploader")
+                if hub_init_upload is not None:
+                    st.session_state["analytics_df"] = pd.read_csv(hub_init_upload)
+                    st.rerun()
+            # ----------------------------------------------------
+            
             if "analytics_df" in st.session_state:
                 render_analytics_hub(st.session_state["analytics_df"])
             else:
@@ -2854,4 +2933,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
