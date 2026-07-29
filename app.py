@@ -608,7 +608,6 @@ class HistoryManager:
         conn.commit()
         conn.close()
 
-# 💡 التعديل هنا: منع مسافات بداية السطور جوا الـ string عشان الـ markdown مايعتبروش code block
 def create_card(column, label, value, delta_html="", progress=None):
     if progress is not None:
         prog_color = "#2ecc71" if progress > 80 else ("#f1c40f" if progress > 50 else "#e74c3c")
@@ -1349,28 +1348,42 @@ def render_dashboard():
         
         try:
             if uploaded_file.name.endswith('.xlsx'):
-                # 💡 التعديل 1: قراءة اللوج الأساسي بشكل طبيعي وبدون تخطي أول صف (الصور الإكسيل بيتجاهلها أوتوماتيك)
-                df = pd.read_excel(uploaded_file, sheet_name=0)
+                excel_file = pd.ExcelFile(uploaded_file)
+                
+                # 💡 التعديل السحري: البحث عن شيت اللوج الأساسي وتخطي اللوجوهات أوتوماتيك
+                main_sheet = 'TABLE 1' if 'TABLE 1' in excel_file.sheet_names else excel_file.sheet_names[0]
+                
+                temp_df = pd.read_excel(uploaded_file, sheet_name=main_sheet, header=None, nrows=10)
+                header_idx = 0
+                for i in range(len(temp_df)):
+                    row_str = " ".join(temp_df.iloc[i].astype(str).str.upper().tolist())
+                    if 'COMPANY' in row_str or 'SERIAL' in row_str or 'TEST TYPE' in row_str:
+                        header_idx = i
+                        break
+                        
+                df = pd.read_excel(uploaded_file, sheet_name=main_sheet, header=header_idx)
                 
                 # Dynamic merging of all other sheets (Production Ledgers)
-                excel_file = pd.ExcelFile(uploaded_file)
                 melted_frames = []
                 
                 if len(excel_file.sheet_names) > 1:
-                    for sheet_name in excel_file.sheet_names[1:]:
+                    for sheet_name in excel_file.sheet_names:
+                        if sheet_name == main_sheet or 'DASH' in sheet_name.upper():
+                            continue # Skip main log and dashboard sheets
+                        
                         try:
                             # Read ledger sheet
                             rates_df_raw = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=1)
                             
-                            # 💡 التعديل 2: حماية الكود من الإيرور الأحمر (استخدام astype(str))
+                            # Clean the columns
                             rates_df_raw = rates_df_raw.loc[:, ~rates_df_raw.columns.astype(str).str.contains('^Unnamed', case=False, na=False)]
                             
                             # Identify the date column
                             date_col = next((c for c in rates_df_raw.columns if 'تاريخ' in str(c).lower() or 'date' in str(c).lower()), None)
                             
                             if not date_col:
-                                continue # Skip sheet if no date column found (زي شيت الـ Dashboard)
-                            
+                                continue # Skip sheet if no date column found
+                                
                             # Extract elements mapping
                             elements_mapping = rates_df_raw.iloc[0].to_dict()
                             
@@ -1420,7 +1433,6 @@ def render_dashboard():
         st.session_state["analytics_df"] = df.copy()
         
         # --- 🛠️ Data Cleaning (Global for Dashboard) ---
-        # 💡 التعديل 3: تنظيف قوي جداً لأسماء العواميد (عشان مفيش حاجة تقرا أصفار)
         df.columns = df.columns.astype(str).str.replace('\n', ' ').str.replace('\r', '').str.strip()
         df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
         
