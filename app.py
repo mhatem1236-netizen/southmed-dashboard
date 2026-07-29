@@ -1821,6 +1821,7 @@ def render_dashboard():
             st.divider()
 
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
+            all_log_companies = sorted(list(set([str(c).strip() for c in mat_df['Company Name'].dropna().unique() if str(c) != 'nan'])))
             if all_log_companies:
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies, key="deepdive_comp_sel")
                 comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
