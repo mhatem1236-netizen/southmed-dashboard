@@ -1346,8 +1346,8 @@ def render_dashboard():
         
         try:
             if uploaded_file.name.endswith('.xlsx'):
-                # Read the main log (TABLE 1)
-                df = pd.read_excel(uploaded_file, sheet_name=0)
+                # Read the main log (TABLE 1) - ضفنا header=1 لتخطي صف اللوجوهات
+                df = pd.read_excel(uploaded_file, sheet_name=0, header=1)
                 
                 # Dynamic merging of all other sheets (Production Ledgers)
                 excel_file = pd.ExcelFile(uploaded_file)
