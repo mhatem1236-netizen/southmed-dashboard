@@ -862,6 +862,19 @@ def render_home_page():
 def render_analytics_hub(df):
     """6-level analytics system including Self-Service & AI Correlation"""
     
+    # --- 🛠️ Data Cleaning Injection (Fixing string mean error) ---
+    df = df.copy()
+    df.columns = df.columns.str.strip() 
+    if 'Company Name' not in df.columns and 'Company' in df.columns:
+        df.rename(columns={'Company': 'Company Name'}, inplace=True)
+    if 'DURATION' in df.columns:
+        df['DURATION'] = pd.to_numeric(df['DURATION'], errors='coerce').fillna(0)
+    if 'AVERAGE VALUE' in df.columns:
+        df['AVERAGE VALUE'] = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce')
+    if 'Date ( test)' in df.columns:
+        df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
+    # -------------------------------------------------------------
+    
     st.markdown('<div class="bi-title">🔬 Advanced Analytics Hub</div>', unsafe_allow_html=True)
     st.caption("Explore data through 6 levels of analytical intelligence")
     
