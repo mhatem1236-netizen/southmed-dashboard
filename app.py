@@ -611,7 +611,7 @@ class HistoryManager:
 def create_card(column, label, value, delta_html="", progress=None):
     if progress is not None:
         prog_color = "#2ecc71" if progress > 80 else ("#f1c40f" if progress > 50 else "#e74c3c")
-        prog_html = f'<div class="prog-bg"><div class="prog-fill" style="width: {progress}%; background: {prog_color};"></div></div>'
+        prog_html = f'<div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 15px;"><div class="prog-fill" style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 10px;"></div></div>'
     else:
         prog_html = ""
     column.markdown(f"""
@@ -862,7 +862,7 @@ def render_home_page():
 def render_analytics_hub(df):
     """6-level analytics system including Self-Service & AI Correlation"""
     
-    # --- 🛠️ Data Cleaning Injection (Fixing string mean error) ---
+    # --- 🛠️ Data Cleaning Injection ---
     df = df.copy()
     df.columns = df.columns.str.strip() 
     if 'Company Name' not in df.columns and 'Company' in df.columns:
@@ -884,7 +884,6 @@ def render_analytics_hub(df):
         'text_muted': '#8da3b9' if is_dark else '#4a5568',
     }
     
-    # --- NEW ADDITION: Analytics Hub Independent Upload Zone ---
     with st.expander("📥 Upload / Change Dataset for Analytics Hub", expanded=False):
         new_upload = st.file_uploader("Upload a new CSV dataset to analyze:", type=["csv"], key="analytics_uploader_inner")
         if new_upload is not None:
@@ -893,7 +892,6 @@ def render_analytics_hub(df):
             st.success("✅ New dataset loaded! Refreshing Analytics Hub...")
             time.sleep(1)
             st.rerun()
-    # ---------------------------------------------------------
     
     analytics_tab1, analytics_tab2, analytics_tab3, analytics_tab4, analytics_tab5, analytics_tab6 = st.tabs([
         "📊 Descriptive",
@@ -950,7 +948,7 @@ def render_analytics_hub(df):
         
         if 'sample status' in df.columns:
             fig_pie = px.pie(df, names='sample status', title="Status Distribution", hole=0.4)
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, use_container_width=True, key="analytics_pie_desc")
     
     with analytics_tab2:
         st.markdown("### 🔍 Diagnostic Analytics - Why Did It Happen?")
@@ -970,7 +968,7 @@ def render_analytics_hub(df):
                                    title="Rejections by Contractor (Pareto)",
                                    color='Rejections',
                                    color_continuous_scale='Reds')
-                st.plotly_chart(fig_pareto, use_container_width=True)
+                st.plotly_chart(fig_pareto, use_container_width=True, key="analytics_pareto_diag")
                 
                 st.markdown(f"""
                 <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px;">
@@ -993,7 +991,7 @@ def render_analytics_hub(df):
                                y=['DURATION', '7-Day Trend'],
                                title="Duration Trend Analysis",
                                color_discrete_sequence=['#ffaa00', '#00d2ff'])
-            st.plotly_chart(fig_trend, use_container_width=True)
+            st.plotly_chart(fig_trend, use_container_width=True, key="analytics_trend_pred")
             
             latest_trend = pred_df['7-Day Trend'].iloc[-1]
             avg_dur = df['DURATION'].mean()
@@ -1042,7 +1040,6 @@ def render_analytics_hub(df):
         else:
             st.success("✅ No critical issues detected. Continue monitoring.")
             
-    # --- NEW ADDITION: Tab 5 & Tab 6 ---
     with analytics_tab5:
         st.markdown("### 🎛️ Flexible Self-Service BI (Tableau Style)")
         st.info("Build your own custom reports dynamically.")
@@ -1064,7 +1061,7 @@ def render_analytics_hub(df):
                 custom_df = df.groupby(x_axis).agg({y_axis: agg_func}).reset_index()
                 fig_custom = px.bar(custom_df, x=x_axis, y=y_axis, title=f"{agg_func.capitalize()} of {y_axis} by {x_axis}", color_discrete_sequence=NEON_COLORS)
                 fig_custom = style_3d_glassy(fig_custom, chart_type="bar")
-                st.plotly_chart(fig_custom, use_container_width=True)
+                st.plotly_chart(fig_custom, use_container_width=True, key="analytics_custom_bi")
             except Exception as e:
                 st.error(f"Cannot perform this aggregation. Please choose valid numerical combinations. Error: {str(e)}")
 
@@ -1092,11 +1089,10 @@ def render_analytics_hub(df):
             corr = num_df.corr().round(2)
             fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r', title="Engineering Parameters Correlation Matrix")
             fig_corr = style_3d_glassy(fig_corr, chart_type="heatmap")
-            st.plotly_chart(fig_corr, use_container_width=True)
+            st.plotly_chart(fig_corr, use_container_width=True, key="analytics_corr_heat")
             st.caption("Values closer to 1 or -1 indicate strong relationships (e.g., Delay vs. DPL value).")
         else:
             st.info("Need at least two numeric columns to generate a correlation heatmap.")
-    # -----------------------------------
     
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
     if st.button("🏠 Back to Home", use_container_width=True):
@@ -1358,7 +1354,6 @@ def render_dashboard():
             st.info("💡 تأكد أن الملف بصيغة CSV وأن البيانات منسقة بشكل صحيح.")
             st.stop()
         
-        # Save data for analytics hub
         st.session_state["analytics_df"] = df.copy()
         
         df.columns = df.columns.str.strip() 
@@ -1600,7 +1595,7 @@ def render_dashboard():
                        'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}]}
             ))
             fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20), font={'family': 'Montserrat'})
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            st.plotly_chart(fig_gauge, use_container_width=True, key="overall_gauge_main")
 
         with s_col:
             if sim_days_saved > 0:
@@ -1676,8 +1671,8 @@ def render_dashboard():
         st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
             cc1, cc2 = st.columns(2)
-            c_a = cc1.selectbox("Select Contractor A", companies, index=0)
-            c_b = cc2.selectbox("Select Contractor B", companies, index=1 if len(companies)>1 else 0)
+            c_a = cc1.selectbox("Select Contractor A", companies, index=0, key="h2h_a")
+            c_b = cc2.selectbox("Select Contractor B", companies, index=1 if len(companies)>1 else 0, key="h2h_b")
             def get_c_stats(c_name):
                 d = filtered_df[filtered_df['Company Name']==c_name]
                 tot = len(d)
@@ -1710,7 +1705,7 @@ def render_dashboard():
             fig_vol.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Volume:</b> %{y} Submittals')
             fig_vol = style_3d_glassy(fig_vol, chart_type="bar")
             ch_col, txt_col = st.columns([0.7, 0.3])
-            ch_col.plotly_chart(fig_vol, use_container_width=True)
+            ch_col.plotly_chart(fig_vol, use_container_width=True, key="vol_analysis")
             with txt_col:
                 st.markdown("#### 💡 AI Production Insights")
                 if not monthly_summary.empty:
@@ -1740,7 +1735,7 @@ def render_dashboard():
             fig_hm = px.density_heatmap(hm_data, x="Day", y="Month_Name", z="Submittals", color_continuous_scale="Viridis", title="Daily Activity Intensity (GitHub Style)", labels={'Day': 'Day of Month', 'Month_Name': 'Month'})
             fig_hm.update_traces(hovertemplate='<b>Date:</b> %{y} %{x}<br><b>Activity:</b> %{z} Tests Logged')
             fig_hm = style_3d_glassy(fig_hm, chart_type="heatmap")
-            st.plotly_chart(fig_hm, use_container_width=True)
+            st.plotly_chart(fig_hm, use_container_width=True, key="heat_calendar")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -1769,13 +1764,10 @@ def render_dashboard():
             fig_combo.update_yaxes(title_text="Total Workload", secondary_y=True)
             
             fig_combo = style_3d_glassy(fig_combo, chart_type="combo")
-            st.plotly_chart(fig_combo, use_container_width=True)
+            st.plotly_chart(fig_combo, use_container_width=True, key="combo_timeline")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        # ==========================================
-        # 🎯 NEW: SPC (Statistical Process Control) Charts
-        # ==========================================
         st.markdown('<div class="bi-title">📊 Statistical Process Control (SPC) - Control Charts</div>', unsafe_allow_html=True)
         st.caption("Monitor process stability and detect special cause variations using industry-standard control limits.")
         
@@ -1785,29 +1777,23 @@ def render_dashboard():
             spc_df = spc_df.dropna(subset=['AVERAGE VALUE'])
             
             if not spc_df.empty:
-                # Calculate control limits
                 mean_val = spc_df['AVERAGE VALUE'].mean()
                 std_val = spc_df['AVERAGE VALUE'].std()
-                ucl = mean_val + 3 * std_val  # Upper Control Limit
-                lcl = mean_val - 3 * std_val  # Lower Control Limit
+                ucl = mean_val + 3 * std_val  
+                lcl = mean_val - 3 * std_val  
                 
-                # Identify out-of-control points
                 spc_df['out_of_control'] = (spc_df['AVERAGE VALUE'] > ucl) | (spc_df['AVERAGE VALUE'] < lcl)
                 out_of_control_count = spc_df['out_of_control'].sum()
                 total_points = len(spc_df)
                 control_percentage = ((total_points - out_of_control_count) / total_points * 100) if total_points > 0 else 0
                 
-                # Display SPC metrics
                 spc_col1, spc_col2, spc_col3, spc_col4 = st.columns(4)
                 create_card(spc_col1, "Process Mean", f"{mean_val:.2f}")
                 create_card(spc_col2, "Std Deviation", f"{std_val:.2f}")
                 create_card(spc_col3, "Control Limits", f"UCL: {ucl:.2f}<br>LCL: {lcl:.2f}")
                 create_card(spc_col4, "In Control %", f"{control_percentage:.1f}%")
                 
-                # Create Control Chart
                 fig_spc = go.Figure()
-                
-                # Add data points
                 fig_spc.add_trace(go.Scatter(
                     x=spc_df.index,
                     y=spc_df['AVERAGE VALUE'],
@@ -1820,102 +1806,52 @@ def render_dashboard():
                     ),
                     hovertemplate='<b>Index:</b> %{x}<br><b>Value:</b> %{y:.2f}<br><b>Status:</b> %{marker.color}<extra></extra>'
                 ))
-                
-                # Add center line
-                fig_spc.add_hline(
-                    y=mean_val,
-                    line_dash="solid",
-                    line_color="#2ecc71",
-                    line_width=2,
-                    annotation_text=f"Mean: {mean_val:.2f}",
-                    annotation_position="top right"
-                )
-                
-                # Add UCL
-                fig_spc.add_hline(
-                    y=ucl,
-                    line_dash="dash",
-                    line_color="#e74c3c",
-                    line_width=2,
-                    annotation_text=f"UCL: {ucl:.2f}",
-                    annotation_position="top right"
-                )
-                
-                # Add LCL
-                fig_spc.add_hline(
-                    y=lcl,
-                    line_dash="dash",
-                    line_color="#e74c3c",
-                    line_width=2,
-                    annotation_text=f"LCL: {lcl:.2f}",
-                    annotation_position="bottom right"
-                )
-                
-                fig_spc.update_layout(
-                    title="Control Chart - Process Stability Analysis",
-                    xaxis_title="Sample Index",
-                    yaxis_title="AVERAGE VALUE",
-                    showlegend=False,
-                    height=500
-                )
+                fig_spc.add_hline(y=mean_val, line_dash="solid", line_color="#2ecc71", line_width=2, annotation_text=f"Mean: {mean_val:.2f}", annotation_position="top right")
+                fig_spc.add_hline(y=ucl, line_dash="dash", line_color="#e74c3c", line_width=2, annotation_text=f"UCL: {ucl:.2f}", annotation_position="top right")
+                fig_spc.add_hline(y=lcl, line_dash="dash", line_color="#e74c3c", line_width=2, annotation_text=f"LCL: {lcl:.2f}", annotation_position="bottom right")
+                fig_spc.update_layout(title="Control Chart - Process Stability Analysis", xaxis_title="Sample Index", yaxis_title="AVERAGE VALUE", showlegend=False, height=500)
                 
                 fig_spc = style_3d_glassy(fig_spc, chart_type="line")
-                st.plotly_chart(fig_spc, use_container_width=True)
+                st.plotly_chart(fig_spc, use_container_width=True, key="spc_chart")
                 
-                # SPC Insights
                 if out_of_control_count > 0:
-                    st.warning(f"⚠️ **Process Alert:** {out_of_control_count} out of {total_points} samples ({100-control_percentage:.1f}%) are outside control limits. This indicates **special cause variation** that requires immediate investigation.")
-                    
-                    # Show out-of-control samples
+                    st.warning(f"⚠️ **Process Alert:** {out_of_control_count} out of {total_points} samples ({100-control_percentage:.1f}%) are outside control limits.")
                     ooc_samples = spc_df[spc_df['out_of_control']].head(10)
                     if not ooc_samples.empty:
                         st.markdown("**Top Out-of-Control Samples:**")
                         st.dataframe(ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']].head(10), use_container_width=True)
                 else:
-                    st.success("✅ **Process Stable:** All samples are within control limits. The process is under statistical control with only common cause variation present.")
+                    st.success("✅ **Process Stable:** All samples are within control limits.")
                 
-                # Process Capability Analysis
                 st.markdown("#### 🎯 Process Capability Analysis")
                 cap_col1, cap_col2 = st.columns(2)
-                
                 with cap_col1:
                     st.markdown(f"""
                     <div class="metric-card">
                         <div class="metric-label">Process Performance</div>
                         <div class="metric-value" style="font-size: 24px;">{control_percentage:.1f}%</div>
-                        <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 10px;">
-                            of samples within ±3σ control limits
-                        </div>
+                        <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 10px;">of samples within ±3σ control limits</div>
                     </div>
                     """, unsafe_allow_html=True)
-                
                 with cap_col2:
                     if std_val > 0:
-                        # Calculate Cpk (assuming specification limits at ±3σ)
                         cpk = min((ucl - mean_val) / (3 * std_val), (mean_val - lcl) / (3 * std_val))
                         cpk_color = "#2ecc71" if cpk >= 1.33 else ("#f1c40f" if cpk >= 1.0 else "#e74c3c")
                         cpk_status = "Excellent" if cpk >= 1.33 else ("Good" if cpk >= 1.0 else "Needs Improvement")
-                        
                         st.markdown(f"""
                         <div class="metric-card">
                             <div class="metric-label">Process Capability (Cpk)</div>
                             <div class="metric-value" style="font-size: 24px; color: {cpk_color};">{cpk:.2f}</div>
-                            <div style="color: {cpk_color}; font-size: 14px; margin-top: 10px; font-weight: bold;">
-                                {cpk_status}
-                            </div>
+                            <div style="color: {cpk_color}; font-size: 14px; margin-top: 10px; font-weight: bold;">{cpk_status}</div>
                         </div>
                         """, unsafe_allow_html=True)
         
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        # ==========================================
-        # 🎯 NEW: Pareto Analysis (80/20 Rule)
-        # ==========================================
         st.markdown('<div class="bi-title">📊 Pareto Analysis - 80/20 Rule</div>', unsafe_allow_html=True)
         st.caption("Identify the vital few causes that contribute to the majority of problems. Focus your improvement efforts where they matter most.")
         
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
-            # Calculate rejections by contractor
             rej_by_comp = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])].groupby('Company Name').size().reset_index(name='Rejections')
             rej_by_comp = rej_by_comp.sort_values('Rejections', ascending=False)
             
@@ -1924,79 +1860,29 @@ def render_dashboard():
                 rej_by_comp['Percentage'] = (rej_by_comp['Rejections'] / total_rejections * 100).round(2)
                 rej_by_comp['Cumulative_Percentage'] = rej_by_comp['Percentage'].cumsum().round(2)
                 
-                # Identify critical contractors (top 20% causing 80% of problems)
                 critical_threshold = 80
                 critical_contractors = rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]
                 critical_count = len(critical_contractors)
                 total_contractors = len(rej_by_comp)
                 critical_percentage = (critical_count / total_contractors * 100) if total_contractors > 0 else 0
                 
-                # Display Pareto metrics
                 pareto_col1, pareto_col2, pareto_col3 = st.columns(3)
                 create_card(pareto_col1, "Total Contractors", f"{total_contractors}")
                 create_card(pareto_col2, "Critical Contractors", f"{critical_count} ({critical_percentage:.0f}%)")
                 create_card(pareto_col3, "Total Rejections", f"{total_rejections}")
                 
-                # Create Pareto Chart
                 fig_pareto = make_subplots(specs=[[{"secondary_y": True}]])
-                
-                # Add bars for rejections
-                fig_pareto.add_trace(
-                    go.Bar(
-                        x=rej_by_comp['Company Name'],
-                        y=rej_by_comp['Rejections'],
-                        name='Rejections',
-                        marker_color='#e74c3c',
-                        opacity=0.7,
-                        hovertemplate='<b>Contractor:</b> %{x}<br><b>Rejections:</b> %{y}<extra></extra>'
-                    ),
-                    secondary_y=False
-                )
-                
-                # Add line for cumulative percentage
-                fig_pareto.add_trace(
-                    go.Scatter(
-                        x=rej_by_comp['Company Name'],
-                        y=rej_by_comp['Cumulative_Percentage'],
-                        mode='lines+markers',
-                        name='Cumulative %',
-                        line=dict(color='#00d2ff', width=3),
-                        marker=dict(size=8, color='#00d2ff'),
-                        hovertemplate='<b>Contractor:</b> %{x}<br><b>Cumulative %:</b> %{y:.1f}%<extra></extra>'
-                    ),
-                    secondary_y=True
-                )
-                
-                # Add 80% threshold line
-                fig_pareto.add_hline(
-                    y=80,
-                    line_dash="dash",
-                    line_color="#ffaa00",
-                    line_width=2,
-                    annotation_text="80% Threshold",
-                    annotation_position="top right",
-                    secondary_y=True
-                )
-                
-                fig_pareto.update_layout(
-                    title="Pareto Chart - Rejections by Contractor",
-                    xaxis_title="Contractor",
-                    yaxis_title="Number of Rejections",
-                    yaxis2_title="Cumulative Percentage (%)",
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    height=500
-                )
-                
+                fig_pareto.add_trace(go.Bar(x=rej_by_comp['Company Name'], y=rej_by_comp['Rejections'], name='Rejections', marker_color='#e74c3c', opacity=0.7, hovertemplate='<b>Contractor:</b> %{x}<br><b>Rejections:</b> %{y}<extra></extra>'), secondary_y=False)
+                fig_pareto.add_trace(go.Scatter(x=rej_by_comp['Company Name'], y=rej_by_comp['Cumulative_Percentage'], mode='lines+markers', name='Cumulative %', line=dict(color='#00d2ff', width=3), marker=dict(size=8, color='#00d2ff'), hovertemplate='<b>Contractor:</b> %{x}<br><b>Cumulative %:</b> %{y:.1f}%<extra></extra>'), secondary_y=True)
+                fig_pareto.add_hline(y=80, line_dash="dash", line_color="#ffaa00", line_width=2, annotation_text="80% Threshold", annotation_position="top right", secondary_y=True)
+                fig_pareto.update_layout(title="Pareto Chart - Rejections by Contractor", xaxis_title="Contractor", yaxis_title="Number of Rejections", yaxis2_title="Cumulative Percentage (%)", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=500)
                 fig_pareto.update_yaxes(title_text="Rejections", secondary_y=False)
                 fig_pareto.update_yaxes(title_text="Cumulative %", secondary_y=True, range=[0, 100])
-                
                 fig_pareto = style_3d_glassy(fig_pareto, chart_type="combo")
-                st.plotly_chart(fig_pareto, use_container_width=True)
+                st.plotly_chart(fig_pareto, use_container_width=True, key="pareto_comb")
                 
-                # Pareto Insights
                 st.markdown("#### 🎯 Strategic Insights")
                 insight_col1, insight_col2 = st.columns(2)
-                
                 with insight_col1:
                     st.markdown(f"""
                     <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
@@ -2005,23 +1891,11 @@ def render_dashboard():
                             The top <b style="color: #ffaa00;">{critical_count} contractors</b> ({critical_percentage:.0f}% of total) are responsible for 
                             <b style="color: #ffaa00;">{rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]['Cumulative_Percentage'].max():.1f}%</b> of all rejections.
                         </p>
-                        <p style="color: {ui['text_muted']}; margin: 10px 0 0 0; font-size: 13px;">
-                            💡 <b>Recommendation:</b> Focus your quality improvement efforts on these contractors first for maximum impact.
-                        </p>
                     </div>
                     """, unsafe_allow_html=True)
-                
                 with insight_col2:
-                    # Show top 5 contractors
                     top_5 = rej_by_comp.head(5)
-                    top_5_html = "<br>".join([
-                        f"<div style='display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 5px;'>"
-                        f"<span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span>"
-                        f"<span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span>"
-                        f"</div>"
-                        for _, row in top_5.iterrows()
-                    ])
-                    
+                    top_5_html = "<br>".join([f"<div style='display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 5px;'><span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span><span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span></div>" for _, row in top_5.iterrows()])
                     st.markdown(f"""
                     <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 10px;">
                         <h4 style="color: #00d2ff; margin: 0 0 10px 0;">📊 Top 5 Contractors by Rejections</h4>
@@ -2029,17 +1903,8 @@ def render_dashboard():
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Detailed Pareto Table
                 with st.expander("📋 View Detailed Pareto Analysis Table"):
-                    st.dataframe(
-                        rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={
-                            'Company Name': 'Contractor',
-                            'Rejections': 'Total Rejections',
-                            'Percentage': '% of Total',
-                            'Cumulative_Percentage': 'Cumulative %'
-                        }),
-                        use_container_width=True
-                    )
+                    st.dataframe(rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={'Company Name': 'Contractor', 'Rejections': 'Total Rejections', 'Percentage': '% of Total', 'Cumulative_Percentage': 'Cumulative %'}), use_container_width=True)
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -2051,7 +1916,7 @@ def render_dashboard():
             fig_pred = style_3d_glassy(fig_pred, chart_type="line")
             latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
             p1, p2 = st.columns([0.7, 0.3])
-            p1.plotly_chart(fig_pred, use_container_width=True)
+            p1.plotly_chart(fig_pred, use_container_width=True, key="pred_risk")
             with p2:
                 st.info("**AI Risk Assessment:**")
                 if latest_trend > current_metrics["Avg_Duration"]:
@@ -2069,7 +1934,7 @@ def render_dashboard():
             fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], color='Heat_Score', color_continuous_scale='RdYlGn', title="Project Hierarchy Heat Map (Green = High Approval, Red = Bottleneck/Rejections)")
             fig_tree.update_traces(hovertemplate='<b>%{label}</b><br>Score: %{color:.1f}')
             fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
-            st.plotly_chart(fig_tree, use_container_width=True)
+            st.plotly_chart(fig_tree, use_container_width=True, key="heatmap_sector")
 
         st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
         st.info("💡 **CEO Feature:** Click the button below to download a styled HTML report. When opened, it can be easily saved as a perfectly formatted PDF for your Daily/Weekly Briefing!")
@@ -2290,7 +2155,7 @@ def render_dashboard():
 
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
             if all_log_companies:
-                selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies)
+                selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies, key="deepdive_comp_sel")
                 comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
                 
                 # --- التعديل الجديد: إضافة التاب الخاصة بالموقف التنفيذي واختبارات الدمك ---
@@ -2300,7 +2165,7 @@ def render_dashboard():
                     "🏗️ Executive Progress & Compaction"
                 ])
                 
-                # --- (1) محتوى Tab 360 (كما هو عندك بدون تغيير) ---
+                # --- (1) محتوى Tab 360 ---
                 with tab_360:
                     st.markdown(f"### 🌐 Executive Profile: `{selected_comp}`")
                     
@@ -2327,7 +2192,7 @@ def render_dashboard():
                         tree_grouped = tree_df_360.groupby([battalion_col_360, zone_col_360]).size().reset_index(name='Submittals')
                         fig_tree_360 = px.treemap(tree_grouped, path=[battalion_col_360, zone_col_360], values='Submittals', title=f"Workload Distribution for {selected_comp}", color='Submittals', color_continuous_scale='Blues')
                         fig_tree_360 = style_3d_glassy(fig_tree_360, chart_type="treemap")
-                        st.plotly_chart(fig_tree_360, use_container_width=True)
+                        st.plotly_chart(fig_tree_360, use_container_width=True, key=f"tree_360_{selected_comp}")
                         
                     col_q1, col_q2 = st.columns(2)
                     with col_q1:
@@ -2337,7 +2202,7 @@ def render_dashboard():
                             qual_df = comp_df_full.groupby([battalion_col_360, 'status_upper']).size().reset_index(name='Count')
                             fig_qual = px.bar(qual_df, x=battalion_col_360, y='Count', color='status_upper', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map=STATUS_COLORS)
                             fig_qual = style_3d_glassy(fig_qual, chart_type="bar")
-                            st.plotly_chart(fig_qual, use_container_width=True)
+                            st.plotly_chart(fig_qual, use_container_width=True, key=f"qual_{selected_comp}")
                             
                     with col_q2:
                         if elment_col_360:
@@ -2345,7 +2210,7 @@ def render_dashboard():
                             el_df = comp_df_full.groupby(elment_col_360).size().reset_index(name='Count').sort_values('Count', ascending=False)
                             fig_elment = px.bar(el_df.head(15), x=elment_col_360, y='Count', title="Top 15 Elements by Submittals", color=elment_col_360, color_discrete_sequence=NEON_COLORS)
                             fig_elment = style_3d_glassy(fig_elment, chart_type="bar")
-                            st.plotly_chart(fig_elment, use_container_width=True)
+                            st.plotly_chart(fig_elment, use_container_width=True, key=f"elment_{selected_comp}")
                         else:
                             st.info("No Element column found for workload breakdown.")
                                 
@@ -2358,7 +2223,7 @@ def render_dashboard():
                             fig_off = px.bar(off_df, x='Done BY', y='Count', text='Count', title="Submittal Volume per Review Office", color='Done BY', color_discrete_sequence=NEON_COLORS)
                             fig_off.update_traces(customdata=off_df['Percent'], hovertemplate='<b>Office:</b> %{x}<br>Count: %{y}<br>Percentage: %{customdata}%')
                             fig_off = style_3d_glassy(fig_off, chart_type="bar")
-                            st.plotly_chart(fig_off, use_container_width=True)
+                            st.plotly_chart(fig_off, use_container_width=True, key=f"off_{selected_comp}")
                             
                     with col_d2:
                         if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
@@ -2472,11 +2337,11 @@ def render_dashboard():
                         else:
                             st.info("No valid dates found for timeline analysis.")
 
-                # --- (2) محتوى Tab Stockpile (كما هو عندك بدون تغيير) ---
+                # --- (2) محتوى Tab Stockpile ---
                 with tab_stockpile:
                     if battalion_col_stock:
                         avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
-                        selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats)
+                        selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats, key=f"bat_stock_{selected_comp}")
                         
                         if selected_bat != "All Battalions":
                             comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
@@ -2668,7 +2533,7 @@ def render_dashboard():
                             fig_class = px.pie(class_counts, names='Classification', values='Count', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
                             fig_class.update_traces(textinfo='label+percent', hovertemplate='<b>Class:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                             fig_class = style_3d_glassy(fig_class, chart_type="pie")
-                            st.plotly_chart(fig_class, use_container_width=True)
+                            st.plotly_chart(fig_class, use_container_width=True, key=f"class_{selected_comp}")
                         else:
                             st.info(f"No Stockpile classification data logged.")
                             
@@ -2678,7 +2543,7 @@ def render_dashboard():
                             fig_stock_status = px.pie(stock_df, names='status_upper', title=f"Stockpile Approval/Rejection Rate", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
                             fig_stock_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                             fig_stock_status = style_3d_glassy(fig_stock_status, chart_type="pie")
-                            st.plotly_chart(fig_stock_status, use_container_width=True)
+                            st.plotly_chart(fig_stock_status, use_container_width=True, key=f"stock_status_{selected_comp}")
                         else:
                             st.info(f"No Stockpile status data logged.")
 
@@ -2691,7 +2556,7 @@ def render_dashboard():
                             monthly_stock = time_df.groupby(['Month_Sort', 'Month']).size().reset_index(name='Count').sort_values('Month_Sort')
                             fig_timeline = px.bar(monthly_stock, x='Month', y='Count', title="Stockpile Tests Timeline", text_auto=True, color_discrete_sequence=['#ffaa00'])
                             fig_timeline = style_3d_glassy(fig_timeline, chart_type="bar")
-                            st.plotly_chart(fig_timeline, use_container_width=True)
+                            st.plotly_chart(fig_timeline, use_container_width=True, key=f"stock_time_{selected_comp}")
                         else:
                             st.info("No Date data available to show Stockpile timeline.")
 
@@ -2701,22 +2566,25 @@ def render_dashboard():
                             fig_status = px.pie(comp_bat_df, names='status_upper', title=f"Overall Approval Rate (All Tests)", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
                             fig_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                             fig_status = style_3d_glassy(fig_status, chart_type="pie")
-                            st.plotly_chart(fig_status, use_container_width=True)
+                            st.plotly_chart(fig_status, use_container_width=True, key=f"stock_all_{selected_comp}")
                         else:
                             st.info(f"No overall status data logged.")
-                            
+                
                 # --- (3) التاب الجديدة: Executive Progress & Compaction (الكميات والدمك) ---
                 with tab_execution:
                     st.markdown(f"### 🏗️ Executive Progress & Compaction: `{selected_comp}`")
                     
                     # 1. Quantities KPI Calculation
-                    total_qty_col = next((c for c in comp_df_full.columns if 'TOTAL QUANTITY' in str(c).strip().upper()), None)
-                    exec_qty_col = next((c for c in comp_df_full.columns if 'EXECUTED QUANTITY' in str(c).strip().upper()), None)
+                    company_col_qty = next((c for c in df.columns if 'COMPANY' in c.upper() and c != 'Company Name'), 'Company Name')
+                    qty_match_df = df[df[company_col_qty].astype(str).str.strip().str.lower() == selected_comp.strip().lower()]
+                    if qty_match_df.empty: qty_match_df = comp_df_full
+                        
+                    tot_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in str(c).strip().upper()), None)
+                    exec_qty_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in str(c).strip().upper()), None)
                     
-                    # هنا بناخد أعلى رقم متسجل للمقاول ده عشان منجمعش الأرقام المتكررة في كل سطر (Max Value)
-                    tot_qty = pd.to_numeric(comp_df_full[total_qty_col], errors='coerce').max() if total_qty_col else 0
-                    exe_qty = pd.to_numeric(comp_df_full[exec_qty_col], errors='coerce').max() if exec_qty_col else 0
-                    prog_pct = (exe_qty / tot_qty * 100) if tot_qty and tot_qty > 0 else 0
+                    tot_qty = pd.to_numeric(qty_match_df[tot_qty_col], errors='coerce').max() if tot_qty_col else 0
+                    exe_qty = pd.to_numeric(qty_match_df[exec_qty_col], errors='coerce').max() if exec_qty_col else 0
+                    prog_pct = (exe_qty / tot_qty * 100) if pd.notna(tot_qty) and tot_qty > 0 else 0
                     
                     # 2. Compaction Filtering (DPL & PLATELOAD)
                     test_col = 'Test Type' if 'Test Type' in comp_df_full.columns else None
@@ -2726,19 +2594,47 @@ def render_dashboard():
                         
                     # 3. Test Points (Number of Tests) & Average DPL
                     num_tests_col_exec = next((c for c in comp_df_full.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
-                    total_test_points = int(pd.to_numeric(compaction_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not compaction_df.empty else len(compaction_df)
                     
-                    avg_dpl = np.nan
-                    if test_col and 'AVERAGE VALUE' in compaction_df.columns:
-                        dpl_only_df = compaction_df[compaction_df[test_col].astype(str).str.contains('DPL', case=False, na=False)]
-                        avg_dpl = pd.to_numeric(dpl_only_df['AVERAGE VALUE'], errors='coerce').mean()
+                    dpl_df = compaction_df[compaction_df[test_col].astype(str).str.contains('DPL', case=False, na=False)] if test_col else pd.DataFrame()
+                    plate_df = compaction_df[compaction_df[test_col].astype(str).str.contains('PLATE', case=False, na=False)] if test_col else pd.DataFrame()
+                    
+                    dpl_pts = int(pd.to_numeric(dpl_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not dpl_df.empty else len(dpl_df)
+                    plate_pts = int(pd.to_numeric(plate_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not plate_df.empty else len(plate_df)
+                    total_test_points = dpl_pts + plate_pts
+                    
+                    avg_dpl = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in dpl_df.columns else np.nan
                         
                     # Render Top KPIs (الكميات والدمك)
                     c1, c2, c3, c4 = st.columns(4)
-                    create_card(c1, "Total Target Qty", f"{tot_qty:,.0f}" if pd.notna(tot_qty) else "N/A")
-                    create_card(c2, "Executed Qty", f"{exe_qty:,.0f}" if pd.notna(exe_qty) else "N/A", progress=prog_pct)
-                    create_card(c3, "Total Compaction Points", f"{total_test_points:,}")
+                    create_card(c1, "Total Target Qty", f"{tot_qty:,.0f}" if pd.notna(tot_qty) and tot_qty>0 else "N/A")
+                    create_card(c2, "Executed Qty", f"{exe_qty:,.0f}" if pd.notna(exe_qty) and exe_qty>0 else "N/A", progress=prog_pct)
+                    pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
+                    create_card(c3, "Total Compaction Points", f"{total_test_points:,}", delta_html=pts_html)
                     create_card(c4, "Average DPL Value", f"{avg_dpl:.2f}" if pd.notna(avg_dpl) else "N/A")
+
+                    # Execution KPI Gauge Chart
+                    st.markdown("#### 🚀 Execution Performance KPI")
+                    if pd.notna(tot_qty) and tot_qty > 0:
+                        fig_exec_kpi = go.Figure(go.Indicator(
+                            mode = "gauge+number+delta",
+                            value = exe_qty,
+                            title = {'text': "Execution Progress vs Target", 'font': {'size': 20, 'color': "white" if is_dark else "#2C3E50"}},
+                            number = {'font': {'size': 40, 'color': "white" if is_dark else "#2C3E50"}},
+                            delta = {'reference': tot_qty, 'increasing': {'color': "#2ecc71"}, 'decreasing': {'color': "#e74c3c"}},
+                            gauge = {
+                                'axis': {'range': [None, tot_qty], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
+                                'bar': {'color': "#00d2ff"},
+                                'bgcolor': "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)",
+                                'steps': [
+                                    {'range': [0, tot_qty*0.5], 'color': "rgba(231,76,60,0.3)"},
+                                    {'range': [tot_qty*0.5, tot_qty*0.8], 'color': "rgba(241,196,15,0.3)"},
+                                    {'range': [tot_qty*0.8, tot_qty], 'color': "rgba(46,204,113,0.3)"}
+                                ],
+                                'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': tot_qty}
+                            }
+                        ))
+                        fig_exec_kpi.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=300, margin=dict(l=20, r=20, t=50, b=20), font={'family': 'Montserrat'})
+                        st.plotly_chart(fig_exec_kpi, use_container_width=True, key=f"exec_kpi_{selected_comp}")
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                     
@@ -2756,7 +2652,7 @@ def render_dashboard():
                         fig_comp_trend = px.bar(monthly_comp, x='Month', y='Count', color=test_col, title="Monthly Compaction Volume", barmode='group', color_discrete_sequence=NEON_COLORS)
                         fig_comp_trend.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Tests:</b> %{y}')
                         fig_comp_trend = style_3d_glassy(fig_comp_trend, chart_type="bar")
-                        ch1.plotly_chart(fig_comp_trend, use_container_width=True)
+                        ch1.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_{selected_comp}")
                         
                         # Quality Pie Chart (Approval Rate)
                         if 'sample status' in compaction_df.columns:
@@ -2764,7 +2660,7 @@ def render_dashboard():
                             fig_comp_qual = px.pie(compaction_df, names='status_upper', title="Compaction Quality Yield", hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
                             fig_comp_qual.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Yield: %{percent}')
                             fig_comp_qual = style_3d_glassy(fig_comp_qual, chart_type="pie")
-                            ch2.plotly_chart(fig_comp_qual, use_container_width=True)
+                            ch2.plotly_chart(fig_comp_qual, use_container_width=True, key=f"comp_qual_{selected_comp}")
                             
                         # AI Insight Message (Gap Analysis)
                         monthly_total = compaction_df.groupby('Month').size().reset_index(name='Total')
@@ -2789,410 +2685,6 @@ def render_dashboard():
                             """, unsafe_allow_html=True)
                     else:
                         st.info("No Compaction (DPL or Plate Load) data found for this contractor to generate Executive Progress.")
-                
-                with tab_360:
-                    st.markdown(f"### 🌐 Executive Profile: `{selected_comp}`")
-                    
-                    battalion_col_360 = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
-                    zone_col_360 = next((c for c in comp_df_full.columns if 'ZONE' in c.upper()), None)
-                    elment_col_360 = next((c for c in comp_df_full.columns if 'ELMEN' in c.upper() or 'ELEMENT' in c.upper()), None)
-                    
-                    total_tests_360 = int(pd.to_numeric(comp_df_full[num_tests_col], errors='coerce').fillna(0).sum()) if num_tests_col else len(comp_df_full)
-                    battalions_count = comp_df_full[battalion_col_360].nunique() if battalion_col_360 else "N/A"
-                    zones_count = comp_df_full[zone_col_360].nunique() if zone_col_360 else "N/A"
-                    avg_dur_360 = pd.to_numeric(comp_df_full['DURATION'], errors='coerce').mean() if 'DURATION' in comp_df_full.columns else "N/A"
-                    
-                    c1, c2, c3, c4 = st.columns(4)
-                    create_card(c1, "Total Test Points", total_tests_360)
-                    create_card(c2, "Active Battalions", battalions_count)
-                    create_card(c3, "Active Zones", zones_count)
-                    create_card(c4, "Avg Delay (Days)", f"{avg_dur_360:.1f}" if pd.notna(avg_dur_360) else "N/A")
-                    
-                    if battalion_col_360 and zone_col_360:
-                        st.markdown("#### 🗺️ Spatial Footprint (Battalion ➔ Zone)")
-                        tree_df_360 = comp_df_full.copy()
-                        tree_df_360[battalion_col_360] = tree_df_360[battalion_col_360].fillna('Unknown Battalion').astype(str)
-                        tree_df_360[zone_col_360] = tree_df_360[zone_col_360].fillna('Unknown Zone').astype(str)
-                        tree_grouped = tree_df_360.groupby([battalion_col_360, zone_col_360]).size().reset_index(name='Submittals')
-                        fig_tree_360 = px.treemap(tree_grouped, path=[battalion_col_360, zone_col_360], values='Submittals', title=f"Workload Distribution for {selected_comp}", color='Submittals', color_continuous_scale='Blues')
-                        fig_tree_360 = style_3d_glassy(fig_tree_360, chart_type="treemap")
-                        st.plotly_chart(fig_tree_360, use_container_width=True)
-                        
-                    col_q1, col_q2 = st.columns(2)
-                    with col_q1:
-                        if battalion_col_360 and 'sample status' in comp_df_full.columns:
-                            st.markdown("#### ⚖️ Quality by Battalion")
-                            comp_df_full['status_upper'] = comp_df_full['sample status'].str.upper()
-                            qual_df = comp_df_full.groupby([battalion_col_360, 'status_upper']).size().reset_index(name='Count')
-                            fig_qual = px.bar(qual_df, x=battalion_col_360, y='Count', color='status_upper', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map=STATUS_COLORS)
-                            fig_qual = style_3d_glassy(fig_qual, chart_type="bar")
-                            st.plotly_chart(fig_qual, use_container_width=True)
-                            
-                    with col_q2:
-                        if elment_col_360:
-                            st.markdown("#### 🏗️ Workload by Element")
-                            el_df = comp_df_full.groupby(elment_col_360).size().reset_index(name='Count').sort_values('Count', ascending=False)
-                            fig_elment = px.bar(el_df.head(15), x=elment_col_360, y='Count', title="Top 15 Elements by Submittals", color=elment_col_360, color_discrete_sequence=NEON_COLORS)
-                            fig_elment = style_3d_glassy(fig_elment, chart_type="bar")
-                            st.plotly_chart(fig_elment, use_container_width=True)
-                        else:
-                            st.info("No Element column found for workload breakdown.")
-                                
-                    col_d1, col_d2 = st.columns(2)
-                    with col_d1:
-                        if 'Done BY' in comp_df_full.columns:
-                            st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
-                            off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count').sort_values('Count', ascending=False)
-                            off_df['Percent'] = (off_df['Count'] / off_df['Count'].sum() * 100).round(1)
-                            fig_off = px.bar(off_df, x='Done BY', y='Count', text='Count', title="Submittal Volume per Review Office", color='Done BY', color_discrete_sequence=NEON_COLORS)
-                            fig_off.update_traces(customdata=off_df['Percent'], hovertemplate='<b>Office:</b> %{x}<br>Count: %{y}<br>Percentage: %{customdata}%')
-                            fig_off = style_3d_glassy(fig_off, chart_type="bar")
-                            st.plotly_chart(fig_off, use_container_width=True)
-                            
-                    with col_d2:
-                        if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
-                            st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
-                            st.caption("Shows rejections ONLY IF the same Layer/Element wasn't approved later.")
-                            rejected_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                            accepted_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                            comp_df_rf = comp_df_full.copy()
-                            comp_df_rf['Loc_ID'] = comp_df_rf[elment_col_360].astype(str) + "_" + comp_df_rf['layer'].astype(str)
-                            approved_locs = set(comp_df_rf[accepted_mask]['Loc_ID'].unique())
-                            red_flags = comp_df_rf[rejected_mask & (~comp_df_rf['Loc_ID'].isin(approved_locs))]
-                            if not red_flags.empty:
-                                display_cols = ['serial', 'sample status', elment_col_360, 'layer']
-                                if battalion_col_360: display_cols.append(battalion_col_360)
-                                if 'Test Type' in red_flags.columns: display_cols.append('Test Type')
-                                existing_cols = [c for c in display_cols if c in red_flags.columns]
-                                st.dataframe(red_flags[existing_cols].head(100), use_container_width=True)
-                                st.caption(f"Total unresolved layers: {len(red_flags)}")
-                            else:
-                                st.success("✅ All rejected layers have been successfully re-tested and approved!")
-                        else:
-                            st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
-
-                    if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
-                        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                        st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
-                        
-                        rework_df = comp_df_full.copy()
-                        rejected_items = rework_df[rework_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
-                        
-                        if not rejected_items.empty:
-                            ledger_data = []
-                            total_delay_days = 0
-                            
-                            el_col = elment_col_360 if elment_col_360 else None
-                            
-                            for _, rej_row in rejected_items.iterrows():
-                                serial = rej_row.get('serial', 'N/A')
-                                rej_date = rej_row['Date( SUB)']
-                                layer = str(rej_row.get('layer', 'Unknown'))
-                                test_type = str(rej_row.get('Test Type', 'Unknown'))
-                                
-                                filter_mask = (
-                                    (rework_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])) & 
-                                    (rework_df['Date( SUB)'] >= rej_date) &
-                                    (rework_df['layer'].astype(str) == layer) &
-                                    (rework_df['Test Type'].astype(str) == test_type)
-                                )
-                                
-                                if el_col:
-                                    element_val = str(rej_row.get(el_col, 'Unknown'))
-                                    filter_mask = filter_mask & (rework_df[el_col].astype(str) == element_val)
-                                else:
-                                    element_val = "N/A"
-
-                                future_accepts = rework_df[filter_mask]
-                                
-                                if not future_accepts.empty:
-                                    acc_date = future_accepts['Date( SUB)'].min()
-                                    delay_days = (acc_date - rej_date).days
-                                    total_delay_days += delay_days
-                                    status_text = "Resolved ✅"
-                                else:
-                                    acc_date = pd.NaT
-                                    delay_days = 0
-                                    status_text = "Pending 🚨"
-                                    
-                                ledger_data.append({
-                                    "Rejected Serial": serial,
-                                    "Element": element_val,
-                                    "Layer": layer,
-                                    "Test Type": test_type,
-                                    "Rejection Date": rej_date.strftime('%Y-%m-%d') if pd.notna(rej_date) else 'N/A',
-                                    "Resolution Date": acc_date.strftime('%Y-%m-%d') if pd.notna(acc_date) else 'Not Resolved',
-                                    "Rework Delay (Days)": delay_days,
-                                    "Status": status_text
-                                })
-                            
-                            ledger_df = pd.DataFrame(ledger_data).sort_values(by=["Status", "Rework Delay (Days)"], ascending=[False, False])
-                            
-                            st.markdown(f"""
-                            <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <h3 style="margin: 0; color: #e74c3c; font-size: 18px;">Total Rework Time Leakage</h3>
-                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">Total project days lost tracking re-submissions for the same rejected layers/elements.</p>
-                                </div>
-                                <div style="font-size: 32px; font-weight: bold; color: #e74c3c;">{total_delay_days} Days Lost</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            st.dataframe(ledger_df, use_container_width=True)
-                        else:
-                            st.success(f"✅ No rejected submittals found for {selected_comp}. Zero rework leakage!")
-                    else:
-                        st.info("Requires 'sample status', 'layer', and 'Date( SUB)' columns to calculate rework delays.")
-
-                    if battalion_col_360 and elment_col_360 and 'Date ( test)' in comp_df_full.columns:
-                        st.markdown("#### ⏱️ Inter-Battalion Element Timeline Analysis")
-                        st.caption("Evaluates contractor speed and start/end dates for each element across different battalions.")
-                        time_df = comp_df_full.dropna(subset=['Date ( test)'])
-                        if not time_df.empty:
-                            timeline = time_df.groupby([battalion_col_360, elment_col_360]).agg(
-                                Start_Date=('Date ( test)', 'min'),
-                                End_Date=('Date ( test)', 'max'),
-                                Total_Submittals=('Date ( test)', 'count')
-                            ).reset_index()
-                            timeline['Duration (Days)'] = (timeline['End_Date'] - timeline['Start_Date']).dt.days
-                            timeline['Start_Date'] = timeline['Start_Date'].dt.strftime('%Y-%m-%d')
-                            timeline['End_Date'] = timeline['End_Date'].dt.strftime('%Y-%m-%d')
-                            timeline = timeline.sort_values([battalion_col_360, 'Start_Date'])
-                            st.dataframe(timeline, use_container_width=True)
-                        else:
-                            st.info("No valid dates found for timeline analysis.")
-
-                with tab_stockpile:
-                    if battalion_col_stock:
-                        avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
-                        selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats)
-                        
-                        if selected_bat != "All Battalions":
-                            comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
-                            b_key = fmt_b(selected_bat)
-                            req_qty = target_dict.get(f"{selected_comp.strip()}_{b_key}", np.nan)
-                        else:
-                            comp_bat_df = comp_df_full
-                            m_keys = [k for k in target_dict.keys() if k.startswith(selected_comp.strip() + "_")]
-                            if m_keys:
-                                req_qty = sum(target_dict[k] for k in m_keys)
-                            else:
-                                req_qty = np.nan
-                    else:
-                        comp_bat_df = comp_df_full
-                        req_qty = target_dict.get(selected_comp.strip(), np.nan)
-
-                    stock_df = comp_bat_df[comp_bat_df['Loc_Category'] == 'Stockpile']
-                    
-                    if num_tests_col:
-                        stock_count = int(pd.to_numeric(stock_df[num_tests_col], errors='coerce').fillna(0).sum())
-                        bottom_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'][num_tests_col], errors='coerce').fillna(0).sum())
-                        fill_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Fill'][num_tests_col], errors='coerce').fillna(0).sum())
-                    else:
-                        stock_count = len(stock_df)
-                        bottom_count = len(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'])
-                        fill_count = len(comp_bat_df[comp_bat_df['Loc_Category'] == 'Fill'])
-                    
-                    col_200 = next((c for c in stock_df.columns if '200' in str(c)), None)
-                    if col_200 and not stock_df.empty:
-                        clean_200 = stock_df[col_200].astype(str).str.replace('%', '', regex=False).str.strip()
-                        clean_200 = pd.to_numeric(clean_200, errors='coerce')
-                        avg_200 = clean_200.mean()
-                    else:
-                        avg_200 = np.nan
-                    
-                    cc1, cc2, cc3, cc4 = st.columns(4)
-                    create_card(cc1, "Stockpile Tests", stock_count)
-                    create_card(cc2, "Bottom Excavation Tests", bottom_count)
-                    create_card(cc3, "Fill Tests", fill_count)
-                    create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
-                    
-                    if pd.notna(req_qty) and req_qty > 0:
-                        req_qty_int = int(req_qty)
-                        diff = stock_count - req_qty_int
-                        progress_pct = min(100, (stock_count / req_qty_int) * 100) if req_qty_int > 0 else 100
-                        
-                        if progress_pct >= 90:
-                            prog_color = "#2ecc71" 
-                            status_color = "#2ecc71"
-                            status_icon = "✅"
-                        elif progress_pct >= 70:
-                            prog_color = "#f1c40f" 
-                            status_color = "#f1c40f"
-                            status_icon = "⚠️"
-                        else:
-                            prog_color = "#e74c3c" 
-                            status_color = "#e74c3c"
-                            status_icon = "🚨"
-
-                        if diff >= 0:
-                            status_msg = f"<span style='color: #2ecc71;'>{status_icon} Target Exceeded (+{diff} Tests)</span>"
-                            prog_color = "#2ecc71"
-                        else:
-                            status_msg = f"<span style='color: {status_color};'>{status_icon} Missing {abs(diff)} Tests ({progress_pct:.1f}%)</span>"
-                        
-                        st.markdown(f"""
-                        <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
-                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 20px; font-size: 18px; font-weight: bold;">🎯 Stockpile Target Achievement</h4>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: flex-end;">
-                                <span style="color: {ui['text_muted']}; font-size: 14px;">Target Required: <b style="color: {ui['text_main']}; font-size: 16px;">{req_qty_int}</b></span>
-                                <span style="color: #00d2ff; font-size: 14px;">Executed Tests: <b style="color: {ui['text_main']}; font-size: 16px;">{stock_count}</b></span>
-                                <span style="font-size: 14px; font-weight: bold; color: {ui['text_main']};">Status: {status_msg}</span>
-                            </div>
-                            <div class="prog-bg" style="height: 12px; background: rgba(127,140,141,0.2); border-radius: 10px; width: 100%; overflow: hidden;">
-                                <div class="prog-fill" style="width: {progress_pct}%; background: {prog_color}; height: 100%; border-radius: 10px; transition: width 1s ease-in-out;"></div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                        <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
-                            <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;">🎯 Stockpile Target Achievement</h4>
-                            <p style="color: {ui['text_muted']}; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                    if 'Date ( test)' in comp_bat_df.columns:
-                        time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
-                        time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
-                        fill_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Fill'].groupby('Month').size()
-                        stock_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Stockpile'].groupby('Month').size()
-
-                        if not fill_by_month.empty:
-                            peak_fill_month = fill_by_month.idxmax()
-                            peak_fill_val = fill_by_month.max()
-                            stock_in_peak = stock_by_month.get(peak_fill_month, 0)
-                            
-                            bat_key = selected_bat if battalion_col_stock else "all"
-                            scan_key = f"scan_{selected_comp}_{bat_key}"
-                            
-                            if scan_key not in st.session_state:
-                                st.session_state[scan_key] = False
-
-                            if not st.session_state[scan_key]:
-                                st.markdown("<br>", unsafe_allow_html=True)
-                                if st.button("🧠 Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
-                                    with st.container():
-                                        progress_bar = st.progress(0)
-                                        status_text = st.empty()
-                                        status_text.markdown(f"**<span style='color:#00d2ff;'>[1/3]</span> Scanning {total_requests_count:,} Submittal Logs...**", unsafe_allow_html=True)
-                                        time.sleep(1)
-                                        progress_bar.progress(33)
-                                        status_text.markdown("**<span style='color:#ffaa00;'>[2/3]</span> Correlating Fill layers with Stockpile sources...**", unsafe_allow_html=True)
-                                        time.sleep(1.2)
-                                        progress_bar.progress(66)
-                                        status_text.markdown("**<span style='color:#2ecc71;'>[3/3]</span> Generating Quality Traceability Insights...**", unsafe_allow_html=True)
-                                        time.sleep(1.2)
-                                        progress_bar.progress(100)
-                                        time.sleep(0.5)
-                                        st.session_state[scan_key] = True
-                                        st.rerun()
-                            
-                            if st.session_state[scan_key]:
-                                base_confidence = 75.0
-                                confidence_bonus = min(24.5, peak_fill_val * 0.6) 
-                                ai_confidence = round(base_confidence + confidence_bonus, 1)
-
-                                ai_ratio = stock_in_peak / peak_fill_val if peak_fill_val > 0 else 1
-                                
-                                has_target_qty = pd.notna(req_qty) and req_qty > 0
-                                
-                                if ai_ratio < 0.05:
-                                    status_level, status_color, status_bg, status_icon = "SEVERE DEFICIT", "#e74c3c", "rgba(231, 76, 60, 0.1)", "🚨"
-                                    quality_insight = f"Significant discrepancy detected. Fill operations ({peak_fill_val} tests) lack sufficient corresponding stockpile verifications, creating a gap in material quality traceability."
-                                    if has_target_qty:
-                                        samples_needed = max(1, int(peak_fill_val * 0.1))
-                                        directive = f"ACTION REQUIRED: Request contractor to submit at least {samples_needed} Stockpile samples to cover the executed fill volume."
-                                    else:
-                                        directive = f"SYSTEM.HALT: Cannot calculate required samples. No Target 'Required Quantity' is registered for this contractor. Update records to enable exact sampling estimates."
-                                elif ai_ratio < 0.15:
-                                    status_level, status_color, status_bg, status_icon = "COVERAGE GAP", "#f1c40f", "rgba(241, 196, 15, 0.1)", "⚠️"
-                                    quality_insight = f"Material approval rate is lagging behind fill execution speed. A minor gap in material source validation is forming."
-                                    directive = f"ADVISORY: Schedule routine stockpile sampling to restore balance with field operations."
-                                else:
-                                    status_level, status_color, status_bg, status_icon = "OPTIMAL COVERAGE", "#2ecc71", "rgba(46, 204, 113, 0.1)", "✅"
-                                    quality_insight = f"Stockpile testing frequency is well-aligned with the current fill execution volume."
-                                    directive = f"MAINTAIN: Continue current testing and approval workflow."
-
-                                st.markdown(f"""
-                                <style>
-                                    @keyframes scanline {{ 0% {{ transform: translateY(-10px); opacity: 0; }} 50% {{ opacity: 1; }} 100% {{ transform: translateY(0); opacity: 1; }} }}
-                                    .ai-terminal {{ background: linear-gradient(145deg, #0a1118, {status_bg}); border: 1px solid rgba(255,255,255,0.05); border-left: 5px solid {status_color}; border-radius: 12px; padding: 25px; margin: 20px 0; box-shadow: 0 0 20px {status_bg}; animation: scanline 0.8s ease-out forwards; }}
-                                    .ai-badge {{ background: rgba(0,0,0,0.4); border: 1px solid {ui['border_color']}; padding: 5px 12px; border-radius: 20px; font-size: 12px; color: #00d2ff; }}
-                                </style>
-                                <div class="ai-terminal">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
-                                        <h3 style="color: {status_color}; margin: 0; display: flex; align-items: center; font-size: 20px;"><span style="font-size: 24px; margin-right: 10px;">🤖</span> Generative AI Quality Auditor</h3>
-                                        <div style="display: flex; gap: 10px;">
-                                            <span class="ai-badge">⚡ Data Confidence: {ai_confidence}%</span>
-                                            <span class="ai-badge" style="color: {status_color}; border-color: {status_color}; font-weight: bold;">{status_icon} Status: {status_level}</span>
-                                        </div>
-                                    </div>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
-                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #00d2ff;">
-                                            <div style="color: #00d2ff; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> FIELD_DATA.DETECT()</div>
-                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">Peak filling activity detected in <b style="color:white;">{peak_fill_month}</b> with <b style="color:#00d2ff;">{peak_fill_val} submittals</b>.<br>Correlating approved Stockpile volume during this period is <b style="color:{status_color};">{stock_in_peak}</b>.</div>
-                                        </div>
-                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #ffaa00;">
-                                            <div style="color: #ffaa00; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QUALITY_GAP.ANALYZE()</div>
-                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{quality_insight}</div>
-                                        </div>
-                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid {status_color};">
-                                            <div style="color: {status_color}; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QC_ACTION.RECOMMEND()</div>
-                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6; font-weight: 500;">{directive}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                col_reset, _ = st.columns([0.2, 0.8])
-                                if col_reset.button("🔄 Reset AI Auditor", key=f"reset_{scan_key}"):
-                                    st.session_state[scan_key] = False
-                                    st.rerun()
-
-                    ch_col1, ch_col2 = st.columns(2)
-                    with ch_col1:
-                        if 'Classification' in stock_df.columns and not stock_df.empty:
-                            class_counts = stock_df['Classification'].value_counts().reset_index()
-                            class_counts.columns = ['Classification', 'Count']
-                            fig_class = px.pie(class_counts, names='Classification', values='Count', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
-                            fig_class.update_traces(textinfo='label+percent', hovertemplate='<b>Class:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
-                            fig_class = style_3d_glassy(fig_class, chart_type="pie")
-                            st.plotly_chart(fig_class, use_container_width=True)
-                        else:
-                            st.info(f"No Stockpile classification data logged.")
-                            
-                    with ch_col2:
-                        if 'sample status' in stock_df.columns and not stock_df.empty:
-                            stock_df['status_upper'] = stock_df['sample status'].str.upper()
-                            fig_stock_status = px.pie(stock_df, names='status_upper', title=f"Stockpile Approval/Rejection Rate", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
-                            fig_stock_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
-                            fig_stock_status = style_3d_glassy(fig_stock_status, chart_type="pie")
-                            st.plotly_chart(fig_stock_status, use_container_width=True)
-                        else:
-                            st.info(f"No Stockpile status data logged.")
-
-                    ch_col3, ch_col4 = st.columns(2)
-                    with ch_col3:
-                        if 'Date ( test)' in stock_df.columns and not stock_df.empty:
-                            time_df = stock_df.dropna(subset=['Date ( test)']).copy()
-                            time_df['Month'] = time_df['Date ( test)'].dt.strftime('%b %Y')
-                            time_df['Month_Sort'] = time_df['Date ( test)'].dt.to_period('M')
-                            monthly_stock = time_df.groupby(['Month_Sort', 'Month']).size().reset_index(name='Count').sort_values('Month_Sort')
-                            fig_timeline = px.bar(monthly_stock, x='Month', y='Count', title="Stockpile Tests Timeline", text_auto=True, color_discrete_sequence=['#ffaa00'])
-                            fig_timeline = style_3d_glassy(fig_timeline, chart_type="bar")
-                            st.plotly_chart(fig_timeline, use_container_width=True)
-                        else:
-                            st.info("No Date data available to show Stockpile timeline.")
-
-                    with ch_col4:
-                        if 'sample status' in comp_bat_df.columns and not comp_bat_df.empty:
-                            comp_bat_df['status_upper'] = comp_bat_df['sample status'].str.upper()
-                            fig_status = px.pie(comp_bat_df, names='status_upper', title=f"Overall Approval Rate (All Tests)", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
-                            fig_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
-                            fig_status = style_3d_glassy(fig_status, chart_type="pie")
-                            st.plotly_chart(fig_status, use_container_width=True)
-                        else:
-                            st.info(f"No overall status data logged.")
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -3342,7 +2834,7 @@ def render_dashboard():
                                     class_counts.columns = ['Classification', 'Count']
                                     fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True, color_discrete_sequence=NEON_COLORS)
                                     fig_sc = style_3d_glassy(fig_sc, chart_type="bar")
-                                    st.plotly_chart(fig_sc, use_container_width=True)
+                                    st.plotly_chart(fig_sc, use_container_width=True, key=f"sc_{selected_bh}")
                             else:
                                 st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
                         st.divider()
@@ -3355,7 +2847,7 @@ def render_dashboard():
                             fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], title=f"Who did What & Where in {selected_bh}", color='Done BY', color_discrete_sequence=NEON_COLORS)
                             fig_matrix.update_traces(textinfo="label+value")
                             fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
-                            st.plotly_chart(fig_matrix, use_container_width=True)
+                            st.plotly_chart(fig_matrix, use_container_width=True, key=f"mat_{selected_bh}")
                         st.divider()
 
                         b_col1, b_col2 = st.columns(2)
@@ -3365,7 +2857,7 @@ def render_dashboard():
                                 fig_ep = px.pie(bh_df, names='status_upper', title=f"Status Breakdown for {selected_bh}", hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
                                 fig_ep.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
                                 fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
-                                st.plotly_chart(fig_ep, use_container_width=True)
+                                st.plotly_chart(fig_ep, use_container_width=True, key=f"ep_{selected_bh}")
                         with b_col2:
                             if 'layer' in bh_df.columns:
                                 layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
@@ -3373,14 +2865,14 @@ def render_dashboard():
                                 layer_reqs = layer_reqs.sort_values('Layer_Num')
                                 fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
                                 fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
-                                st.plotly_chart(fig_eb, use_container_width=True)
+                                st.plotly_chart(fig_eb, use_container_width=True, key=f"eb_{selected_bh}")
 
                         if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
                             trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
                             if not trend_df.empty:
                                 fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}", color_discrete_sequence=NEON_COLORS)
                                 fig_el = style_3d_glassy(fig_el, chart_type="line")
-                                st.plotly_chart(fig_el, use_container_width=True)
+                                st.plotly_chart(fig_el, use_container_width=True, key=f"el_{selected_bh}")
                         
                         with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
                             st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
@@ -3413,7 +2905,6 @@ def main():
     if not st.session_state["authenticated"]:
         render_login_screen()
     else:
-        # Navigation Logic
         current_page = st.session_state.get("current_page", "home")
         
         if current_page == "home":
@@ -3421,7 +2912,6 @@ def main():
         elif current_page == "dashboard":
             render_dashboard()
         elif current_page == "analytics":
-            # --- NEW ADDITION: Allow upload directly if empty ---
             if "analytics_df" not in st.session_state:
                 st.markdown("### 📥 Welcome to Advanced Analytics Hub")
                 st.info("You can upload your dataset directly here to begin analysis.")
@@ -3429,7 +2919,6 @@ def main():
                 if hub_init_upload is not None:
                     st.session_state["analytics_df"] = pd.read_csv(hub_init_upload)
                     st.rerun()
-            # ----------------------------------------------------
             
             if "analytics_df" in st.session_state:
                 render_analytics_hub(st.session_state["analytics_df"])
