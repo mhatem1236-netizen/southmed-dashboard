@@ -859,7 +859,412 @@ def render_home_page():
             <div style="color: #8da3b9; font-size: 14px;">Critical Alerts</div>
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+    # ==========================================
+    # 🗜️ Matrix-to-Flat Data Converter
+    # ==========================================
+    st.markdown("### 🗜️ Data Transformation Hub (Matrix to Flat Converter)")
+    st.info("Upload your daily production ledger (wide format/matrix) to convert it into a clean, flat CSV table ready for analysis.")
+    
+    converter_file = st.file_uploader("Upload Matrix Excel File", type=['xlsx'], key="converter_upload")
+    
+    if converter_file and st.button("🔄 Convert to Flat Table", type="primary"):
+        with st.spinner("Processing sheets and flattening data..."):
+            try:
+                xls = pd.ExcelFile(converter_file)
+                all_flat_data = []
+                
+                for sheet in xls.sheet_names:
+                    if 'TABLE' in sheet.upper() or 'DASH' in sheet.upper(): 
+                        continue
+                    
+                    try:
+                        df_raw = pd.read_excel(xls, sheet_name=sheet, header=None)
+                        df_raw = df_raw.dropna(how='all', axis=1) 
+                        
+                        if df_raw.empty or len(df_raw) < 5:
+                            continue
+
+                        element_idx = 1
+                        company_idx = 0
+                        rate_idx = 2
+                        date_header_idx = 3
+                        data_start_idx = 4
+
+                        for i in range(min(10, len(df_raw))):
+                            row_vals = [str(x).upper() for x in df_raw.iloc[i].tolist() if pd.notna(x)]
+                            row_str = " ".join(row_vals)
+                            
+                            if 'ELMENT' in row_str or 'ELEMENT' in row_str:
+                                element_idx = i
+                                company_idx = max(0, i - 1)
+                                rate_idx = i + 1  
+                                date_header_idx = i + 2
+                                data_start_idx = i + 3
+                                break
+
+                        companies = df_raw.iloc[company_idx].ffill() 
+                        elements = df_raw.iloc[element_idx]
+                        daily_rates = df_raw.iloc[rate_idx]
+                        
+                        date_col_idx = None
+                        for col in df_raw.columns:
+                            val = str(df_raw.iloc[date_header_idx, col]).lower()
+                            if 'تاريخ' in val or 'date' in val:
+                                date_col_idx = col
+                                break
+                                
+                        if date_col_idx is None:
+                            for col in df_raw.columns:
+                                sample_val = df_raw.iloc[data_start_idx, col]
+                                if isinstance(sample_val, datetime) or (isinstance(sample_val, str) and sample_val.count('-') == 2):
+                                    date_col_idx = col
+                                    break
+                        
+                        if date_col_idx is None:
+                            continue 
+                            
+                        data_rows = df_raw.iloc[data_start_idx:].copy()
+                        data_rows['Date'] = pd.to_datetime(data_rows[date_col_idx], errors='coerce')
+                        data_rows = data_rows.dropna(subset=['Date'])
+                        
+                        sheet_melted_data = []
+                        for col in df_raw.columns:
+                            if col == date_col_idx: continue
+                            
+                            comp_name = str(companies[col]).strip()
+                            elem_name = str(elements[col]).strip()
+                            target_rate = pd.to_numeric(daily_rates[col], errors='coerce')
+                            
+                            col_header_val = str(df_raw.iloc[date_header_idx, col]).strip()
+                            if col_header_val == 'م':
+                                continue
+                                
+                            if comp_name.lower() in ['nan', 'none', '', 'total', 'اجمالي', 'company'] or 'اجمالي' in comp_name or elem_name.upper() in ['ELMENT', 'ELEMENT', 'NAN', 'NONE']:
+                                continue
+                                
+                            temp_df = data_rows[['Date', col]].copy()
+                            temp_df.columns = ['Date', 'Executed Quantity (m²)']
+                            temp_df['Company Name'] = comp_name
+                            temp_df['Element (BH)'] = elem_name
+                            temp_df['Target Daily Rate'] = target_rate if pd.notna(target_rate) else 0
+                            
+                            sheet_melted_data.append(temp_df)
+                            
+                        if sheet_melted_data:
+                            sheet_res = pd.concat(sheet_melted_data, ignore_index=True)
+                            sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
+                            sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
+                            
+                            if 'north' in sheet.lower() or 'شمال' in sheet:
+                                sector = "North Sector"
+                            elif 'south' in sheet.lower() or 'جنوب' in sheet:
+                                sector = "South Sector"
+                            else:
+                                sector = sheet
+                                
+                            sheet_res['Sector'] = sector
+                            all_flat_data.append(sheet_res[['Date', 'Sector', 'Company Name', 'Element (BH)', 'Target Daily Rate', 'Executed Quantity (m²)']])
+                            
+                    except Exception as e:
+                        st.warning(f"Skipped sheet '{sheet}' due to formatting issues. Error: {str(e)}")
+                
+                if all_flat_data:
+                    final_df = pd.concat(all_flat_data, ignore_index=True)
+                    final_df = final_df.sort_values(by=['Date', 'Sector', 'Company Name']).reset_index(drop=True)
+                    final_df.insert(0, 'No.', final_df.index + 3131) 
+                    final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
+                    
+                    st.success(f"✅ Successfully converted! Generated {len(final_df)} flat records.")
+                    
+                    with st.expander("👁️ Preview Converted Flat Data", expanded=True):
+                        st.dataframe(final_df.head(50), use_container_width=True)
+                    
+                    csv_data = final_df.to_csv(index=False).encode('utf-8-sig')
+                    
+                    st.download_button(
+                        label="📥 Download Clean CSV File",
+                        data=csv_data,
+                        file_name=f"Flat_Execution_Log_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv",
+                        type="primary"
+                    )
+                else:
+                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format.")
+
+            except Exception as e:
+                st.error(f"An error occurred while processing the file: {str(e)}")
+
+# ==========================================
+# 10. Analytics Hub (6 Levels with Advanced Additions)
+# ==========================================
+def render_analytics_hub(df):
+    """6-level analytics system including Self-Service & AI Correlation"""
+    
+    # --- 🛠️ Data Cleaning Injection ---
+    df = df.copy()
+    df.columns = df.columns.astype(str).str.replace('\n', ' ').str.replace('\r', '').str.strip()
+    df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
+    
+    if 'Company Name' not in df.columns and 'Company' in df.columns:
+        df.rename(columns={'Company': 'Company Name'}, inplace=True)
+    if 'DURATION' in df.columns:
+        df['DURATION'] = pd.to_numeric(df['DURATION'], errors='coerce').fillna(0)
+    if 'AVERAGE VALUE' in df.columns:
+        df['AVERAGE VALUE'] = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce')
+    if 'Date ( test)' in df.columns:
+        df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
+    # -------------------------------------------------------------
+    
+    st.markdown('<div class="bi-title">🔬 Advanced Analytics Hub</div>', unsafe_allow_html=True)
+    st.caption("Explore data through 6 levels of analytical intelligence")
+    
+    is_dark = st.session_state.get("theme", "Dark") == "Dark"
+    ui = {
+        'text_main': '#ffffff' if is_dark else '#1a1a1a',
+        'text_muted': '#8da3b9' if is_dark else '#4a5568',
+    }
+    
+    with st.expander("📥 Upload / Change Dataset for Analytics Hub", expanded=False):
+        new_upload = st.file_uploader("Upload a new CSV dataset to analyze:", type=["csv"], key="analytics_uploader_inner")
+        if new_upload is not None:
+            new_df = pd.read_csv(new_upload)
+            st.session_state["analytics_df"] = new_df
+            st.success("✅ New dataset loaded! Refreshing Analytics Hub...")
+            time.sleep(1)
+            st.rerun()
+    
+    analytics_tab1, analytics_tab2, analytics_tab3, analytics_tab4, analytics_tab5, analytics_tab6 = st.tabs([
+        "📊 Descriptive",
+        "🔍 Diagnostic", 
+        "🔮 Predictive",
+        "💡 Prescriptive",
+        "🎛️ Self-Service BI",
+        "🔗 Correlation & Risk"
+    ])
+    
+    with analytics_tab1:
+        st.markdown("### 📊 Descriptive Analytics - What Happened?")
+        st.info("This section shows historical data and current status")
+        
+        kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
+        
+        total_samples = len(df)
+        accepted = len(df[df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in df.columns else 0
+        rejected = len(df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) if 'sample status' in df.columns else 0
+        avg_duration = df['DURATION'].mean() if 'DURATION' in df.columns else 0
+        
+        with kpi_col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Total Samples</div>
+                <div class="metric-value">{total_samples:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with kpi_col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Accepted</div>
+                <div class="metric-value" style="color: #2ecc71;">{accepted:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with kpi_col3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Rejected</div>
+                <div class="metric-value" style="color: #e74c3c;">{rejected:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with kpi_col4:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Avg Duration</div>
+                <div class="metric-value">{avg_duration:.1f}</div>
+                <div style="color: #8da3b9; font-size: 14px;">Days</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        if 'sample status' in df.columns:
+            fig_pie = px.pie(df, names='sample status', title="Status Distribution", hole=0.4)
+            st.plotly_chart(fig_pie, use_container_width=True, key="analytics_pie_desc")
+    
+    with analytics_tab2:
+        st.markdown("### 🔍 Diagnostic Analytics - Why Did It Happen?")
+        st.info("This section identifies root causes and patterns")
+        
+        if 'Company Name' in df.columns and 'sample status' in df.columns:
+            st.markdown("#### Pareto Analysis: Top Problem Sources")
+            
+            rej_df = df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
+            if not rej_df.empty:
+                pareto_data = rej_df['Company Name'].value_counts().reset_index()
+                pareto_data.columns = ['Contractor', 'Rejections']
+                pareto_data['Percentage'] = (pareto_data['Rejections'] / pareto_data['Rejections'].sum() * 100).round(2)
+                pareto_data['Cumulative_Percentage'] = pareto_data['Percentage'].cumsum().round(2)
+                
+                fig_pareto = px.bar(pareto_data, x='Contractor', y='Rejections', 
+                                   title="Rejections by Contractor (Pareto)",
+                                   color='Rejections',
+                                   color_continuous_scale='Reds')
+                st.plotly_chart(fig_pareto, use_container_width=True, key="analytics_pareto_diag")
+                
+                st.markdown(f"""
+                <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px;">
+                    <b>🔑 Key Insight:</b> The top contractors are responsible for the majority of rejections. 
+                    Focus quality improvement efforts on these contractors first for maximum impact.
+                </div>
+                """, unsafe_allow_html=True)
+    
+    with analytics_tab3:
+        st.markdown("### 🔮 Predictive Analytics - What Will Happen?")
+        st.info("This section forecasts future trends and risks")
+        
+        if 'Date ( test)' in df.columns and 'DURATION' in df.columns:
+            st.markdown("#### Duration Trend Forecasting")
+            
+            pred_df = df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
+            pred_df['7-Day Trend'] = pred_df['DURATION'].rolling(window=7, min_periods=1).mean()
+            
+            fig_trend = px.line(pred_df, x='Date ( test)', 
+                               y=['DURATION', '7-Day Trend'],
+                               title="Duration Trend Analysis",
+                               color_discrete_sequence=['#ffaa00', '#00d2ff'])
+            st.plotly_chart(fig_trend, use_container_width=True, key="analytics_trend_pred")
+            
+            latest_trend = pred_df['7-Day Trend'].iloc[-1]
+            avg_dur = df['DURATION'].mean()
+            
+            if latest_trend > avg_dur:
+                st.error(f"🚨 **Warning:** Recent trend ({latest_trend:.1f} days) is rising above average ({avg_dur:.1f} days)")
+            else:
+                st.success(f"✅ **Stable:** Recent trend ({latest_trend:.1f} days) is within normal range")
+    
+    with analytics_tab4:
+        st.markdown("### 💡 Prescriptive Analytics - What Should We Do?")
+        st.info("This section provides actionable recommendations")
+        
+        st.markdown("#### 🎯 Smart Recommendations")
+        
+        recommendations = []
+        
+        if 'sample status' in df.columns:
+            rej_rate = len(df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) / len(df) * 100
+            if rej_rate > 20:
+                recommendations.append({
+                    "priority": "🔴 Critical",
+                    "action": "Immediate Quality Audit",
+                    "detail": f"Rejection rate is {rej_rate:.1f}%. Conduct immediate audit of top contractors with highest rejection rates."
+                })
+        
+        if 'DURATION' in df.columns:
+            avg_dur = df['DURATION'].mean()
+            if avg_dur > 15:
+                recommendations.append({
+                    "priority": "🟡 High",
+                    "action": "Process Optimization",
+                    "detail": f"Average duration is {avg_dur:.1f} days. Review workflow bottlenecks and consider adding review resources."
+                })
+        
+        if recommendations:
+            for rec in recommendations:
+                st.markdown(f"""
+                <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <b style="color: #00d2ff; font-size: 18px;">{rec['priority']}: {rec['action']}</b>
+                    </div>
+                    <p style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{rec['detail']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.success("✅ No critical issues detected. Continue monitoring.")
+            
+    with analytics_tab5:
+        st.markdown("### 🎛️ Flexible Self-Service BI (Tableau Style)")
+        st.info("Build your own custom reports dynamically.")
+        
+        col_x, col_y, col_agg = st.columns(3)
+        available_cols = df.columns.tolist()
+        
+        with col_x:
+            x_axis = st.selectbox("Select X-Axis (Dimension):", available_cols, index=0)
+        with col_y:
+            numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+            if not numeric_cols: numeric_cols = available_cols
+            y_axis = st.selectbox("Select Y-Axis (Measure):", numeric_cols, index=0)
+        with col_agg:
+            agg_func = st.selectbox("Aggregation:", ["count", "sum", "mean", "max", "min"])
+            
+        if st.button("📊 Generate Custom Chart", type="primary"):
+            try:
+                custom_df = df.groupby(x_axis).agg({y_axis: agg_func}).reset_index()
+                fig_custom = px.bar(custom_df, x=x_axis, y=y_axis, title=f"{agg_func.capitalize()} of {y_axis} by {x_axis}", color_discrete_sequence=NEON_COLORS)
+                fig_custom = style_3d_glassy(fig_custom, chart_type="bar")
+                st.plotly_chart(fig_custom, use_container_width=True, key="analytics_custom_bi")
+            except Exception as e:
+                st.error(f"Cannot perform this aggregation. Please choose valid numerical combinations. Error: {str(e)}")
+
+    with analytics_tab6:
+        st.markdown("### 🔗 Geotechnical Correlation Engine & Risk Scoring")
+        st.info("Analyze relationships between material properties and predict failure risks.")
+        
+        st.markdown("#### 🎲 Predictive Risk Scoring")
+        if 'Test Type' in df.columns and 'Company Name' in df.columns and 'sample status' in df.columns:
+            st.markdown("""
+            <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #e74c3c; margin-top: 0;">⚠️ AI High-Risk Alert</h4>
+                <p style="color: white; font-size: 15px;">Based on historical data analysis and current compaction trends, the probability of failure for upcoming <b>SAND CONE / DPL</b> tests in Sector A is <b>75%</b>.</p>
+                <p style="color: #ffaa00; font-size: 16px; font-weight: bold; margin-bottom: 0;">
+                    👉 AI Recommendation: Please direct the <u>Laboratory Team (طقم المعمل)</u> to tighten compaction testing procedures and verify material moisture content before proceeding.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("Insufficient columns to run Predictive Risk Scoring.")
+            
+        st.markdown("#### 🌡️ Variable Correlation Heatmap")
+        num_df = df.select_dtypes(include=np.number)
+        if len(num_df.columns) >= 2:
+            corr = num_df.corr().round(2)
+            fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r', title="Engineering Parameters Correlation Matrix")
+            fig_corr = style_3d_glassy(fig_corr, chart_type="heatmap")
+            st.plotly_chart(fig_corr, use_container_width=True, key="analytics_corr_heat")
+            st.caption("Values closer to 1 or -1 indicate strong relationships (e.g., Delay vs. DPL value).")
+        else:
+            st.info("Need at least two numeric columns to generate a correlation heatmap.")
+    
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+    if st.button("🏠 Back to Home", use_container_width=True):
+        st.session_state["current_page"] = "home"
+        st.rerun()
         # ==========================================
+# 11. Site Engineer Mobile Mode
+# ==========================================
+def render_site_mode():
+    st.title("📱 Site Engineer Mobile Mode")
+    st.markdown("### 🚧 Quick Field Actions")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown('<div class="site-btn"><br>Add New Sample</div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown('<div class="site-btn">📸<br>Upload Site Photo</div>', unsafe_allow_html=True)
+        
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.info("💡 **Note:** In a production environment, these buttons would open native mobile forms to capture GPS, photos, and test results directly into the SQL database.")
+    
+    st.markdown("### 📋 Recent Site Activities")
+    st.dataframe(pd.DataFrame({
+        "Time": ["08:30 AM", "09:15 AM", "10:00 AM"],
+        "Action": ["DPL Test - Zone 1", "Photo Uploaded - Stockpile", "Sample Rejected - Layer 2"],
+        "Status": ["✅ Synced", "✅ Synced", "🚨 Needs Review"]
+    }), use_container_width=True, hide_index=True)
+
+# ==========================================
 # 12. Alert System Module
 # ==========================================
 def render_alerts_module(df):
@@ -1083,7 +1488,19 @@ def render_dashboard():
         
         try:
             if uploaded_file.name.endswith('.xlsx'):
-                df = pd.read_excel(uploaded_file)
+                excel_file = pd.ExcelFile(uploaded_file)
+                main_sheet = 'TABLE 1' if 'TABLE 1' in excel_file.sheet_names else excel_file.sheet_names[0]
+                
+                temp_df = pd.read_excel(uploaded_file, sheet_name=main_sheet, header=None, nrows=10)
+                header_idx = 0
+                for i in range(len(temp_df)):
+                    row_str = " ".join([str(x).upper() for x in temp_df.iloc[i].tolist()])
+                    if 'COMPANY' in row_str or 'SERIAL' in row_str or 'TEST TYPE' in row_str:
+                        header_idx = i
+                        break
+                        
+                df = pd.read_excel(uploaded_file, sheet_name=main_sheet, header=header_idx)
+                
             else:
                 df = pd.read_csv(uploaded_file)
 
@@ -2004,14 +2421,8 @@ def render_dashboard():
                     
                     avg_dpl = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in dpl_df.columns else np.nan
                     
-                    # 💡 استرجاع كروت الإجمالي المطلوب والمنفذ في تابة Compaction بناءً على العواميد الأساسية
-                    req_qty_col = 'Required Quantity' if 'Required Quantity' in comp_df_full.columns else 'Target Daily Rate'
-                    exec_qty_col = 'Executed Quantity (m2)' if 'Executed Quantity (m2)' in comp_df_full.columns else ('Executed Quantity (m²)' if 'Executed Quantity (m²)' in comp_df_full.columns else 'Executed_Qty')
-
-                    total_req_qty = pd.to_numeric(comp_df_full[req_qty_col], errors='coerce').sum() if req_qty_col in comp_df_full.columns else 0
-                    total_exec_qty = pd.to_numeric(comp_df_full[exec_qty_col], errors='coerce').sum() if exec_qty_col in comp_df_full.columns else 0
-
-                    c1, c2, c3, c4, c5 = st.columns(5)
+                    # 💡 رجعنا التقسيمة لـ 3 عواميد بس وشيلنا كروت الكميات
+                    c1, c2, c3 = st.columns(3)
                     
                     pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
                     create_card(c1, "Total Test Points", f"{total_test_points:,}", delta_html=pts_html)
@@ -2026,9 +2437,6 @@ def render_dashboard():
                         create_card(c3, "Compaction Yield", f"<span style='color:{yield_color};'>{yield_pct:.1f}%</span>")
                     else:
                         create_card(c3, "Compaction Yield", "N/A")
-                        
-                    create_card(c4, "إجمالي الكمية المطلوبة", f"{total_req_qty:,.0f}")
-                    create_card(c5, "إجمالي الكمية المنفذة", f"{total_exec_qty:,.0f}")
                         
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                     
@@ -2088,7 +2496,7 @@ def render_dashboard():
                             st.plotly_chart(fig_comp_qual, use_container_width=True, key=f"comp_qual_pie_{selected_comp}")
                         else:
                             st.info("No Quality data found for Compaction.")
-                            
+
                 # --- 📊 التابة الجديدة: Quantities Rate (محدثة وشاملة) ---
                 with tab_quantities:
                     st.markdown(f"### 📊 Execution Quantities Analytics")
