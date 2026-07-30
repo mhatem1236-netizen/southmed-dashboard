@@ -859,412 +859,9 @@ def render_home_page():
             <div style="color: #8da3b9; font-size: 14px;">Critical Alerts</div>
         </div>
         """, unsafe_allow_html=True)
-
-    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-    # ==========================================
-    # 🗜️ Matrix-to-Flat Data Converter
-    # ==========================================
-    st.markdown("### 🗜️ Data Transformation Hub (Matrix to Flat Converter)")
-    st.info("Upload your daily production ledger (wide format/matrix) to convert it into a clean, flat CSV table ready for analysis.")
-    
-    converter_file = st.file_uploader("Upload Matrix Excel File", type=['xlsx'], key="converter_upload")
-    
-    if converter_file and st.button("🔄 Convert to Flat Table", type="primary"):
-        with st.spinner("Processing sheets and flattening data..."):
-            try:
-                xls = pd.ExcelFile(converter_file)
-                all_flat_data = []
-                
-                for sheet in xls.sheet_names:
-                    if 'TABLE' in sheet.upper() or 'DASH' in sheet.upper(): 
-                        continue
-                    
-                    try:
-                        df_raw = pd.read_excel(xls, sheet_name=sheet, header=None)
-                        df_raw = df_raw.dropna(how='all', axis=1) 
-                        
-                        if df_raw.empty or len(df_raw) < 5:
-                            continue
-
-                        element_idx = 1
-                        company_idx = 0
-                        rate_idx = 2
-                        date_header_idx = 3
-                        data_start_idx = 4
-
-                        for i in range(min(10, len(df_raw))):
-                            row_vals = [str(x).upper() for x in df_raw.iloc[i].tolist() if pd.notna(x)]
-                            row_str = " ".join(row_vals)
-                            
-                            if 'ELMENT' in row_str or 'ELEMENT' in row_str:
-                                element_idx = i
-                                company_idx = max(0, i - 1)
-                                rate_idx = i + 1  
-                                date_header_idx = i + 2
-                                data_start_idx = i + 3
-                                break
-
-                        companies = df_raw.iloc[company_idx].ffill() 
-                        elements = df_raw.iloc[element_idx]
-                        daily_rates = df_raw.iloc[rate_idx]
-                        
-                        date_col_idx = None
-                        for col in df_raw.columns:
-                            val = str(df_raw.iloc[date_header_idx, col]).lower()
-                            if 'تاريخ' in val or 'date' in val:
-                                date_col_idx = col
-                                break
-                                
-                        if date_col_idx is None:
-                            for col in df_raw.columns:
-                                sample_val = df_raw.iloc[data_start_idx, col]
-                                if isinstance(sample_val, datetime) or (isinstance(sample_val, str) and sample_val.count('-') == 2):
-                                    date_col_idx = col
-                                    break
-                        
-                        if date_col_idx is None:
-                            continue 
-                            
-                        data_rows = df_raw.iloc[data_start_idx:].copy()
-                        data_rows['Date'] = pd.to_datetime(data_rows[date_col_idx], errors='coerce')
-                        data_rows = data_rows.dropna(subset=['Date'])
-                        
-                        sheet_melted_data = []
-                        for col in df_raw.columns:
-                            if col == date_col_idx: continue
-                            
-                            comp_name = str(companies[col]).strip()
-                            elem_name = str(elements[col]).strip()
-                            target_rate = pd.to_numeric(daily_rates[col], errors='coerce')
-                            
-                            col_header_val = str(df_raw.iloc[date_header_idx, col]).strip()
-                            if col_header_val == 'م':
-                                continue
-                                
-                            if comp_name.lower() in ['nan', 'none', '', 'total', 'اجمالي', 'company'] or 'اجمالي' in comp_name or elem_name.upper() in ['ELMENT', 'ELEMENT', 'NAN', 'NONE']:
-                                continue
-                                
-                            temp_df = data_rows[['Date', col]].copy()
-                            temp_df.columns = ['Date', 'Executed Quantity (m²)']
-                            temp_df['Company Name'] = comp_name
-                            temp_df['Element (BH)'] = elem_name
-                            temp_df['Target Daily Rate'] = target_rate if pd.notna(target_rate) else 0
-                            
-                            sheet_melted_data.append(temp_df)
-                            
-                        if sheet_melted_data:
-                            sheet_res = pd.concat(sheet_melted_data, ignore_index=True)
-                            sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
-                            sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
-                            
-                            if 'north' in sheet.lower() or 'شمال' in sheet:
-                                sector = "North Sector"
-                            elif 'south' in sheet.lower() or 'جنوب' in sheet:
-                                sector = "South Sector"
-                            else:
-                                sector = sheet
-                                
-                            sheet_res['Sector'] = sector
-                            all_flat_data.append(sheet_res[['Date', 'Sector', 'Company Name', 'Element (BH)', 'Target Daily Rate', 'Executed Quantity (m²)']])
-                            
-                    except Exception as e:
-                        st.warning(f"Skipped sheet '{sheet}' due to formatting issues. Error: {str(e)}")
-                
-                if all_flat_data:
-                    final_df = pd.concat(all_flat_data, ignore_index=True)
-                    final_df = final_df.sort_values(by=['Date', 'Sector', 'Company Name']).reset_index(drop=True)
-                    final_df.insert(0, 'No.', final_df.index + 3131) 
-                    final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
-                    
-                    st.success(f"✅ Successfully converted! Generated {len(final_df)} flat records.")
-                    
-                    with st.expander("👁️ Preview Converted Flat Data", expanded=True):
-                        st.dataframe(final_df.head(50), use_container_width=True)
-                    
-                    csv_data = final_df.to_csv(index=False).encode('utf-8-sig')
-                    
-                    st.download_button(
-                        label="📥 Download Clean CSV File",
-                        data=csv_data,
-                        file_name=f"Flat_Execution_Log_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv",
-                        type="primary"
-                    )
-                else:
-                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format.")
-
-            except Exception as e:
-                st.error(f"An error occurred while processing the file: {str(e)}")
-
+        # ==========================================
+# 12. Alert System Module
 # ==========================================
-# 10. Analytics Hub (6 Levels with Advanced Additions)
-# ==========================================
-def render_analytics_hub(df):
-    """6-level analytics system including Self-Service & AI Correlation"""
-    
-    # --- 🛠️ Data Cleaning Injection ---
-    df = df.copy()
-    df.columns = df.columns.astype(str).str.replace('\n', ' ').str.replace('\r', '').str.strip()
-    df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
-    
-    if 'Company Name' not in df.columns and 'Company' in df.columns:
-        df.rename(columns={'Company': 'Company Name'}, inplace=True)
-    if 'DURATION' in df.columns:
-        df['DURATION'] = pd.to_numeric(df['DURATION'], errors='coerce').fillna(0)
-    if 'AVERAGE VALUE' in df.columns:
-        df['AVERAGE VALUE'] = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce')
-    if 'Date ( test)' in df.columns:
-        df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
-    # -------------------------------------------------------------
-    
-    st.markdown('<div class="bi-title">🔬 Advanced Analytics Hub</div>', unsafe_allow_html=True)
-    st.caption("Explore data through 6 levels of analytical intelligence")
-    
-    is_dark = st.session_state.get("theme", "Dark") == "Dark"
-    ui = {
-        'text_main': '#ffffff' if is_dark else '#1a1a1a',
-        'text_muted': '#8da3b9' if is_dark else '#4a5568',
-    }
-    
-    with st.expander("📥 Upload / Change Dataset for Analytics Hub", expanded=False):
-        new_upload = st.file_uploader("Upload a new CSV dataset to analyze:", type=["csv"], key="analytics_uploader_inner")
-        if new_upload is not None:
-            new_df = pd.read_csv(new_upload)
-            st.session_state["analytics_df"] = new_df
-            st.success("✅ New dataset loaded! Refreshing Analytics Hub...")
-            time.sleep(1)
-            st.rerun()
-    
-    analytics_tab1, analytics_tab2, analytics_tab3, analytics_tab4, analytics_tab5, analytics_tab6 = st.tabs([
-        "📊 Descriptive",
-        "🔍 Diagnostic", 
-        "🔮 Predictive",
-        "💡 Prescriptive",
-        "🎛️ Self-Service BI",
-        "🔗 Correlation & Risk"
-    ])
-    
-    with analytics_tab1:
-        st.markdown("### 📊 Descriptive Analytics - What Happened?")
-        st.info("This section shows historical data and current status")
-        
-        kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
-        
-        total_samples = len(df)
-        accepted = len(df[df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in df.columns else 0
-        rejected = len(df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) if 'sample status' in df.columns else 0
-        avg_duration = df['DURATION'].mean() if 'DURATION' in df.columns else 0
-        
-        with kpi_col1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Total Samples</div>
-                <div class="metric-value">{total_samples:,}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with kpi_col2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Accepted</div>
-                <div class="metric-value" style="color: #2ecc71;">{accepted:,}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with kpi_col3:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Rejected</div>
-                <div class="metric-value" style="color: #e74c3c;">{rejected:,}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with kpi_col4:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Avg Duration</div>
-                <div class="metric-value">{avg_duration:.1f}</div>
-                <div style="color: #8da3b9; font-size: 14px;">Days</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        if 'sample status' in df.columns:
-            fig_pie = px.pie(df, names='sample status', title="Status Distribution", hole=0.4)
-            st.plotly_chart(fig_pie, use_container_width=True, key="analytics_pie_desc")
-    
-    with analytics_tab2:
-        st.markdown("### 🔍 Diagnostic Analytics - Why Did It Happen?")
-        st.info("This section identifies root causes and patterns")
-        
-        if 'Company Name' in df.columns and 'sample status' in df.columns:
-            st.markdown("#### Pareto Analysis: Top Problem Sources")
-            
-            rej_df = df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
-            if not rej_df.empty:
-                pareto_data = rej_df['Company Name'].value_counts().reset_index()
-                pareto_data.columns = ['Contractor', 'Rejections']
-                pareto_data['Percentage'] = (pareto_data['Rejections'] / pareto_data['Rejections'].sum() * 100).round(2)
-                pareto_data['Cumulative_Percentage'] = pareto_data['Percentage'].cumsum().round(2)
-                
-                fig_pareto = px.bar(pareto_data, x='Contractor', y='Rejections', 
-                                   title="Rejections by Contractor (Pareto)",
-                                   color='Rejections',
-                                   color_continuous_scale='Reds')
-                st.plotly_chart(fig_pareto, use_container_width=True, key="analytics_pareto_diag")
-                
-                st.markdown(f"""
-                <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px;">
-                    <b>🔑 Key Insight:</b> The top contractors are responsible for the majority of rejections. 
-                    Focus quality improvement efforts on these contractors first for maximum impact.
-                </div>
-                """, unsafe_allow_html=True)
-    
-    with analytics_tab3:
-        st.markdown("### 🔮 Predictive Analytics - What Will Happen?")
-        st.info("This section forecasts future trends and risks")
-        
-        if 'Date ( test)' in df.columns and 'DURATION' in df.columns:
-            st.markdown("#### Duration Trend Forecasting")
-            
-            pred_df = df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
-            pred_df['7-Day Trend'] = pred_df['DURATION'].rolling(window=7, min_periods=1).mean()
-            
-            fig_trend = px.line(pred_df, x='Date ( test)', 
-                               y=['DURATION', '7-Day Trend'],
-                               title="Duration Trend Analysis",
-                               color_discrete_sequence=['#ffaa00', '#00d2ff'])
-            st.plotly_chart(fig_trend, use_container_width=True, key="analytics_trend_pred")
-            
-            latest_trend = pred_df['7-Day Trend'].iloc[-1]
-            avg_dur = df['DURATION'].mean()
-            
-            if latest_trend > avg_dur:
-                st.error(f"🚨 **Warning:** Recent trend ({latest_trend:.1f} days) is rising above average ({avg_dur:.1f} days)")
-            else:
-                st.success(f"✅ **Stable:** Recent trend ({latest_trend:.1f} days) is within normal range")
-    
-    with analytics_tab4:
-        st.markdown("### 💡 Prescriptive Analytics - What Should We Do?")
-        st.info("This section provides actionable recommendations")
-        
-        st.markdown("#### 🎯 Smart Recommendations")
-        
-        recommendations = []
-        
-        if 'sample status' in df.columns:
-            rej_rate = len(df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) / len(df) * 100
-            if rej_rate > 20:
-                recommendations.append({
-                    "priority": "🔴 Critical",
-                    "action": "Immediate Quality Audit",
-                    "detail": f"Rejection rate is {rej_rate:.1f}%. Conduct immediate audit of top contractors with highest rejection rates."
-                })
-        
-        if 'DURATION' in df.columns:
-            avg_dur = df['DURATION'].mean()
-            if avg_dur > 15:
-                recommendations.append({
-                    "priority": "🟡 High",
-                    "action": "Process Optimization",
-                    "detail": f"Average duration is {avg_dur:.1f} days. Review workflow bottlenecks and consider adding review resources."
-                })
-        
-        if recommendations:
-            for rec in recommendations:
-                st.markdown(f"""
-                <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <b style="color: #00d2ff; font-size: 18px;">{rec['priority']}: {rec['action']}</b>
-                    </div>
-                    <p style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{rec['detail']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.success("✅ No critical issues detected. Continue monitoring.")
-            
-    with analytics_tab5:
-        st.markdown("### 🎛️ Flexible Self-Service BI (Tableau Style)")
-        st.info("Build your own custom reports dynamically.")
-        
-        col_x, col_y, col_agg = st.columns(3)
-        available_cols = df.columns.tolist()
-        
-        with col_x:
-            x_axis = st.selectbox("Select X-Axis (Dimension):", available_cols, index=0)
-        with col_y:
-            numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-            if not numeric_cols: numeric_cols = available_cols
-            y_axis = st.selectbox("Select Y-Axis (Measure):", numeric_cols, index=0)
-        with col_agg:
-            agg_func = st.selectbox("Aggregation:", ["count", "sum", "mean", "max", "min"])
-            
-        if st.button("📊 Generate Custom Chart", type="primary"):
-            try:
-                custom_df = df.groupby(x_axis).agg({y_axis: agg_func}).reset_index()
-                fig_custom = px.bar(custom_df, x=x_axis, y=y_axis, title=f"{agg_func.capitalize()} of {y_axis} by {x_axis}", color_discrete_sequence=NEON_COLORS)
-                fig_custom = style_3d_glassy(fig_custom, chart_type="bar")
-                st.plotly_chart(fig_custom, use_container_width=True, key="analytics_custom_bi")
-            except Exception as e:
-                st.error(f"Cannot perform this aggregation. Please choose valid numerical combinations. Error: {str(e)}")
-
-    with analytics_tab6:
-        st.markdown("### 🔗 Geotechnical Correlation Engine & Risk Scoring")
-        st.info("Analyze relationships between material properties and predict failure risks.")
-        
-        st.markdown("#### 🎲 Predictive Risk Scoring")
-        if 'Test Type' in df.columns and 'Company Name' in df.columns and 'sample status' in df.columns:
-            st.markdown("""
-            <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="color: #e74c3c; margin-top: 0;">⚠️ AI High-Risk Alert</h4>
-                <p style="color: white; font-size: 15px;">Based on historical data analysis and current compaction trends, the probability of failure for upcoming <b>SAND CONE / DPL</b> tests in Sector A is <b>75%</b>.</p>
-                <p style="color: #ffaa00; font-size: 16px; font-weight: bold; margin-bottom: 0;">
-                    👉 AI Recommendation: Please direct the <u>Laboratory Team (طقم المعمل)</u> to tighten compaction testing procedures and verify material moisture content before proceeding.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("Insufficient columns to run Predictive Risk Scoring.")
-            
-        st.markdown("#### 🌡️ Variable Correlation Heatmap")
-        num_df = df.select_dtypes(include=np.number)
-        if len(num_df.columns) >= 2:
-            corr = num_df.corr().round(2)
-            fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r', title="Engineering Parameters Correlation Matrix")
-            fig_corr = style_3d_glassy(fig_corr, chart_type="heatmap")
-            st.plotly_chart(fig_corr, use_container_width=True, key="analytics_corr_heat")
-            st.caption("Values closer to 1 or -1 indicate strong relationships (e.g., Delay vs. DPL value).")
-        else:
-            st.info("Need at least two numeric columns to generate a correlation heatmap.")
-    
-    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-    if st.button("🏠 Back to Home", use_container_width=True):
-        st.session_state["current_page"] = "home"
-        st.rerun()
-
-# ==========================================
-# 11. Site Engineer Mobile Mode
-# ==========================================
-def render_site_mode():
-    st.title("📱 Site Engineer Mobile Mode")
-    st.markdown("### 🚧 Quick Field Actions")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown('<div class="site-btn"><br>Add New Sample</div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown('<div class="site-btn">📸<br>Upload Site Photo</div>', unsafe_allow_html=True)
-        
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.info("💡 **Note:** In a production environment, these buttons would open native mobile forms to capture GPS, photos, and test results directly into the SQL database.")
-    
-    st.markdown("### 📋 Recent Site Activities")
-    st.dataframe(pd.DataFrame({
-        "Time": ["08:30 AM", "09:15 AM", "10:00 AM"],
-        "Action": ["DPL Test - Zone 1", "Photo Uploaded - Stockpile", "Sample Rejected - Layer 2"],
-        "Status": ["✅ Synced", "✅ Synced", "🚨 Needs Review"]
-    }), use_container_width=True, hide_index=True)
-
 def render_alerts_module(df):
     st.markdown('<div class="bi-title">🚨 Automated Alert & Notification System</div>', unsafe_allow_html=True)
     st.caption("Configure and monitor automated alerts for critical project deviations.")
@@ -1296,7 +893,8 @@ def render_alerts_module(df):
                 time.sleep(1.5)
             st.success("✅ Test Alert Sent Successfully!")
             st.balloons()
-            # ==========================================
+
+# ==========================================
 # 13. Main Dashboard Application
 # ==========================================
 def render_dashboard():
@@ -2491,85 +2089,176 @@ def render_dashboard():
                         else:
                             st.info("No Quality data found for Compaction.")
                             
-                # 💡 التعديل 2: تحديث تابة Quantities Rate (قراءة من Company Name 2، فلتر من Element (BH)، ورسم الشارت)
+                # --- 📊 التابة الجديدة: Quantities Rate (محدثة وشاملة) ---
                 with tab_quantities:
-                    st.markdown(f"### 📊 Execution Quantities Rate: `{selected_comp}`")
+                    st.markdown(f"### 📊 Execution Quantities Analytics")
                     
-                    if "master_ledger_df" in st.session_state and not st.session_state["master_ledger_df"].empty:
-                        m_df = st.session_state["master_ledger_df"].copy()
+                    # سحب العواميد بشكل آمن
+                    comp_name2_col = next((c for c in df.columns if 'COMPANY NAME2' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
+                    exec_qty_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' in c.upper()), None)
+                    target_rate_col = next((c for c in df.columns if 'TARGET DAILY RATE' in c.upper()), None)
+                    date_daily_col = next((c for c in df.columns if 'DATE (DAILY)' in c.upper()), None)
+                    sector_col = next((c for c in df.columns if 'SECTOER' in c.upper() or 'SECTOR' in c.upper()), None)
+                    elem_bh_col = next((c for c in df.columns if 'ELEMENT (BH)' in c.upper() or 'ELEMENT' in c.upper() and 'BH' in c.upper()), None)
+                    total_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in c.upper()), None)
+
+                    if comp_name2_col and exec_qty_col:
+                        # تنظيف أسماء الشركات من المسافات والفراغات
+                        df[comp_name2_col] = df[comp_name2_col].astype(str).str.strip()
+                        valid_companies = sorted([str(c) for c in df[comp_name2_col].unique() if str(c).lower() != 'nan' and str(c) != ''])
                         
-                        date_col_qty = 'Date (Daily)' if 'Date (Daily)' in m_df.columns else ('Date ( test)' if 'Date ( test)' in m_df.columns else None)
-                        comp_col = 'Company Name2' if 'Company Name2' in m_df.columns else 'Company Name'
-                        elem_col_name = 'Element (BH)' if 'Element (BH)' in m_df.columns else 'Element'
+                        st.markdown(f"""
+                        <div style='background:rgba(0, 210, 255, 0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #00d2ff; margin-bottom: 20px;'>
+                            <b style='color:#00d2ff; font-size:16px;'>🏗️ Step 1: Select Execution Contractor</b><br>
+                            <span style='color:{ui["text_muted"]}; font-size:13px;'>Choose the contractor strictly from the Production Ledger (Company Name 2) to view exact execution quantities.</span>
+                        </div>
+                        """, unsafe_allow_html=True)
                         
-                        m_df[comp_col] = m_df[comp_col].astype(str).str.strip().str.lower()
-                        comp_qty_df = m_df[m_df[comp_col] == selected_comp.lower()].copy()
+                        exec_comp = st.selectbox("Select Contractor for Execution Analysis:", valid_companies, key="exec_comp_sel_new")
+                        
+                        comp_qty_df = df[df[comp_name2_col] == exec_comp].copy()
                         
                         if not comp_qty_df.empty:
-                            available_elements = ["All Elements"] + sorted([str(e) for e in comp_qty_df[elem_col_name].dropna().unique() if str(e).lower() != 'nan'])
+                            available_elements = ["All Elements"]
+                            if elem_bh_col:
+                                comp_qty_df[elem_bh_col] = comp_qty_df[elem_bh_col].astype(str).str.strip()
+                                available_elements += sorted([str(e) for e in comp_qty_df[elem_bh_col].unique() if str(e).lower() != 'nan'])
+                                
+                            sel_element = st.selectbox("🎯 Filter by Element (BH):", available_elements, key=f"elem_sel_new_{exec_comp}")
                             
-                            sel_element = st.selectbox("🎯 Select Element to Analyze:", available_elements, key=f"elem_sel_{selected_comp}")
-                            
-                            if sel_element != "All Elements":
-                                comp_qty_df = comp_qty_df[comp_qty_df[elem_col_name].astype(str) == sel_element]
-                                st.markdown(f"**Showing data for Element:** `{sel_element}`")
+                            if sel_element != "All Elements" and elem_bh_col:
+                                comp_qty_df = comp_qty_df[comp_qty_df[elem_bh_col] == sel_element]
+                                st.markdown(f"**Showing data strictly for Element:** `{sel_element}`")
                             else:
                                 st.markdown("**Showing aggregated data for All Elements.**")
-                                
-                            exec_col = 'Executed Quantity (m2)' if 'Executed Quantity (m2)' in comp_qty_df.columns else ('Executed Quantity (m²)' if 'Executed Quantity (m²)' in comp_qty_df.columns else 'Executed_Qty')
-                            target_col = 'Target Daily Rate' if 'Target Daily Rate' in comp_qty_df.columns else 'Target Daily Rate'
+
+                            # تحويل العواميد لأرقام وتصفير الفراغات
+                            comp_qty_df[exec_qty_col] = pd.to_numeric(comp_qty_df[exec_qty_col], errors='coerce').fillna(0)
+                            if target_rate_col: comp_qty_df[target_rate_col] = pd.to_numeric(comp_qty_df[target_rate_col], errors='coerce').fillna(0)
+                            if total_qty_col: comp_qty_df[total_qty_col] = pd.to_numeric(comp_qty_df[total_qty_col], errors='coerce').fillna(0)
+
+                            # الحسابات
+                            total_exec_qty = comp_qty_df[exec_qty_col].sum()
                             
-                            if exec_col in comp_qty_df.columns:
-                                comp_qty_df[exec_col] = pd.to_numeric(comp_qty_df[exec_col], errors='coerce').fillna(0)
-                            else:
-                                comp_qty_df[exec_col] = 0
-                                
-                            if target_col in comp_qty_df.columns:
-                                comp_qty_df[target_col] = pd.to_numeric(comp_qty_df[target_col], errors='coerce').fillna(0)
-                            else:
-                                comp_qty_df[target_col] = 0
-                                
-                            total_exec_qty = comp_qty_df[exec_col].sum()
-                            total_target_qty = comp_qty_df[target_col].sum()
-                            
-                            c1, c2, c3 = st.columns(3)
-                            create_card(c1, "Total Executed Quantity", f"{total_exec_qty:,.0f}")
-                            create_card(c2, "Total Target Quantity", f"{total_target_qty:,.0f}")
-                            
-                            if date_col_qty and not comp_qty_df.empty:
-                                comp_qty_df[date_col_qty] = pd.to_datetime(comp_qty_df[date_col_qty], errors='coerce')
-                                valid_dates_df = comp_qty_df.dropna(subset=[date_col_qty]).copy()
-                                
-                                if not valid_dates_df.empty:
-                                    active_days = valid_dates_df[date_col_qty].nunique()
-                                    avg_velocity = total_exec_qty / active_days if active_days > 0 else 0
-                                    create_card(c3, "Average Daily Velocity", f"{avg_velocity:,.0f} /day")
-                                    
-                                    daily_qty = valid_dates_df.groupby(valid_dates_df[date_col_qty].dt.strftime('%Y-%m-%d')).agg({
-                                        exec_col: 'sum',
-                                        target_col: 'sum'
-                                    }).reset_index()
-                                    daily_qty.rename(columns={date_col_qty: 'Date'}, inplace=True)
-                                    daily_qty = daily_qty.sort_values('Date')
-                                    
-                                    fig_qty = go.Figure()
-                                    fig_qty.add_trace(go.Bar(x=daily_qty['Date'], y=daily_qty[exec_col], name="Executed Qty", marker_color='#00d2ff'))
-                                    fig_qty.add_trace(go.Scatter(x=daily_qty['Date'], y=daily_qty[target_col], name="Target Daily Rate", mode='lines+markers', line=dict(color='#ffaa00', width=3)))
-                                    
-                                    fig_qty.update_layout(title="Target Daily Rate vs Executed Quantity Over Time", barmode='group', height=450)
-                                    fig_qty = style_3d_glassy(fig_qty, chart_type="combo")
-                                    
-                                    st.plotly_chart(fig_qty, use_container_width=True, key=f"qty_trend_new_{selected_comp}")
+                            # حساب إجمالي الكمية للمشروع (Scope)
+                            total_project_qty = 0
+                            if total_qty_col:
+                                if sel_element != "All Elements":
+                                    total_project_qty = comp_qty_df[total_qty_col].max()
+                                elif elem_bh_col:
+                                    total_project_qty = comp_qty_df.groupby(elem_bh_col)[total_qty_col].max().sum()
                                 else:
-                                    create_card(c3, "Average Daily Velocity", "0 /day")
-                                    st.warning("No valid dates found to plot the trend.")
+                                    total_project_qty = comp_qty_df[total_qty_col].max()
+                                    
+                            performance_pct = (total_exec_qty / total_project_qty * 100) if total_project_qty > 0 else 0
+
+                            # 1. Dashboard Cards
+                            c1, c2, c3, c4 = st.columns(4)
+                            create_card(c1, "Total Executed (m³)", f"{total_exec_qty:,.1f}")
+                            create_card(c2, "Total Project Scope (m³)", f"{total_project_qty:,.1f}" if total_project_qty > 0 else "N/A")
+                            
+                            if performance_pct >= 90:
+                                perf_color, perf_icon = "#2ecc71", "🌟 On Track"
+                            elif performance_pct >= 50:
+                                perf_color, perf_icon = "#f1c40f", "⚠️ In Progress"
                             else:
-                                create_card(c3, "Average Daily Velocity", "0 /day")
-                                st.warning("Date column not found.")
+                                perf_color, perf_icon = "#e74c3c", "🚨 Lagging"
+                                
+                            c3.markdown(f"""
+                                <div class="metric-card" style="border-left: 5px solid {perf_color};">
+                                    <div class="metric-label">Scope Completion</div>
+                                    <div class="metric-value" style="color: {perf_color} !important;">{performance_pct:.1f}%</div>
+                                    <div style="font-size: 14px; font-weight: bold; margin-top: 5px; color: {perf_color};">{perf_icon}</div>
+                                    <div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 10px;">
+                                        <div class="prog-fill" style="height: 100%; width: {min(100, performance_pct)}%; background: {perf_color}; border-radius: 10px;"></div>
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if date_daily_col:
+                                comp_qty_df[date_daily_col] = pd.to_datetime(comp_qty_df[date_daily_col], errors='coerce')
+                                valid_dates_df = comp_qty_df.dropna(subset=[date_daily_col, exec_qty_col]).copy()
+                                valid_dates_df = valid_dates_df[valid_dates_df[exec_qty_col] > 0] # تجاهل الأيام اللي مفيهاش تنفيذ
+                                
+                                active_days = valid_dates_df[date_daily_col].nunique()
+                                avg_velocity = total_exec_qty / active_days if active_days > 0 else 0
+                                create_card(c4, "Average Daily Velocity", f"{avg_velocity:,.1f} m³/day")
+                                
+                                st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                                
+                                # 2. The New Daily Execution Chart
+                                if not valid_dates_df.empty and target_rate_col:
+                                    st.markdown("#### 🚀 Daily Execution vs. Target Rate")
+                                    st.caption("A direct comparison of daily accomplished volume against the strict daily target threshold.")
+                                    
+                                    # تجميع الكميات اليومية
+                                    daily_trend = valid_dates_df.groupby(date_daily_col).agg({
+                                        exec_qty_col: 'sum',
+                                        target_rate_col: 'max' # الهدف اليومي ثابت عادة
+                                    }).reset_index().sort_values(date_daily_col)
+                                    
+                                    fig_daily = go.Figure()
+                                    
+                                    # الخط العريض بتاع التارجت
+                                    fig_daily.add_trace(go.Scatter(
+                                        x=daily_trend[date_daily_col], 
+                                        y=daily_trend[target_rate_col], 
+                                        name="Target Daily Rate", 
+                                        mode='lines', 
+                                        line=dict(color='#e74c3c', width=4, shape='linear'),
+                                        hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Target:</b> %{y:,.1f} m³'
+                                    ))
+                                    
+                                    # عواميد التنفيذ الفعلي
+                                    fig_daily.add_trace(go.Bar(
+                                        x=daily_trend[date_daily_col], 
+                                        y=daily_trend[exec_qty_col], 
+                                        name="Executed Qty", 
+                                        marker=dict(color='#00d2ff', opacity=0.9, line=dict(color='rgba(255,255,255,0.2)', width=1)),
+                                        hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Executed:</b> %{y:,.1f} m³'
+                                    ))
+                                    
+                                    fig_daily.update_layout(
+                                        height=450, 
+                                        barmode='group', 
+                                        hovermode='x unified', 
+                                        margin=dict(l=0, r=0, t=20, b=0), 
+                                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                                    )
+                                    try: fig_daily = style_3d_glassy(fig_daily, chart_type="combo")
+                                    except: pass
+                                    st.plotly_chart(fig_daily, use_container_width=True, key=f"daily_exec_chart_{exec_comp}")
+                                    
+                                st.divider()
+                                
+                                # 3. Sector Distribution & Table
+                                r3, r4 = st.columns([0.4, 0.6])
+                                with r3:
+                                    st.markdown("#### 🗺️ Execution by Sector")
+                                    if sector_col and not valid_dates_df.empty:
+                                        sector_df = valid_dates_df.groupby(sector_col)[exec_qty_col].sum().reset_index()
+                                        fig_sector = px.pie(sector_df, names=sector_col, values=exec_qty_col, hole=0.5, color_discrete_sequence=['#00d2ff', '#9b59b6', '#2ecc71'])
+                                        fig_sector.update_traces(textinfo='label+percent', hovertemplate='<b>Sector:</b> %{label}<br>Volume: %{value:,.0f} m³')
+                                        fig_sector.update_layout(height=350, margin=dict(l=0, r=0, t=20, b=0))
+                                        try: fig_sector = style_3d_glassy(fig_sector, chart_type="pie")
+                                        except: pass
+                                        st.plotly_chart(fig_sector, use_container_width=True, key=f"sector_dist_wow_{exec_comp}")
+                                        
+                                with r4:
+                                    st.markdown("#### 📝 Daily Execution Ledger")
+                                    display_cols = [date_daily_col, sector_col, elem_bh_col, target_rate_col, exec_qty_col]
+                                    display_cols = [c for c in display_cols if c in valid_dates_df.columns]
+                                    
+                                    styled_df = valid_dates_df[display_cols].sort_values(date_daily_col, ascending=False).head(100)
+                                    if date_daily_col in styled_df:
+                                        styled_df[date_daily_col] = styled_df[date_daily_col].dt.strftime('%Y-%m-%d')
+                                    st.dataframe(styled_df, use_container_width=True, height=350)
+                            else:
+                                st.warning("No valid dates found in the data to plot the charts.")
                         else:
-                            st.warning(f"No execution quantities logged for **{selected_comp}** in `{comp_col}`.")
+                            st.warning(f"No execution data found for **{exec_comp}**.")
                     else:
-                        st.info("🚨 **No Production Ledger found.** Please upload an Excel file containing the production sheets to activate this module.")
+                        st.info("🚨 **Data Missing:** Please ensure your CSV includes 'Company Name2' and 'Executed Quantity' columns.")
 
         # --- 🔍 Advanced Element Quality Auditor ---
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
