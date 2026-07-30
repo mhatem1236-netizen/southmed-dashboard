@@ -1866,11 +1866,11 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
-        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
+       st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
+        if comp_lab_col in filtered_df.columns and 'sample status' in filtered_df.columns:
             comp_stats = []
-            for comp in filtered_df['Company Name'].dropna().unique():
-                cdf = filtered_df[filtered_df['Company Name'] == comp]
+            for comp in filtered_df[comp_lab_col].dropna().unique():
+                cdf = filtered_df[filtered_df[comp_lab_col] == comp]
                 c_total = len(cdf)
                 c_acc = len(cdf[cdf['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])])
                 rate = (c_acc / c_total * 100) if c_total > 0 else 0
@@ -1896,7 +1896,7 @@ def render_dashboard():
                     </div>
                 """, unsafe_allow_html=True)
 
-        if 'Company Name' in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
+        if comp_lab_col in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
             mat_df = filtered_df.copy()
             mat_df['Sampling_Lower'] = mat_df['Sampling Location'].astype(str).str.lower()
             def categorize_location(loc):
@@ -1907,7 +1907,7 @@ def render_dashboard():
             mat_df['Loc_Category'] = mat_df['Sampling_Lower'].apply(categorize_location)
             
             st.markdown("#### 📑 Consolidated Contractors Summary (Ready for Print)")
-            summary_pivot = pd.crosstab(mat_df['Company Name'], mat_df['Loc_Category'], margins=True, margins_name="Total")
+            summary_pivot = pd.crosstab(mat_df[comp_lab_col], mat_df['Loc_Category'], margins=True, margins_name="Total")
             cols_order = ['Stockpile', 'Bottom of Excavation', 'Fill', 'Other', 'Total']
             existing_cols = [c for c in cols_order if c in summary_pivot.columns]
             summary_pivot = summary_pivot[existing_cols]
@@ -1915,10 +1915,10 @@ def render_dashboard():
             st.divider()
 
             target_dict = {}
-            if 'Company' in df.columns and 'Required Quantity' in df.columns:
-                lookup_df = df[['Company', 'Required Quantity']].dropna(subset=['Company'])
+            if comp_lab_col in df.columns and 'Required Quantity' in df.columns:
+                lookup_df = df[[comp_lab_col, 'Required Quantity']].dropna(subset=[comp_lab_col])
                 for _, row in lookup_df.iterrows():
-                    c_key = str(row['Company']).strip().lower() 
+                    c_key = str(row[comp_lab_col]).strip().lower() 
                     c_qty = pd.to_numeric(row['Required Quantity'], errors='coerce')
                     if pd.notna(c_qty):
                         target_dict[c_key] = max(target_dict.get(c_key, 0), c_qty)
@@ -1926,8 +1926,11 @@ def render_dashboard():
             st.markdown("#### 📥 Master Stockpile Targets Report")
             report_data = []
             
-            log_companies = [str(c).strip() for c in mat_df['Company Name'].dropna().unique()]
-            target_companies = [str(c).strip() for c in df['Company'].dropna().unique() if 'Company' in df.columns]
+            log_companies = [str(c).strip() for c in mat_df[comp_lab_col].dropna().unique()]
+            
+            # 💡 التعديل هنا: استخدام المرجع الديناميكي للشركة بدلاً من الاسم الثابت
+            target_companies = [str(c).strip() for c in df[comp_lab_col].dropna().unique()] if comp_lab_col in df.columns else []
+            
             all_companies = sorted(list(set(log_companies + target_companies)))
             
             battalion_col_main = next((c for c in mat_df.columns if 'BATTAL' in c.upper()), None)
@@ -1935,7 +1938,8 @@ def render_dashboard():
             for c_name in all_companies:
                 c_key = c_name.lower()
                 
-                comp_all_rows = mat_df[mat_df['Company Name'].astype(str).str.strip().str.lower() == c_key]
+                # 💡 التعديل هنا: استخدام المرجع الديناميكي للشركة بدلاً من 'Company Name'
+                comp_all_rows = mat_df[mat_df[comp_lab_col].astype(str).str.strip().str.lower() == c_key]
                 c_df_stock = comp_all_rows[comp_all_rows['Loc_Category'] == 'Stockpile']
                 
                 b_str = "N/A"
@@ -1983,7 +1987,6 @@ def render_dashboard():
                 type="primary"
             )
             st.divider()
-
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
             all_log_companies = sorted(list(set([str(c).strip() for c in mat_df['Company Name'].dropna().unique() if str(c) != 'nan'])))
             if all_log_companies:
