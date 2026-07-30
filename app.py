@@ -996,7 +996,6 @@ def render_home_page():
 
             except Exception as e:
                 st.error(f"An error occurred while processing the file: {str(e)}")
-
 # ==========================================
 # 10. Analytics Hub (6 Levels with Advanced Additions)
 # ==========================================
@@ -1264,8 +1263,7 @@ def render_site_mode():
         "Action": ["DPL Test - Zone 1", "Photo Uploaded - Stockpile", "Sample Rejected - Layer 2"],
         "Status": ["✅ Synced", "✅ Synced", "🚨 Needs Review"]
     }), use_container_width=True, hide_index=True)
-
-# ==========================================
+    # ==========================================
 # 12. Alert System Module
 # ==========================================
 def render_alerts_module(df):
@@ -1866,11 +1864,11 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-       st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
-        if comp_lab_col in filtered_df.columns and 'sample status' in filtered_df.columns:
+        st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
+        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             comp_stats = []
-            for comp in filtered_df[comp_lab_col].dropna().unique():
-                cdf = filtered_df[filtered_df[comp_lab_col] == comp]
+            for comp in filtered_df['Company Name'].dropna().unique():
+                cdf = filtered_df[filtered_df['Company Name'] == comp]
                 c_total = len(cdf)
                 c_acc = len(cdf[cdf['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])])
                 rate = (c_acc / c_total * 100) if c_total > 0 else 0
@@ -1896,7 +1894,7 @@ def render_dashboard():
                     </div>
                 """, unsafe_allow_html=True)
 
-        if comp_lab_col in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
+        if 'Company Name' in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
             mat_df = filtered_df.copy()
             mat_df['Sampling_Lower'] = mat_df['Sampling Location'].astype(str).str.lower()
             def categorize_location(loc):
@@ -1907,7 +1905,7 @@ def render_dashboard():
             mat_df['Loc_Category'] = mat_df['Sampling_Lower'].apply(categorize_location)
             
             st.markdown("#### 📑 Consolidated Contractors Summary (Ready for Print)")
-            summary_pivot = pd.crosstab(mat_df[comp_lab_col], mat_df['Loc_Category'], margins=True, margins_name="Total")
+            summary_pivot = pd.crosstab(mat_df['Company Name'], mat_df['Loc_Category'], margins=True, margins_name="Total")
             cols_order = ['Stockpile', 'Bottom of Excavation', 'Fill', 'Other', 'Total']
             existing_cols = [c for c in cols_order if c in summary_pivot.columns]
             summary_pivot = summary_pivot[existing_cols]
@@ -1915,10 +1913,10 @@ def render_dashboard():
             st.divider()
 
             target_dict = {}
-            if comp_lab_col in df.columns and 'Required Quantity' in df.columns:
-                lookup_df = df[[comp_lab_col, 'Required Quantity']].dropna(subset=[comp_lab_col])
+            if 'Company' in df.columns and 'Required Quantity' in df.columns:
+                lookup_df = df[['Company', 'Required Quantity']].dropna(subset=['Company'])
                 for _, row in lookup_df.iterrows():
-                    c_key = str(row[comp_lab_col]).strip().lower() 
+                    c_key = str(row['Company']).strip().lower() 
                     c_qty = pd.to_numeric(row['Required Quantity'], errors='coerce')
                     if pd.notna(c_qty):
                         target_dict[c_key] = max(target_dict.get(c_key, 0), c_qty)
@@ -1926,11 +1924,8 @@ def render_dashboard():
             st.markdown("#### 📥 Master Stockpile Targets Report")
             report_data = []
             
-            log_companies = [str(c).strip() for c in mat_df[comp_lab_col].dropna().unique()]
-            
-            # 💡 التعديل هنا: استخدام المرجع الديناميكي للشركة بدلاً من الاسم الثابت
-            target_companies = [str(c).strip() for c in df[comp_lab_col].dropna().unique()] if comp_lab_col in df.columns else []
-            
+            log_companies = [str(c).strip() for c in mat_df['Company Name'].dropna().unique()]
+            target_companies = [str(c).strip() for c in df['Company'].dropna().unique() if 'Company' in df.columns]
             all_companies = sorted(list(set(log_companies + target_companies)))
             
             battalion_col_main = next((c for c in mat_df.columns if 'BATTAL' in c.upper()), None)
@@ -1938,8 +1933,7 @@ def render_dashboard():
             for c_name in all_companies:
                 c_key = c_name.lower()
                 
-                # 💡 التعديل هنا: استخدام المرجع الديناميكي للشركة بدلاً من 'Company Name'
-                comp_all_rows = mat_df[mat_df[comp_lab_col].astype(str).str.strip().str.lower() == c_key]
+                comp_all_rows = mat_df[mat_df['Company Name'].astype(str).str.strip().str.lower() == c_key]
                 c_df_stock = comp_all_rows[comp_all_rows['Loc_Category'] == 'Stockpile']
                 
                 b_str = "N/A"
@@ -1987,6 +1981,7 @@ def render_dashboard():
                 type="primary"
             )
             st.divider()
+
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
             all_log_companies = sorted(list(set([str(c).strip() for c in mat_df['Company Name'].dropna().unique() if str(c) != 'nan'])))
             if all_log_companies:
@@ -2413,6 +2408,7 @@ def render_dashboard():
                     
                     avg_dpl = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in dpl_df.columns else np.nan
                     
+                    # 💡 رجعنا التقسيمة لـ 3 عواميد بس وشيلنا كروت الكميات
                     c1, c2, c3 = st.columns(3)
                     
                     pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
@@ -2496,26 +2492,31 @@ def render_dashboard():
                     comp_name2_col = next((c for c in df.columns if 'COMPANY NAME2' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
                     comp_main_col = 'Company Name' # تم توحيده في أول الكود
                     
-                    # 💡 المراجع اللي طلبتها بالظبط
-                    exec_qty_m2_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' in c.upper()), None) # للموقع
-                    exec_qty_lab_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' not in c.upper()), None) # للمعمل
-                    total_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in c.upper()), None)
+                    exec_qty_m2_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' in c.upper()), None) # حصر الموقع
+                    exec_qty_lab_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' not in c.upper()), None) # رصيد المعمل
+                    
                     target_rate_col = next((c for c in df.columns if 'TARGET DAILY RATE' in c.upper()), None)
                     date_daily_col = next((c for c in df.columns if 'DATE (DAILY)' in c.upper()), None)
                     
-                    elem_bh_col = next((c for c in df.columns if 'ELEMENT (BH)' in c.upper()), None)
-                    elment_main_col = next((c for c in df.columns if 'ELMEN' in c.upper() and 'BH' not in c.upper()), None)
+                    elem_bh_col = next((c for c in df.columns if 'ELEMENT (BH)' in c.upper()), None) # Element الموقع
+                    elment_main_col = next((c for c in df.columns if 'ELMEN' in c.upper() and 'BH' not in c.upper()), None) # Element المعمل
+                    
+                    total_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in c.upper()), None)
+                    num_tests_col_q = next((c for c in df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
 
                     if comp_name2_col and comp_main_col:
+                        # فلتر مجمع للشركات من العمودين
                         all_comps = pd.concat([df[comp_name2_col], df[comp_main_col]]).dropna().astype(str).str.strip()
                         valid_companies = sorted(list(set([c for c in all_comps if c.lower() != 'nan' and c != ''])))
                         
                         exec_comp = st.selectbox("Select Contractor for Cross-Validation:", valid_companies, key="cross_comp_sel")
                         
+                        # فصل الداتا فريم (واحدة للموقع، وواحدة للمعمل)
                         df_site = df[df[comp_name2_col].astype(str).str.strip().str.lower() == exec_comp.lower()].copy()
                         df_lab = df[df[comp_main_col].astype(str).str.strip().str.lower() == exec_comp.lower()].copy()
                         
                         if not df_site.empty or not df_lab.empty:
+                            # فلتر العناصر المشترك
                             available_elements = ["All Elements"]
                             elems_site = df_site[elem_bh_col].dropna().astype(str).str.strip().unique().tolist() if elem_bh_col else []
                             elems_lab = df_lab[elment_main_col].dropna().astype(str).str.strip().unique().tolist() if elment_main_col else []
@@ -2530,7 +2531,7 @@ def render_dashboard():
                             else:
                                 st.markdown("**Showing aggregated data for All Elements.**")
 
-                            # 1. Total Project Scope (من المعمل Company Y)
+                            # 1. Total Project Scope (من عمود Total Quantity بناءً على Company الأساسي)
                             total_project_scope = 0
                             if total_qty_col and not df_lab.empty:
                                 df_lab[total_qty_col] = pd.to_numeric(df_lab[total_qty_col], errors='coerce').fillna(0)
@@ -2541,24 +2542,26 @@ def render_dashboard():
                                 else:
                                     total_project_scope = df_lab[total_qty_col].max()
 
-                            # 2. Site Executed (من الموقع Company X)
+                            # 2. Total Executed (Site / Company 2)
                             site_exec_qty = 0
                             if exec_qty_m2_col and not df_site.empty:
                                 df_site[exec_qty_m2_col] = pd.to_numeric(df_site[exec_qty_m2_col], errors='coerce').fillna(0)
                                 site_exec_qty = df_site[exec_qty_m2_col].sum()
 
-                            # 3. Lab Executed (الكمية المنفذة التأكيد - من المعمل Company Y)
+                            # 3. Total Executed (Lab / Company 1)
                             lab_exec_qty = 0
                             if exec_qty_lab_col and not df_lab.empty:
                                 df_lab[exec_qty_lab_col] = pd.to_numeric(df_lab[exec_qty_lab_col], errors='coerce').fillna(0)
-                                lab_exec_qty = df_lab[exec_qty_lab_col].sum()
+                                lab_exec_qty = df_lab[exec_qty_lab_col].sum() # افترضنا جمع، لو القيمة تراكمية استخدم .max()
 
+                            # الكروت الأساسية
                             st.markdown("#### ⚖️ Execution Verification (Site vs Lab)")
                             c1, c2, c3 = st.columns(3)
-                            create_card(c1, "Total Project Scope (m³)", f"{total_project_scope:,.1f}" if total_project_scope > 0 else "N/A", delta_html="<span style='color:#bdc3c7; font-size:12px;'>From Company & Total Quantity</span>")
+                            create_card(c1, "Total Project Scope (m³)", f"{total_project_scope:,.1f}" if total_project_scope > 0 else "N/A")
                             create_card(c2, "Site Executed Qty (m²) [Production]", f"{site_exec_qty:,.1f}", delta_html="<span style='color:#00d2ff; font-size:12px;'>From Company Name 2</span>")
-                            create_card(c3, "الكمية المنفذة (التأكيد)", f"{lab_exec_qty:,.1f}", delta_html="<span style='color:#ffaa00; font-size:12px;'>From Company & Executed Qty</span>")
+                            create_card(c3, "Lab Executed Qty [QC Approvals]", f"{lab_exec_qty:,.1f}", delta_html="<span style='color:#ffaa00; font-size:12px;'>From Main Company</span>")
 
+                            # حساب الـ Scope Completion مرتين
                             site_completion_pct = (site_exec_qty / total_project_scope * 100) if total_project_scope > 0 else 0
                             lab_completion_pct = (lab_exec_qty / total_project_scope * 100) if total_project_scope > 0 else 0
                             
@@ -2575,6 +2578,7 @@ def render_dashboard():
                                     <div class="metric-value">{lab_completion_pct:.1f}%</div>
                                 </div>
                             """, unsafe_allow_html=True)
+
                             # 💡 التنبيه الجبار (Leakage Alert)
                             qty_diff = site_exec_qty - lab_exec_qty
                             if qty_diff > 0 and total_project_scope > 0:
@@ -2618,6 +2622,7 @@ def render_dashboard():
                                         
                                         fig_daily = go.Figure()
                                         
+                                        # خط الهدف اليومي المتصل
                                         fig_daily.add_trace(go.Scatter(
                                             x=daily_trend[date_daily_col], 
                                             y=daily_trend[target_rate_col], 
@@ -2628,13 +2633,12 @@ def render_dashboard():
                                             hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Target:</b> %{y:,.1f}'
                                         ))
                                         
-                                        # تلوين الأعمدة أخضر لو عدى التارجت
-                                        colors = np.where(daily_trend[exec_qty_m2_col] >= daily_trend[target_rate_col], '#2ecc71', '#00d2ff')
+                                        # أعمدة التنفيذ
                                         fig_daily.add_trace(go.Bar(
                                             x=daily_trend[date_daily_col], 
                                             y=daily_trend[exec_qty_m2_col], 
                                             name="Site Executed Qty", 
-                                            marker_color=colors,
+                                            marker_color='#00d2ff',
                                             opacity=0.85,
                                             hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Executed:</b> %{y:,.1f}'
                                         ))
@@ -2685,21 +2689,18 @@ def render_dashboard():
 
                             st.divider()
 
-                            # 💡 تحليل أنواع الاختبارات لكل Element (تم فلترة SOIL)
-                            st.markdown("#### 🧪 Laboratory Test Breakdown by Element (DPL & PLATE Only)")
-                            st.caption("Distribution of compaction test types conducted on each Element.")
+                            # 💡 تحليل أنواع الاختبارات لكل Element
+                            st.markdown("#### 🧪 Laboratory Test Breakdown by Element")
+                            st.caption("Distribution of test types (DPL, Plate, Sandcone, etc.) conducted on each Element.")
                             
                             if elment_main_col and 'Test Type' in df_lab.columns and num_tests_col_q:
-                                # فلترة الـ SOIL والإبقاء فقط على DPL و PLATE
-                                df_lab_filtered = df_lab[df_lab['Test Type'].astype(str).str.contains('DPL|PLATE', case=False, na=False)].copy()
-                                df_lab_filtered[num_tests_col_q] = pd.to_numeric(df_lab_filtered[num_tests_col_q], errors='coerce').fillna(0)
-                                
-                                test_breakdown = df_lab_filtered.groupby([elment_main_col, 'Test Type'])[num_tests_col_q].sum().reset_index()
+                                df_lab[num_tests_col_q] = pd.to_numeric(df_lab[num_tests_col_q], errors='coerce').fillna(0)
+                                test_breakdown = df_lab.groupby([elment_main_col, 'Test Type'])[num_tests_col_q].sum().reset_index()
                                 test_breakdown = test_breakdown[test_breakdown[num_tests_col_q] > 0]
                                 
                                 if not test_breakdown.empty:
                                     fig_tests = px.bar(test_breakdown, x=elment_main_col, y=num_tests_col_q, color='Test Type', 
-                                                     title="Number of Compaction Tests per Element", text_auto=True, color_discrete_sequence=['#00d2ff', '#ffaa00'], barmode='group')
+                                                     title="Number of Tests per Element", text_auto=True, color_discrete_sequence=NEON_COLORS, barmode='group')
                                     fig_tests.update_layout(height=400, xaxis_title="Element", yaxis_title="Total Points Tested")
                                     try: fig_tests = style_3d_glassy(fig_tests, chart_type="bar")
                                     except: pass
@@ -2710,7 +2711,7 @@ def render_dashboard():
                                     pivot_tests['Total Tests'] = pivot_tests.sum(axis=1)
                                     st.dataframe(pivot_tests, use_container_width=True)
                                 else:
-                                    st.warning("No valid DPL or PLATE tests found to perform breakdown.")
+                                    st.warning("No valid test numbers found to perform breakdown.")
                             else:
                                 st.info("Requires 'ELMEN', 'Test Type', and 'Number of Tests' columns.")
 
