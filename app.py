@@ -2498,176 +2498,241 @@ def render_dashboard():
                             st.info("No Quality data found for Compaction.")
 
                 # --- 📊 التابة الجديدة: Quantities Rate (محدثة وشاملة) ---
+               # --- 📊 التابة الجديدة: Quantities Rate (بتحليل التفاوت بين المكتب الفني والمعمل) ---
                 with tab_quantities:
-                    st.markdown(f"### 📊 Execution Quantities Analytics")
+                    st.markdown(f"### 📊 Execution & Discrepancy Analytics")
+                    st.caption("Compare Technical Office production (Company Name 2) against Laboratory approvals (Company Name).")
                     
-                    # سحب العواميد بشكل آمن
                     comp_name2_col = next((c for c in df.columns if 'COMPANY NAME2' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
-                    exec_qty_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' in c.upper()), None)
+                    comp_main_col = 'Company Name' # تم توحيده في أول الكود
+                    
+                    exec_qty_m2_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' in c.upper()), None) # حصر الموقع
+                    exec_qty_lab_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' not in c.upper()), None) # رصيد المعمل
+                    
                     target_rate_col = next((c for c in df.columns if 'TARGET DAILY RATE' in c.upper()), None)
                     date_daily_col = next((c for c in df.columns if 'DATE (DAILY)' in c.upper()), None)
-                    sector_col = next((c for c in df.columns if 'SECTOER' in c.upper() or 'SECTOR' in c.upper()), None)
-                    elem_bh_col = next((c for c in df.columns if 'ELEMENT (BH)' in c.upper() or 'ELEMENT' in c.upper() and 'BH' in c.upper()), None)
+                    
+                    elem_bh_col = next((c for c in df.columns if 'ELEMENT (BH)' in c.upper()), None) # Element الموقع
+                    elment_main_col = next((c for c in df.columns if 'ELMEN' in c.upper() and 'BH' not in c.upper()), None) # Element المعمل
+                    
                     total_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in c.upper()), None)
+                    num_tests_col_q = next((c for c in df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
 
-                    if comp_name2_col and exec_qty_col:
-                        # تنظيف أسماء الشركات من المسافات والفراغات
-                        df[comp_name2_col] = df[comp_name2_col].astype(str).str.strip()
-                        valid_companies = sorted([str(c) for c in df[comp_name2_col].unique() if str(c).lower() != 'nan' and str(c) != ''])
+                    if comp_name2_col and comp_main_col:
+                        # فلتر مجمع للشركات من العمودين
+                        all_comps = pd.concat([df[comp_name2_col], df[comp_main_col]]).dropna().astype(str).str.strip()
+                        valid_companies = sorted(list(set([c for c in all_comps if c.lower() != 'nan' and c != ''])))
                         
-                        st.markdown(f"""
-                        <div style='background:rgba(0, 210, 255, 0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #00d2ff; margin-bottom: 20px;'>
-                            <b style='color:#00d2ff; font-size:16px;'>🏗️ Step 1: Select Execution Contractor</b><br>
-                            <span style='color:{ui["text_muted"]}; font-size:13px;'>Choose the contractor strictly from the Production Ledger (Company Name 2) to view exact execution quantities.</span>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        exec_comp = st.selectbox("Select Contractor for Cross-Validation:", valid_companies, key="cross_comp_sel")
                         
-                        exec_comp = st.selectbox("Select Contractor for Execution Analysis:", valid_companies, key="exec_comp_sel_new")
+                        # فصل الداتا فريم (واحدة للموقع، وواحدة للمعمل)
+                        df_site = df[df[comp_name2_col].astype(str).str.strip().str.lower() == exec_comp.lower()].copy()
+                        df_lab = df[df[comp_main_col].astype(str).str.strip().str.lower() == exec_comp.lower()].copy()
                         
-                        comp_qty_df = df[df[comp_name2_col] == exec_comp].copy()
-                        
-                        if not comp_qty_df.empty:
+                        if not df_site.empty or not df_lab.empty:
+                            # فلتر العناصر المشترك
                             available_elements = ["All Elements"]
-                            if elem_bh_col:
-                                comp_qty_df[elem_bh_col] = comp_qty_df[elem_bh_col].astype(str).str.strip()
-                                available_elements += sorted([str(e) for e in comp_qty_df[elem_bh_col].unique() if str(e).lower() != 'nan'])
+                            elems_site = df_site[elem_bh_col].dropna().astype(str).str.strip().unique().tolist() if elem_bh_col else []
+                            elems_lab = df_lab[elment_main_col].dropna().astype(str).str.strip().unique().tolist() if elment_main_col else []
+                            available_elements += sorted(list(set(elems_site + elems_lab)))
                                 
-                            sel_element = st.selectbox("🎯 Filter by Element (BH):", available_elements, key=f"elem_sel_new_{exec_comp}")
+                            sel_element = st.selectbox("🎯 Filter by Element (Cross-Check):", available_elements, key=f"elem_cross_{exec_comp}")
                             
-                            if sel_element != "All Elements" and elem_bh_col:
-                                comp_qty_df = comp_qty_df[comp_qty_df[elem_bh_col] == sel_element]
-                                st.markdown(f"**Showing data strictly for Element:** `{sel_element}`")
+                            if sel_element != "All Elements":
+                                if elem_bh_col: df_site = df_site[df_site[elem_bh_col].astype(str).str.strip() == sel_element]
+                                if elment_main_col: df_lab = df_lab[df_lab[elment_main_col].astype(str).str.strip() == sel_element]
+                                st.markdown(f"**Validating data strictly for Element:** `{sel_element}`")
                             else:
                                 st.markdown("**Showing aggregated data for All Elements.**")
 
-                            # تحويل العواميد لأرقام وتصفير الفراغات
-                            comp_qty_df[exec_qty_col] = pd.to_numeric(comp_qty_df[exec_qty_col], errors='coerce').fillna(0)
-                            if target_rate_col: comp_qty_df[target_rate_col] = pd.to_numeric(comp_qty_df[target_rate_col], errors='coerce').fillna(0)
-                            if total_qty_col: comp_qty_df[total_qty_col] = pd.to_numeric(comp_qty_df[total_qty_col], errors='coerce').fillna(0)
-
-                            # الحسابات
-                            total_exec_qty = comp_qty_df[exec_qty_col].sum()
-                            
-                            # حساب إجمالي الكمية للمشروع (Scope)
-                            total_project_qty = 0
-                            if total_qty_col:
+                            # 1. Total Project Scope (من عمود Total Quantity بناءً على Company الأساسي)
+                            total_project_scope = 0
+                            if total_qty_col and not df_lab.empty:
+                                df_lab[total_qty_col] = pd.to_numeric(df_lab[total_qty_col], errors='coerce').fillna(0)
                                 if sel_element != "All Elements":
-                                    total_project_qty = comp_qty_df[total_qty_col].max()
-                                elif elem_bh_col:
-                                    total_project_qty = comp_qty_df.groupby(elem_bh_col)[total_qty_col].max().sum()
+                                    total_project_scope = df_lab[total_qty_col].max()
+                                elif elment_main_col:
+                                    total_project_scope = df_lab.groupby(elment_main_col)[total_qty_col].max().sum()
                                 else:
-                                    total_project_qty = comp_qty_df[total_qty_col].max()
-                                    
-                            performance_pct = (total_exec_qty / total_project_qty * 100) if total_project_qty > 0 else 0
+                                    total_project_scope = df_lab[total_qty_col].max()
 
-                            # 1. Dashboard Cards
-                            c1, c2, c3, c4 = st.columns(4)
-                            create_card(c1, "Total Executed (m³)", f"{total_exec_qty:,.1f}")
-                            create_card(c2, "Total Project Scope (m³)", f"{total_project_qty:,.1f}" if total_project_qty > 0 else "N/A")
+                            # 2. Total Executed (Site / Company 2)
+                            site_exec_qty = 0
+                            if exec_qty_m2_col and not df_site.empty:
+                                df_site[exec_qty_m2_col] = pd.to_numeric(df_site[exec_qty_m2_col], errors='coerce').fillna(0)
+                                site_exec_qty = df_site[exec_qty_m2_col].sum()
+
+                            # 3. Total Executed (Lab / Company 1)
+                            lab_exec_qty = 0
+                            if exec_qty_lab_col and not df_lab.empty:
+                                df_lab[exec_qty_lab_col] = pd.to_numeric(df_lab[exec_qty_lab_col], errors='coerce').fillna(0)
+                                lab_exec_qty = df_lab[exec_qty_lab_col].sum() # افترضنا جمع، لو القيمة تراكمية استخدم .max()
+
+                            # الكروت الأساسية
+                            st.markdown("#### ⚖️ Execution Verification (Site vs Lab)")
+                            c1, c2, c3 = st.columns(3)
+                            create_card(c1, "Total Project Scope (m³)", f"{total_project_scope:,.1f}" if total_project_scope > 0 else "N/A")
+                            create_card(c2, "Site Executed Qty (m²) [Production]", f"{site_exec_qty:,.1f}", delta_html="<span style='color:#00d2ff; font-size:12px;'>From Company Name 2</span>")
+                            create_card(c3, "Lab Executed Qty [QC Approvals]", f"{lab_exec_qty:,.1f}", delta_html="<span style='color:#ffaa00; font-size:12px;'>From Main Company</span>")
+
+                            # حساب الـ Scope Completion مرتين
+                            site_completion_pct = (site_exec_qty / total_project_scope * 100) if total_project_scope > 0 else 0
+                            lab_completion_pct = (lab_exec_qty / total_project_scope * 100) if total_project_scope > 0 else 0
                             
-                            if performance_pct >= 90:
-                                perf_color, perf_icon = "#2ecc71", "🌟 On Track"
-                            elif performance_pct >= 50:
-                                perf_color, perf_icon = "#f1c40f", "⚠️ In Progress"
-                            else:
-                                perf_color, perf_icon = "#e74c3c", "🚨 Lagging"
-                                
-                            c3.markdown(f"""
-                                <div class="metric-card" style="border-left: 5px solid {perf_color};">
-                                    <div class="metric-label">Scope Completion</div>
-                                    <div class="metric-value" style="color: {perf_color} !important;">{performance_pct:.1f}%</div>
-                                    <div style="font-size: 14px; font-weight: bold; margin-top: 5px; color: {perf_color};">{perf_icon}</div>
-                                    <div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 10px;">
-                                        <div class="prog-fill" style="height: 100%; width: {min(100, performance_pct)}%; background: {perf_color}; border-radius: 10px;"></div>
-                                    </div>
+                            c4, c5 = st.columns(2)
+                            c4.markdown(f"""
+                                <div class="metric-card" style="border-left: 5px solid #00d2ff;">
+                                    <div class="metric-label" style="color:#00d2ff !important;">Site Scope Completion</div>
+                                    <div class="metric-value">{site_completion_pct:.1f}%</div>
                                 </div>
                             """, unsafe_allow_html=True)
-                            
-                            if date_daily_col:
-                                comp_qty_df[date_daily_col] = pd.to_datetime(comp_qty_df[date_daily_col], errors='coerce')
-                                valid_dates_df = comp_qty_df.dropna(subset=[date_daily_col, exec_qty_col]).copy()
-                                valid_dates_df = valid_dates_df[valid_dates_df[exec_qty_col] > 0] # تجاهل الأيام اللي مفيهاش تنفيذ
-                                
-                                active_days = valid_dates_df[date_daily_col].nunique()
-                                avg_velocity = total_exec_qty / active_days if active_days > 0 else 0
-                                create_card(c4, "Average Daily Velocity", f"{avg_velocity:,.1f} m³/day")
-                                
-                                st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                                
-                                # 2. The New Daily Execution Chart
-                                if not valid_dates_df.empty and target_rate_col:
-                                    st.markdown("#### 🚀 Daily Execution vs. Target Rate")
-                                    st.caption("A direct comparison of daily accomplished volume against the strict daily target threshold.")
-                                    
-                                    # تجميع الكميات اليومية
-                                    daily_trend = valid_dates_df.groupby(date_daily_col).agg({
-                                        exec_qty_col: 'sum',
-                                        target_rate_col: 'max' # الهدف اليومي ثابت عادة
-                                    }).reset_index().sort_values(date_daily_col)
-                                    
-                                    fig_daily = go.Figure()
-                                    
-                                    # الخط العريض بتاع التارجت
-                                    fig_daily.add_trace(go.Scatter(
-                                        x=daily_trend[date_daily_col], 
-                                        y=daily_trend[target_rate_col], 
-                                        name="Target Daily Rate", 
-                                        mode='lines', 
-                                        line=dict(color='#e74c3c', width=4, shape='linear'),
-                                        hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Target:</b> %{y:,.1f} m³'
-                                    ))
-                                    
-                                    # عواميد التنفيذ الفعلي
-                                    fig_daily.add_trace(go.Bar(
-                                        x=daily_trend[date_daily_col], 
-                                        y=daily_trend[exec_qty_col], 
-                                        name="Executed Qty", 
-                                        marker=dict(color='#00d2ff', opacity=0.9, line=dict(color='rgba(255,255,255,0.2)', width=1)),
-                                        hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Executed:</b> %{y:,.1f} m³'
-                                    ))
-                                    
-                                    fig_daily.update_layout(
-                                        height=450, 
-                                        barmode='group', 
-                                        hovermode='x unified', 
-                                        margin=dict(l=0, r=0, t=20, b=0), 
-                                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-                                    )
-                                    try: fig_daily = style_3d_glassy(fig_daily, chart_type="combo")
-                                    except: pass
-                                    st.plotly_chart(fig_daily, use_container_width=True, key=f"daily_exec_chart_{exec_comp}")
-                                    
-                                st.divider()
-                                
-                                # 3. Sector Distribution & Table
-                                r3, r4 = st.columns([0.4, 0.6])
-                                with r3:
-                                    st.markdown("#### 🗺️ Execution by Sector")
-                                    if sector_col and not valid_dates_df.empty:
-                                        sector_df = valid_dates_df.groupby(sector_col)[exec_qty_col].sum().reset_index()
-                                        fig_sector = px.pie(sector_df, names=sector_col, values=exec_qty_col, hole=0.5, color_discrete_sequence=['#00d2ff', '#9b59b6', '#2ecc71'])
-                                        fig_sector.update_traces(textinfo='label+percent', hovertemplate='<b>Sector:</b> %{label}<br>Volume: %{value:,.0f} m³')
-                                        fig_sector.update_layout(height=350, margin=dict(l=0, r=0, t=20, b=0))
-                                        try: fig_sector = style_3d_glassy(fig_sector, chart_type="pie")
-                                        except: pass
-                                        st.plotly_chart(fig_sector, use_container_width=True, key=f"sector_dist_wow_{exec_comp}")
-                                        
-                                with r4:
-                                    st.markdown("#### 📝 Daily Execution Ledger")
-                                    display_cols = [date_daily_col, sector_col, elem_bh_col, target_rate_col, exec_qty_col]
-                                    display_cols = [c for c in display_cols if c in valid_dates_df.columns]
-                                    
-                                    styled_df = valid_dates_df[display_cols].sort_values(date_daily_col, ascending=False).head(100)
-                                    if date_daily_col in styled_df:
-                                        styled_df[date_daily_col] = styled_df[date_daily_col].dt.strftime('%Y-%m-%d')
-                                    st.dataframe(styled_df, use_container_width=True, height=350)
-                            else:
-                                st.warning("No valid dates found in the data to plot the charts.")
-                        else:
-                            st.warning(f"No execution data found for **{exec_comp}**.")
-                    else:
-                        st.info("🚨 **Data Missing:** Please ensure your CSV includes 'Company Name2' and 'Executed Quantity' columns.")
+                            c5.markdown(f"""
+                                <div class="metric-card" style="border-left: 5px solid #ffaa00;">
+                                    <div class="metric-label" style="color:#ffaa00 !important;">Lab Scope Completion</div>
+                                    <div class="metric-value">{lab_completion_pct:.1f}%</div>
+                                </div>
+                            """, unsafe_allow_html=True)
 
+                            # 💡 التنبيه الجبار (Leakage Alert)
+                            qty_diff = site_exec_qty - lab_exec_qty
+                            if qty_diff > 0 and total_project_scope > 0:
+                                st.markdown(f"""
+                                <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                    <h4 style="color: #e74c3c; margin-top: 0; font-size: 16px;">🚨 WARNING: QC COVERAGE GAP DETECTED</h4>
+                                    <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">
+                                        There is a discrepancy of <b style="color:#e74c3c; font-size:16px;">{qty_diff:,.1f} units</b> between what the Technical Office claims is executed vs what the Laboratory has tested/approved.
+                                        <br><i>Please ensure testing requests are submitted for the recently executed layers to close this gap.</i>
+                                    </p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            elif qty_diff < 0 and total_project_scope > 0:
+                                st.markdown(f"""
+                                <div style="background: rgba(241, 196, 15, 0.1); border-left: 5px solid #f1c40f; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                    <h4 style="color: #f1c40f; margin-top: 0; font-size: 16px;">⚠️ ADVISORY: LAB EXCEEDS SITE PRODUCTION</h4>
+                                    <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">
+                                        The Lab has tested <b style="color:#f1c40f; font-size:16px;">{abs(qty_diff):,.1f} units</b> more than what is logged in site production. Check for duplicate submittals or missing production logs.
+                                    </p>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                            row_ch1, row_ch2 = st.columns([0.6, 0.4])
+                            
+                            with row_ch1:
+                                # 💡 الشارت المحسن: التنفيذ الفعلي مقابل الهدف اليومي
+                                st.markdown("#### 🚀 Daily Site Execution vs. Target Rate")
+                                if date_daily_col and target_rate_col and not df_site.empty:
+                                    df_site[date_daily_col] = pd.to_datetime(df_site[date_daily_col], errors='coerce')
+                                    valid_dates_df = df_site.dropna(subset=[date_daily_col, exec_qty_m2_col]).copy()
+                                    
+                                    if not valid_dates_df.empty:
+                                        valid_dates_df[target_rate_col] = pd.to_numeric(valid_dates_df[target_rate_col], errors='coerce').fillna(0)
+                                        
+                                        daily_trend = valid_dates_df.groupby(date_daily_col).agg({
+                                            exec_qty_m2_col: 'sum',
+                                            target_rate_col: 'max' 
+                                        }).reset_index().sort_values(date_daily_col)
+                                        
+                                        fig_daily = go.Figure()
+                                        
+                                        # خط الهدف اليومي المتصل
+                                        fig_daily.add_trace(go.Scatter(
+                                            x=daily_trend[date_daily_col], 
+                                            y=daily_trend[target_rate_col], 
+                                            name="Target Daily Rate", 
+                                            mode='lines+markers', 
+                                            line=dict(color='#e74c3c', width=3, shape='spline'),
+                                            marker=dict(size=8, color='#ffffff', line=dict(color='#e74c3c', width=2)),
+                                            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Target:</b> %{y:,.1f}'
+                                        ))
+                                        
+                                        # أعمدة التنفيذ
+                                        fig_daily.add_trace(go.Bar(
+                                            x=daily_trend[date_daily_col], 
+                                            y=daily_trend[exec_qty_m2_col], 
+                                            name="Site Executed Qty", 
+                                            marker_color='#00d2ff',
+                                            opacity=0.85,
+                                            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Executed:</b> %{y:,.1f}'
+                                        ))
+                                        
+                                        fig_daily.update_layout(height=450, barmode='group', hovermode='x unified', margin=dict(l=0, r=0, t=30, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                                        try: fig_daily = style_3d_glassy(fig_daily, chart_type="combo")
+                                        except: pass
+                                        st.plotly_chart(fig_daily, use_container_width=True, key=f"smart_daily_{exec_comp}")
+                                    else:
+                                        st.info("No execution dates found.")
+                                else:
+                                    st.info("Missing Date, Execution, or Target columns.")
+
+                            with row_ch2:
+                                # 💡 اكتشاف العناصر المفقودة (Missing Elements)
+                                st.markdown("#### 🕵️ Elements Audit (Site vs Lab)")
+                                if elem_bh_col and elment_main_col:
+                                    site_elems_set = set(df_site[elem_bh_col].dropna().astype(str).str.strip().unique())
+                                    lab_elems_set = set(df_lab[elment_main_col].dropna().astype(str).str.strip().unique())
+                                    
+                                    site_elems_set = {e for e in site_elems_set if e.lower() != 'nan' and e != ''}
+                                    lab_elems_set = {e for e in lab_elems_set if e.lower() != 'nan' and e != ''}
+                                    
+                                    untested_elems = list(site_elems_set - lab_elems_set)
+                                    missing_logs_elems = list(lab_elems_set - site_elems_set)
+                                    
+                                    if untested_elems:
+                                        st.markdown(f"""
+                                        <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                                            <b style="color:#e74c3c;">🚨 Untested Executed Elements:</b><br>
+                                            <span style="font-size:13px; color:{ui['text_main']};">The contractor produced quantities in these elements, but NO laboratory tests are found:</span><br>
+                                            <b style="color:#ffffff;">{', '.join(untested_elems)}</b>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    else:
+                                        st.success("✅ All produced elements have associated lab tests.")
+                                        
+                                    if missing_logs_elems:
+                                        st.markdown(f"""
+                                        <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 8px;">
+                                            <b style="color:#f1c40f;">⚠️ Lab Tests without Site Log:</b><br>
+                                            <span style="font-size:13px; color:{ui['text_main']};">Tests exist for these elements, but they are missing from the Production Ledger:</span><br>
+                                            <b style="color:#ffffff;">{', '.join(missing_logs_elems)}</b>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                else:
+                                    st.info("Element columns needed for audit.")
+
+                            st.divider()
+
+                            # 💡 تحليل أنواع الاختبارات لكل Element
+                            st.markdown("#### 🧪 Laboratory Test Breakdown by Element")
+                            st.caption("Distribution of test types (DPL, Plate, Sandcone, etc.) conducted on each Element.")
+                            
+                            if elment_main_col and 'Test Type' in df_lab.columns and num_tests_col_q:
+                                df_lab[num_tests_col_q] = pd.to_numeric(df_lab[num_tests_col_q], errors='coerce').fillna(0)
+                                test_breakdown = df_lab.groupby([elment_main_col, 'Test Type'])[num_tests_col_q].sum().reset_index()
+                                test_breakdown = test_breakdown[test_breakdown[num_tests_col_q] > 0]
+                                
+                                if not test_breakdown.empty:
+                                    fig_tests = px.bar(test_breakdown, x=elment_main_col, y=num_tests_col_q, color='Test Type', 
+                                                     title="Number of Tests per Element", text_auto=True, color_discrete_sequence=NEON_COLORS, barmode='group')
+                                    fig_tests.update_layout(height=400, xaxis_title="Element", yaxis_title="Total Points Tested")
+                                    try: fig_tests = style_3d_glassy(fig_tests, chart_type="bar")
+                                    except: pass
+                                    st.plotly_chart(fig_tests, use_container_width=True, key=f"test_breakdown_{exec_comp}")
+                                    
+                                    # جدول ملخص للاختبارات
+                                    pivot_tests = pd.pivot_table(test_breakdown, values=num_tests_col_q, index=elment_main_col, columns='Test Type', aggfunc='sum', fill_value=0)
+                                    pivot_tests['Total Tests'] = pivot_tests.sum(axis=1)
+                                    st.dataframe(pivot_tests, use_container_width=True)
+                                else:
+                                    st.warning("No valid test numbers found to perform breakdown.")
+                            else:
+                                st.info("Requires 'ELMEN', 'Test Type', and 'Number of Tests' columns.")
+
+                        else:
+                            st.warning(f"No data found for **{exec_comp}**.")
+                    else:
+                        st.info("🚨 **Data Missing:** Please ensure your CSV includes 'Company Name2' and 'Company Name' columns.")
         # --- 🔍 Advanced Element Quality Auditor ---
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
         bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
