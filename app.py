@@ -11,7 +11,7 @@ import pytz
 import base64
 import hashlib
 import sqlite3
-import io # 💡 تمت إضافة هذه المكتبة لتصدير الإكسيل
+import io # 💡 مكتبة تصدير الإكسيل
 
 # ==========================================
 # 1. System Configuration & Constants
@@ -877,37 +877,52 @@ def render_home_page():
                 all_flat_data = []
                 
                 for sheet in xls.sheet_names:
-                    # Skip the main log or dashboard sheets based on naming conventions
                     if 'TABLE' in sheet.upper() or 'DASH' in sheet.upper(): 
                         continue
                     
                     try:
-                        # Read the raw sheet without headers first to find the structure
-                        # As per user image: Row 0 is useless, Row 1 is Company, Row 2 is Element, Row 3 is Totals
                         df_raw = pd.read_excel(xls, sheet_name=sheet, header=None)
-                        df_raw = df_raw.dropna(how='all', axis=1) # Drop completely empty columns
+                        df_raw = df_raw.dropna(how='all', axis=1) 
                         
                         if df_raw.empty or len(df_raw) < 5:
                             continue
 
-                        # Extract companies and elements (Assuming Row 1 is Company, Row 2 is Element based on standard Excel index)
-                        companies = df_raw.iloc[1].ffill() # Forward fill merged cells
-                        elements = df_raw.iloc[2]
+                        # Find dynamic indices by scanning for ELMENT or ELEMENT
+                        element_idx = 1
+                        company_idx = 0
+                        date_header_idx = 2
+                        data_start_idx = 3
+
+                        for i in range(min(10, len(df_raw))):
+                            row_str = " ".join(df_raw.iloc[i].astype(str).str.upper().tolist())
+                            if 'ELMENT' in row_str or 'ELEMENT' in row_str:
+                                element_idx = i
+                                company_idx = max(0, i - 1)
+                                date_header_idx = i + 1
+                                data_start_idx = i + 2
+                                break
+
+                        companies = df_raw.iloc[company_idx].ffill() 
+                        elements = df_raw.iloc[element_idx]
                         
-                        # Identify Date Column (Search in the raw data)
                         date_col_idx = None
                         for col in df_raw.columns:
-                            # Look for 'date' or 'تاريخ' in the first few rows
-                            sample_vals = df_raw[col].head(10).astype(str).str.lower()
-                            if sample_vals.str.contains('تاريخ|date').any():
+                            val = str(df_raw.iloc[date_header_idx, col]).lower()
+                            if 'تاريخ' in val or 'date' in val:
                                 date_col_idx = col
                                 break
+                                
+                        if date_col_idx is None:
+                            for col in df_raw.columns:
+                                sample_val = df_raw.iloc[data_start_idx, col]
+                                if isinstance(sample_val, datetime) or (isinstance(sample_val, str) and sample_val.count('-') == 2):
+                                    date_col_idx = col
+                                    break
                         
                         if date_col_idx is None:
-                            continue # Skip if no date column
+                            continue 
                             
-                        # Extract data rows (Assuming data starts after row 3)
-                        data_rows = df_raw.iloc[4:].copy()
+                        data_rows = df_raw.iloc[data_start_idx:].copy()
                         data_rows['Date'] = pd.to_datetime(data_rows[date_col_idx], errors='coerce')
                         data_rows = data_rows.dropna(subset=['Date'])
                         
@@ -918,8 +933,12 @@ def render_home_page():
                             comp_name = str(companies[col]).strip()
                             elem_name = str(elements[col]).strip()
                             
-                            # Skip totals or empty headers
-                            if comp_name.lower() in ['nan', '', 'total', 'اجمالي'] or 'اجمالي' in comp_name:
+                            # تخطي عمود الترقيم و أعمدة المجاميع
+                            col_header_val = str(df_raw.iloc[date_header_idx, col]).strip()
+                            if col_header_val == 'م':
+                                continue
+                                
+                            if comp_name.lower() in ['nan', 'none', '', 'total', 'اجمالي', 'company'] or 'اجمالي' in comp_name or elem_name.upper() in ['ELMENT', 'ELEMENT', 'NAN', 'NONE']:
                                 continue
                                 
                             temp_df = data_rows[['Date', col]].copy()
@@ -934,7 +953,6 @@ def render_home_page():
                             sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
                             sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
                             
-                            # Determine Sector from sheet name
                             if 'north' in sheet.lower() or 'شمال' in sheet:
                                 sector = "North Sector"
                             elif 'south' in sheet.lower() or 'جنوب' in sheet:
@@ -950,21 +968,15 @@ def render_home_page():
                 
                 if all_flat_data:
                     final_df = pd.concat(all_flat_data, ignore_index=True)
-                    # Sort and reset index
                     final_df = final_df.sort_values(by=['Date', 'Sector', 'Company Name']).reset_index(drop=True)
-                    # Insert 'No.' column at the beginning
-                    final_df.insert(0, 'No.', final_df.index + 3131) # Starting from a specific number as per user image
-                    
-                    # Format date to YYYY-MM-DD
+                    final_df.insert(0, 'No.', final_df.index + 3131) 
                     final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
                     
                     st.success(f"✅ Successfully converted! Generated {len(final_df)} flat records.")
                     
-                    # Preview the data inside an expander
                     with st.expander("👁️ Preview Converted Flat Data", expanded=True):
                         st.dataframe(final_df.head(50), use_container_width=True)
                     
-                    # Create Excel file in memory
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                         final_df.to_excel(writer, index=False, sheet_name='Daily Execution Log')
@@ -978,7 +990,7 @@ def render_home_page():
                         type="primary"
                     )
                 else:
-                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format (Row 1: Company, Row 2: Element, Column 1: Date).")
+                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format.")
 
             except Exception as e:
                 st.error(f"An error occurred while processing the file: {str(e)}")
@@ -1477,7 +1489,6 @@ def render_dashboard():
             if uploaded_file.name.endswith('.xlsx'):
                 excel_file = pd.ExcelFile(uploaded_file)
                 
-                # 💡 التعديل السحري: البحث عن شيت اللوج الأساسي وتخطي اللوجوهات أوتوماتيك
                 main_sheet = 'TABLE 1' if 'TABLE 1' in excel_file.sheet_names else excel_file.sheet_names[0]
                 
                 temp_df = pd.read_excel(uploaded_file, sheet_name=main_sheet, header=None, nrows=10)
@@ -1496,45 +1507,92 @@ def render_dashboard():
                 if len(excel_file.sheet_names) > 1:
                     for sheet_name in excel_file.sheet_names:
                         if sheet_name == main_sheet or 'DASH' in sheet_name.upper():
-                            continue # Skip main log and dashboard sheets
+                            continue 
                         
                         try:
-                            # Read ledger sheet
-                            rates_df_raw = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=1)
+                            # قراءة الشيت بدون هيدر للتعرف على مكان الصفوف
+                            df_raw = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=None)
+                            df_raw = df_raw.dropna(how='all', axis=1)
                             
-                            # Clean the columns
-                            rates_df_raw = rates_df_raw.loc[:, ~rates_df_raw.columns.astype(str).str.contains('^Unnamed', case=False, na=False)]
+                            if df_raw.empty or len(df_raw) < 5:
+                                continue
+
+                            # البحث عن صف الـ Element لتحديد بقية الصفوف
+                            element_idx = 1
+                            for i in range(min(10, len(df_raw))):
+                                row_str = " ".join(df_raw.iloc[i].astype(str).str.upper().tolist())
+                                if 'ELMENT' in row_str or 'ELEMENT' in row_str:
+                                    element_idx = i
+                                    break
+                                    
+                            company_idx = max(0, element_idx - 1)
+                            date_header_idx = element_idx + 1
+                            data_start_idx = element_idx + 2
                             
-                            # Identify the date column
-                            date_col = next((c for c in rates_df_raw.columns if 'تاريخ' in str(c).lower() or 'date' in str(c).lower()), None)
+                            companies = df_raw.iloc[company_idx].ffill() 
+                            elements = df_raw.iloc[element_idx]
                             
-                            if not date_col:
-                                continue # Skip sheet if no date column found
+                            # تحديد عمود التاريخ
+                            date_col_idx = None
+                            for col in df_raw.columns:
+                                val = str(df_raw.iloc[date_header_idx, col]).lower()
+                                if 'تاريخ' in val or 'date' in val:
+                                    date_col_idx = col
+                                    break
+                                    
+                            if date_col_idx is None:
+                                for col in df_raw.columns:
+                                    sample_val = df_raw.iloc[data_start_idx, col]
+                                    if isinstance(sample_val, datetime) or (isinstance(sample_val, str) and sample_val.count('-') == 2):
+                                        date_col_idx = col
+                                        break
+                            
+                            if date_col_idx is None:
+                                continue 
                                 
-                            # Extract elements mapping
-                            elements_mapping = rates_df_raw.iloc[0].to_dict()
+                            data_rows = df_raw.iloc[data_start_idx:].copy()
+                            data_rows['Date'] = pd.to_datetime(data_rows[date_col_idx], errors='coerce')
+                            data_rows = data_rows.dropna(subset=['Date'])
                             
-                            # Clean up the dataframe
-                            clean_rates = rates_df_raw.iloc[1:].dropna(subset=[date_col]).copy()
-                            clean_rates = clean_rates[~clean_rates[date_col].astype(str).str.contains('سبوع|Week', case=False, na=False)]
-                            clean_rates[date_col] = pd.to_datetime(clean_rates[date_col], errors='coerce')
-                            clean_rates = clean_rates.dropna(subset=[date_col])
-                            
-                            # Melt the dataframe
-                            melted_rates = pd.melt(clean_rates, id_vars=[date_col], var_name='Company Name', value_name='Executed_Qty')
-                            melted_rates['Executed_Qty'] = pd.to_numeric(melted_rates['Executed_Qty'], errors='coerce').fillna(0)
-                            melted_rates = melted_rates[melted_rates['Executed_Qty'] > 0]
-                            
-                            # Map the element back to the melted dataframe
-                            melted_rates['Element'] = melted_rates['Company Name'].map(elements_mapping)
-                            
-                            # Rename and format
-                            melted_rates = melted_rates.rename(columns={date_col: 'Date ( test)'})
-                            melted_rates['Company Name'] = melted_rates['Company Name'].astype(str).str.strip().str.lower()
-                            melted_rates['Source_Sheet'] = sheet_name
-                            
-                            melted_frames.append(melted_rates)
-                            
+                            sheet_melted_data = []
+                            for col in df_raw.columns:
+                                if col == date_col_idx: continue
+                                
+                                comp_name = str(companies[col]).strip()
+                                elem_name = str(elements[col]).strip()
+                                
+                                # 💡 تخطي عمود الترقيم و أعمدة المجاميع
+                                col_header_val = str(df_raw.iloc[date_header_idx, col]).strip()
+                                if col_header_val == 'م':
+                                    continue
+                                
+                                if comp_name.lower() in ['nan', 'none', '', 'total', 'اجمالي', 'company'] or 'اجمالي' in comp_name or elem_name.upper() in ['ELMENT', 'ELEMENT', 'NAN', 'NONE']:
+                                    continue
+                                    
+                                temp_df = data_rows[['Date', col]].copy()
+                                temp_df.columns = ['Date', 'Executed Quantity (m²)']
+                                temp_df['Company Name'] = comp_name
+                                temp_df['Element (BH)'] = elem_name
+                                
+                                sheet_melted_data.append(temp_df)
+                                
+                            if sheet_melted_data:
+                                sheet_res = pd.concat(sheet_melted_data, ignore_index=True)
+                                sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
+                                sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
+                                
+                                # Determine Sector
+                                if 'north' in sheet.lower() or 'شمال' in sheet:
+                                    sector = "North Sector"
+                                elif 'south' in sheet.lower() or 'جنوب' in sheet:
+                                    sector = "South Sector"
+                                else:
+                                    sector = sheet
+                                    
+                                sheet_res['Sector'] = sector
+                                sheet_res['Source_Sheet'] = sheet_name
+                                melted_frames.append(sheet_res)
+                                
                         except Exception as e:
                             st.sidebar.warning(f"Could not parse sheet '{sheet_name}'. Error: {str(e)}")
                             
