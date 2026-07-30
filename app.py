@@ -11,7 +11,7 @@ import pytz
 import base64
 import hashlib
 import sqlite3
-import io # 💡 تمت إضافة هذه المكتبة لتصدير الإكسيل
+import io
 
 # ==========================================
 # 1. System Configuration & Constants
@@ -866,7 +866,7 @@ def render_home_page():
     # 🗜️ Matrix-to-Flat Data Converter
     # ==========================================
     st.markdown("### 🗜️ Data Transformation Hub (Matrix to Flat Converter)")
-    st.info("Upload your daily production ledger (wide format/matrix) to convert it into a clean, flat Excel table ready for analysis.")
+    st.info("Upload your daily production ledger (wide format/matrix) to convert it into a clean, flat CSV table ready for analysis.")
     
     converter_file = st.file_uploader("Upload Matrix Excel File", type=['xlsx'], key="converter_upload")
     
@@ -877,38 +877,38 @@ def render_home_page():
                 all_flat_data = []
                 
                 for sheet in xls.sheet_names:
-                    # Skip the main log or dashboard sheets based on naming conventions
                     if 'TABLE' in sheet.upper() or 'DASH' in sheet.upper(): 
                         continue
                     
                     try:
-                        # Read the raw sheet without headers first to find the structure
-                        # As per user image: Row 0 is useless, Row 1 is Company, Row 2 is Element, Row 3 is Totals
                         df_raw = pd.read_excel(xls, sheet_name=sheet, header=None)
-                        df_raw = df_raw.dropna(how='all', axis=1) # Drop completely empty columns
+                        df_raw = df_raw.dropna(how='all', axis=1) 
                         
                         if df_raw.empty or len(df_raw) < 5:
                             continue
 
-                        # Find dynamic indices by scanning for ELMENT or ELEMENT
                         element_idx = 1
                         company_idx = 0
                         date_header_idx = 2
                         data_start_idx = 3
 
                         for i in range(min(10, len(df_raw))):
-                            row_str = " ".join([str(x).upper() for x in df_raw.iloc[i].tolist()])
+                            # 💡 التعديل هنا: استخدام List Comprehension وتجاهل قيم الـ NaN
+                            row_vals = [str(x).upper() for x in df_raw.iloc[i].tolist() if pd.notna(x)]
+                            row_str = " ".join(row_vals)
+                            
                             if 'ELMENT' in row_str or 'ELEMENT' in row_str:
                                 element_idx = i
                                 company_idx = max(0, i - 1)
-                                date_header_idx = i + 1
-                                data_start_idx = i + 2
+                                rate_idx = i + 1  # 💡 ده صف المعدل اليومي
+                                date_header_idx = i + 2 # رحلنا التواريخ سطر لتحت
+                                data_start_idx = i + 3 # رحلنا الداتا سطر لتحت
                                 break
 
                         companies = df_raw.iloc[company_idx].ffill() 
                         elements = df_raw.iloc[element_idx]
+                        daily_rates = df_raw.iloc[rate_idx] # 💡 سحب المعدل اليومي
                         
-                        # Identify Date Column (Search in the raw data)
                         date_col_idx = None
                         for col in df_raw.columns:
                             val = str(df_raw.iloc[date_header_idx, col]).lower()
@@ -926,7 +926,6 @@ def render_home_page():
                         if date_col_idx is None:
                             continue 
                             
-                        # Extract data rows (Assuming data starts after row 3)
                         data_rows = df_raw.iloc[data_start_idx:].copy()
                         data_rows['Date'] = pd.to_datetime(data_rows[date_col_idx], errors='coerce')
                         data_rows = data_rows.dropna(subset=['Date'])
@@ -937,8 +936,8 @@ def render_home_page():
                             
                             comp_name = str(companies[col]).strip()
                             elem_name = str(elements[col]).strip()
+                            target_rate = pd.to_numeric(daily_rates[col], errors='coerce') # 💡 تحويل المعدل لرقم
                             
-                            # تخطي عمود الترقيم و أعمدة المجاميع
                             col_header_val = str(df_raw.iloc[date_header_idx, col]).strip()
                             if col_header_val == 'م':
                                 continue
@@ -950,6 +949,7 @@ def render_home_page():
                             temp_df.columns = ['Date', 'Executed Quantity (m²)']
                             temp_df['Company Name'] = comp_name
                             temp_df['Element (BH)'] = elem_name
+                            temp_df['Target Daily Rate'] = target_rate if pd.notna(target_rate) else 0 # 💡 إضافة العمود للجدول
                             
                             sheet_melted_data.append(temp_df)
                             
@@ -958,7 +958,6 @@ def render_home_page():
                             sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
                             sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
                             
-                            # Determine Sector from sheet name
                             if 'north' in sheet.lower() or 'شمال' in sheet:
                                 sector = "North Sector"
                             elif 'south' in sheet.lower() or 'جنوب' in sheet:
@@ -967,42 +966,35 @@ def render_home_page():
                                 sector = sheet
                                 
                             sheet_res['Sector'] = sector
-                            all_flat_data.append(sheet_res[['Date', 'Sector', 'Company Name', 'Element (BH)', 'Executed Quantity (m²)']])
+                            # 💡 إضافة العمود للجدول النهائي
+                            all_flat_data.append(sheet_res[['Date', 'Sector', 'Company Name', 'Element (BH)', 'Target Daily Rate', 'Executed Quantity (m²)']])
                             
                     except Exception as e:
                         st.warning(f"Skipped sheet '{sheet}' due to formatting issues. Error: {str(e)}")
                 
                 if all_flat_data:
                     final_df = pd.concat(all_flat_data, ignore_index=True)
-                    # Sort and reset index
                     final_df = final_df.sort_values(by=['Date', 'Sector', 'Company Name']).reset_index(drop=True)
-                    # Insert 'No.' column at the beginning
-                    final_df.insert(0, 'No.', final_df.index + 3131) # Starting from a specific number as per user image
-                    
-                    # Format date to YYYY-MM-DD
+                    final_df.insert(0, 'No.', final_df.index + 3131) 
                     final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
                     
                     st.success(f"✅ Successfully converted! Generated {len(final_df)} flat records.")
                     
-                    # Preview the data inside an expander
                     with st.expander("👁️ Preview Converted Flat Data", expanded=True):
                         st.dataframe(final_df.head(50), use_container_width=True)
                     
-                    # Create Excel file in memory
-                    output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        final_df.to_excel(writer, index=False, sheet_name='Daily Execution Log')
-                    excel_data = output.getvalue()
+                    # 💡 التعديل هنا: تحويل الملف لـ CSV بدلاً من Excel
+                    csv_data = final_df.to_csv(index=False).encode('utf-8-sig')
                     
                     st.download_button(
-                        label="📥 Download Clean Excel (.xlsx)",
-                        data=excel_data,
-                        file_name=f"Flat_Execution_Log_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        label="📥 Download Clean CSV File",
+                        data=csv_data,
+                        file_name=f"Flat_Execution_Log_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv",
                         type="primary"
                     )
                 else:
-                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format (Row 1: Company, Row 2: Element, Column 1: Date).")
+                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format.")
 
             except Exception as e:
                 st.error(f"An error occurred while processing the file: {str(e)}")
@@ -1513,7 +1505,6 @@ def render_dashboard():
                         
                 df = pd.read_excel(uploaded_file, sheet_name=main_sheet, header=header_idx)
                 
-                # Dynamic merging of all other sheets (Production Ledgers)
                 melted_frames = []
                 
                 if len(excel_file.sheet_names) > 1:
@@ -1522,29 +1513,34 @@ def render_dashboard():
                             continue 
                         
                         try:
-                            # قراءة الشيت بدون هيدر للتعرف على مكان الصفوف
                             df_raw = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=None)
                             df_raw = df_raw.dropna(how='all', axis=1)
                             
                             if df_raw.empty or len(df_raw) < 5:
                                 continue
 
-                            # البحث عن صف الـ Element لتحديد بقية الصفوف
                             element_idx = 1
+                            company_idx = 0
+                            rate_idx = 2
+                            date_header_idx = 3
+                            data_start_idx = 4
+
                             for i in range(min(10, len(df_raw))):
-                                row_str = " ".join([str(x).upper() for x in df_raw.iloc[i].tolist()])
+                                row_vals = [str(x).upper() for x in df_raw.iloc[i].tolist() if pd.notna(x)]
+                                row_str = " ".join(row_vals)
+                                
                                 if 'ELMENT' in row_str or 'ELEMENT' in row_str:
                                     element_idx = i
+                                    company_idx = max(0, i - 1)
+                                    rate_idx = i + 1  
+                                    date_header_idx = i + 2
+                                    data_start_idx = i + 3
                                     break
-                                    
-                            company_idx = max(0, element_idx - 1)
-                            date_header_idx = element_idx + 1
-                            data_start_idx = element_idx + 2
-                            
+
                             companies = df_raw.iloc[company_idx].ffill() 
                             elements = df_raw.iloc[element_idx]
+                            daily_rates = df_raw.iloc[rate_idx]
                             
-                            # تحديد عمود التاريخ
                             date_col_idx = None
                             for col in df_raw.columns:
                                 val = str(df_raw.iloc[date_header_idx, col]).lower()
@@ -1572,8 +1568,8 @@ def render_dashboard():
                                 
                                 comp_name = str(companies[col]).strip()
                                 elem_name = str(elements[col]).strip()
+                                target_rate = pd.to_numeric(daily_rates[col], errors='coerce')
                                 
-                                # 💡 تخطي عمود الترقيم و أعمدة المجاميع
                                 col_header_val = str(df_raw.iloc[date_header_idx, col]).strip()
                                 if col_header_val == 'م':
                                     continue
@@ -1585,6 +1581,7 @@ def render_dashboard():
                                 temp_df.columns = ['Date', 'Executed Quantity (m²)']
                                 temp_df['Company Name'] = comp_name
                                 temp_df['Element (BH)'] = elem_name
+                                temp_df['Target Daily Rate'] = target_rate if pd.notna(target_rate) else 0
                                 
                                 sheet_melted_data.append(temp_df)
                                 
@@ -1593,7 +1590,6 @@ def render_dashboard():
                                 sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
                                 sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
                                 
-                                # Determine Sector
                                 if 'north' in sheet.lower() or 'شمال' in sheet:
                                     sector = "North Sector"
                                 elif 'south' in sheet.lower() or 'جنوب' in sheet:
@@ -2941,4 +2937,4 @@ def main():
                     st.rerun()
 
 if __name__ == "__main__":
-    main() 
+    main()
