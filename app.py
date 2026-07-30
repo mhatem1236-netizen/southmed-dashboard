@@ -862,6 +862,140 @@ def render_home_page():
 
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
+    # ==========================================
+    # 🗜️ Matrix-to-Flat Data Converter
+    # ==========================================
+    st.markdown("### 🗜️ Data Transformation Hub (Matrix to Flat Converter)")
+    st.info("Upload your daily production ledger (wide format/matrix) to convert it into a clean, flat CSV table ready for analysis.")
+    
+    converter_file = st.file_uploader("Upload Matrix Excel File", type=['xlsx'], key="converter_upload")
+    
+    if converter_file and st.button("🔄 Convert to Flat Table", type="primary"):
+        with st.spinner("Processing sheets and flattening data..."):
+            try:
+                xls = pd.ExcelFile(converter_file)
+                all_flat_data = []
+                
+                for sheet in xls.sheet_names:
+                    if 'TABLE' in sheet.upper() or 'DASH' in sheet.upper(): 
+                        continue
+                    
+                    try:
+                        df_raw = pd.read_excel(xls, sheet_name=sheet, header=None)
+                        df_raw = df_raw.dropna(how='all', axis=1) 
+                        
+                        if df_raw.empty or len(df_raw) < 5:
+                            continue
+
+                        element_idx = 1
+                        company_idx = 0
+                        rate_idx = 2
+                        date_header_idx = 3
+                        data_start_idx = 4
+
+                        for i in range(min(10, len(df_raw))):
+                            row_vals = [str(x).upper() for x in df_raw.iloc[i].tolist() if pd.notna(x)]
+                            row_str = " ".join(row_vals)
+                            
+                            if 'ELMENT' in row_str or 'ELEMENT' in row_str:
+                                element_idx = i
+                                company_idx = max(0, i - 1)
+                                rate_idx = i + 1  
+                                date_header_idx = i + 2
+                                data_start_idx = i + 3
+                                break
+
+                        companies = df_raw.iloc[company_idx].ffill() 
+                        elements = df_raw.iloc[element_idx]
+                        daily_rates = df_raw.iloc[rate_idx]
+                        
+                        date_col_idx = None
+                        for col in df_raw.columns:
+                            val = str(df_raw.iloc[date_header_idx, col]).lower()
+                            if 'تاريخ' in val or 'date' in val:
+                                date_col_idx = col
+                                break
+                                
+                        if date_col_idx is None:
+                            for col in df_raw.columns:
+                                sample_val = df_raw.iloc[data_start_idx, col]
+                                if isinstance(sample_val, datetime) or (isinstance(sample_val, str) and sample_val.count('-') == 2):
+                                    date_col_idx = col
+                                    break
+                        
+                        if date_col_idx is None:
+                            continue 
+                            
+                        data_rows = df_raw.iloc[data_start_idx:].copy()
+                        data_rows['Date'] = pd.to_datetime(data_rows[date_col_idx], errors='coerce')
+                        data_rows = data_rows.dropna(subset=['Date'])
+                        
+                        sheet_melted_data = []
+                        for col in df_raw.columns:
+                            if col == date_col_idx: continue
+                            
+                            comp_name = str(companies[col]).strip()
+                            elem_name = str(elements[col]).strip()
+                            target_rate = pd.to_numeric(daily_rates[col], errors='coerce')
+                            
+                            col_header_val = str(df_raw.iloc[date_header_idx, col]).strip()
+                            if col_header_val == 'م':
+                                continue
+                                
+                            if comp_name.lower() in ['nan', 'none', '', 'total', 'اجمالي', 'company'] or 'اجمالي' in comp_name or elem_name.upper() in ['ELMENT', 'ELEMENT', 'NAN', 'NONE']:
+                                continue
+                                
+                            temp_df = data_rows[['Date', col]].copy()
+                            temp_df.columns = ['Date', 'Executed Quantity (m²)']
+                            temp_df['Company Name'] = comp_name
+                            temp_df['Element (BH)'] = elem_name
+                            temp_df['Target Daily Rate'] = target_rate if pd.notna(target_rate) else 0
+                            
+                            sheet_melted_data.append(temp_df)
+                            
+                        if sheet_melted_data:
+                            sheet_res = pd.concat(sheet_melted_data, ignore_index=True)
+                            sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
+                            sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
+                            
+                            if 'north' in sheet.lower() or 'شمال' in sheet:
+                                sector = "North Sector"
+                            elif 'south' in sheet.lower() or 'جنوب' in sheet:
+                                sector = "South Sector"
+                            else:
+                                sector = sheet
+                                
+                            sheet_res['Sector'] = sector
+                            all_flat_data.append(sheet_res[['Date', 'Sector', 'Company Name', 'Element (BH)', 'Target Daily Rate', 'Executed Quantity (m²)']])
+                            
+                    except Exception as e:
+                        st.warning(f"Skipped sheet '{sheet}' due to formatting issues. Error: {str(e)}")
+                
+                if all_flat_data:
+                    final_df = pd.concat(all_flat_data, ignore_index=True)
+                    final_df = final_df.sort_values(by=['Date', 'Sector', 'Company Name']).reset_index(drop=True)
+                    final_df.insert(0, 'No.', final_df.index + 3131) 
+                    final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
+                    
+                    st.success(f"✅ Successfully converted! Generated {len(final_df)} flat records.")
+                    
+                    with st.expander("👁️ Preview Converted Flat Data", expanded=True):
+                        st.dataframe(final_df.head(50), use_container_width=True)
+                    
+                    csv_data = final_df.to_csv(index=False).encode('utf-8-sig')
+                    
+                    st.download_button(
+                        label="📥 Download Clean CSV File",
+                        data=csv_data,
+                        file_name=f"Flat_Execution_Log_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv",
+                        type="primary"
+                    )
+                else:
+                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format.")
+
+            except Exception as e:
+                st.error(f"An error occurred while processing the file: {str(e)}")
 # ==========================================
 # 10. Analytics Hub (6 Levels with Advanced Additions)
 # ==========================================
