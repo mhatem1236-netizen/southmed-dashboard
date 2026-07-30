@@ -11,7 +11,7 @@ import pytz
 import base64
 import hashlib
 import sqlite3
-import io # 💡 مكتبة تصدير الإكسيل
+import io # 💡 تمت إضافة هذه المكتبة لتصدير الإكسيل
 
 # ==========================================
 # 1. System Configuration & Constants
@@ -877,12 +877,15 @@ def render_home_page():
                 all_flat_data = []
                 
                 for sheet in xls.sheet_names:
+                    # Skip the main log or dashboard sheets based on naming conventions
                     if 'TABLE' in sheet.upper() or 'DASH' in sheet.upper(): 
                         continue
                     
                     try:
+                        # Read the raw sheet without headers first to find the structure
+                        # As per user image: Row 0 is useless, Row 1 is Company, Row 2 is Element, Row 3 is Totals
                         df_raw = pd.read_excel(xls, sheet_name=sheet, header=None)
-                        df_raw = df_raw.dropna(how='all', axis=1) 
+                        df_raw = df_raw.dropna(how='all', axis=1) # Drop completely empty columns
                         
                         if df_raw.empty or len(df_raw) < 5:
                             continue
@@ -894,7 +897,7 @@ def render_home_page():
                         data_start_idx = 3
 
                         for i in range(min(10, len(df_raw))):
-                            row_str = " ".join(df_raw.iloc[i].astype(str).str.upper().tolist())
+                            row_str = " ".join([str(x).upper() for x in df_raw.iloc[i].tolist()])
                             if 'ELMENT' in row_str or 'ELEMENT' in row_str:
                                 element_idx = i
                                 company_idx = max(0, i - 1)
@@ -905,6 +908,7 @@ def render_home_page():
                         companies = df_raw.iloc[company_idx].ffill() 
                         elements = df_raw.iloc[element_idx]
                         
+                        # Identify Date Column (Search in the raw data)
                         date_col_idx = None
                         for col in df_raw.columns:
                             val = str(df_raw.iloc[date_header_idx, col]).lower()
@@ -922,6 +926,7 @@ def render_home_page():
                         if date_col_idx is None:
                             continue 
                             
+                        # Extract data rows (Assuming data starts after row 3)
                         data_rows = df_raw.iloc[data_start_idx:].copy()
                         data_rows['Date'] = pd.to_datetime(data_rows[date_col_idx], errors='coerce')
                         data_rows = data_rows.dropna(subset=['Date'])
@@ -953,6 +958,7 @@ def render_home_page():
                             sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
                             sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
                             
+                            # Determine Sector from sheet name
                             if 'north' in sheet.lower() or 'شمال' in sheet:
                                 sector = "North Sector"
                             elif 'south' in sheet.lower() or 'جنوب' in sheet:
@@ -968,15 +974,21 @@ def render_home_page():
                 
                 if all_flat_data:
                     final_df = pd.concat(all_flat_data, ignore_index=True)
+                    # Sort and reset index
                     final_df = final_df.sort_values(by=['Date', 'Sector', 'Company Name']).reset_index(drop=True)
-                    final_df.insert(0, 'No.', final_df.index + 3131) 
+                    # Insert 'No.' column at the beginning
+                    final_df.insert(0, 'No.', final_df.index + 3131) # Starting from a specific number as per user image
+                    
+                    # Format date to YYYY-MM-DD
                     final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
                     
                     st.success(f"✅ Successfully converted! Generated {len(final_df)} flat records.")
                     
+                    # Preview the data inside an expander
                     with st.expander("👁️ Preview Converted Flat Data", expanded=True):
                         st.dataframe(final_df.head(50), use_container_width=True)
                     
+                    # Create Excel file in memory
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                         final_df.to_excel(writer, index=False, sheet_name='Daily Execution Log')
@@ -990,7 +1002,7 @@ def render_home_page():
                         type="primary"
                     )
                 else:
-                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format.")
+                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format (Row 1: Company, Row 2: Element, Column 1: Date).")
 
             except Exception as e:
                 st.error(f"An error occurred while processing the file: {str(e)}")
@@ -1494,7 +1506,7 @@ def render_dashboard():
                 temp_df = pd.read_excel(uploaded_file, sheet_name=main_sheet, header=None, nrows=10)
                 header_idx = 0
                 for i in range(len(temp_df)):
-                    row_str = " ".join(temp_df.iloc[i].astype(str).str.upper().tolist())
+                    row_str = " ".join([str(x).upper() for x in temp_df.iloc[i].tolist()])
                     if 'COMPANY' in row_str or 'SERIAL' in row_str or 'TEST TYPE' in row_str:
                         header_idx = i
                         break
@@ -1520,7 +1532,7 @@ def render_dashboard():
                             # البحث عن صف الـ Element لتحديد بقية الصفوف
                             element_idx = 1
                             for i in range(min(10, len(df_raw))):
-                                row_str = " ".join(df_raw.iloc[i].astype(str).str.upper().tolist())
+                                row_str = " ".join([str(x).upper() for x in df_raw.iloc[i].tolist()])
                                 if 'ELMENT' in row_str or 'ELEMENT' in row_str:
                                     element_idx = i
                                     break
@@ -2929,4 +2941,4 @@ def main():
                     st.rerun()
 
 if __name__ == "__main__":
-    main()
+    main() 
