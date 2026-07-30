@@ -1593,7 +1593,7 @@ def render_dashboard():
             st.sidebar.success(f"🎯 Found {len(df)} records matching '{global_search}'")
             
         comp1 = df['Company Name'].dropna().unique().tolist() if 'Company Name' in df.columns else []
-        comp_name2_col_temp = next((c for c in df.columns if 'COMPANY NAME2' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
+        comp_name2_col_temp = next((c for c in df.columns if 'Contractor' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
         comp2 = df[comp_name2_col_temp].dropna().unique().tolist() if comp_name2_col_temp else []
         companies = sorted(list(set([str(c).strip() for c in comp1 + comp2 if str(c).lower() != 'nan' and str(c) != ''])))
 
@@ -2489,7 +2489,7 @@ def render_dashboard():
                     st.markdown(f"### 📊 Execution & Discrepancy Analytics")
                     st.caption("Compare Technical Office production (Company Name 2) against Laboratory approvals (Company Name).")
                     
-                    comp_name2_col = next((c for c in df.columns if 'COMPANY NAME2' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
+                    comp_name2_col = next((c for c in df.columns if 'Contractor' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
                     comp_main_col = 'Company Name' # تم توحيده في أول الكود
                     
                     exec_qty_m2_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' in c.upper()), None) # حصر الموقع
@@ -2718,7 +2718,7 @@ def render_dashboard():
                         else:
                             st.warning(f"No data found for **{exec_comp}**.")
                     else:
-                        st.info("🚨 **Data Missing:** Please ensure your CSV includes 'Company Name2' and 'Company Name' columns.")
+                        st.info("🚨 **Data Missing:** Please ensure your CSV includes 'Contractor' and 'Company Name' columns.")
 
         # --- 🔍 Advanced Element Quality Auditor ---
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
