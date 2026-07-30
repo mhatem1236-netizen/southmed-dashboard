@@ -2360,166 +2360,206 @@ def render_dashboard():
                             
                 # 💡 التعديل 2: تحديث تابة Quantities Rate بالتحليلات العميقة (Performance vs Target, Sector Breakdown, Element Analysis, AI Advice)
                 
-                   # --- 📊 التابة الجديدة: Quantities Rate (محدثة بكل التحليلات العميقة) ---
+                  # --- 📊 التابة الجديدة: Quantities Rate (بنسخة الـ WOW Effect) ---
                 with tab_quantities:
-                    st.markdown(f"### 📊 Execution & Performance Rate: `{selected_comp}`")
+                    st.markdown(f"### 📊 Execution Quantities Analytics")
                     
+                    # سحب العواميد بشكل آمن تماماً
                     comp_name2_col = next((c for c in df.columns if 'COMPANY NAME2' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
-                    
-                    if comp_name2_col:
-                        comp_qty_df = df[df[comp_name2_col].astype(str).str.strip().str.lower() == selected_comp.strip().lower()].copy()
+                    exec_qty_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper()), None)
+                    target_rate_col = next((c for c in df.columns if 'TARGET DAILY RATE' in c.upper()), None)
+                    date_daily_col = next((c for c in df.columns if 'DATE (DAILY)' in c.upper()), None)
+                    sector_col = next((c for c in df.columns if 'SECTOER' in c.upper() or 'SECTOR' in c.upper()), None)
+                    elem_bh_col = next((c for c in df.columns if 'ELEMENT (BH)' in c.upper() or 'ELEMENT' in c.upper()), None)
+                    total_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in c.upper()), None)
+
+                    if comp_name2_col and exec_qty_col:
+                        # جلب أسماء الشركات من العمود الصحيح للإنتاجية فقط
+                        valid_companies = sorted([str(c) for c in df[comp_name2_col].dropna().unique() if str(c).strip().lower() != 'nan' and str(c).strip() != ''])
+                        
+                        st.markdown(f"""
+                        <div style='background:rgba(0, 210, 255, 0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #00d2ff; margin-bottom: 20px;'>
+                            <b style='color:#00d2ff; font-size:16px;'>🏗️ Step 1: Select Execution Contractor</b><br>
+                            <span style='color:{ui["text_muted"]}; font-size:13px;'>Choose the contractor strictly from the Production Ledger (Company Name 2) to view exact quantities.</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Dropdown مخصص للإنتاجية
+                        exec_comp = st.selectbox("Select Contractor for Execution Analysis:", valid_companies, key="exec_comp_sel")
+                        
+                        comp_qty_df = df[df[comp_name2_col].astype(str) == exec_comp].copy()
                         
                         if not comp_qty_df.empty:
-                            elem_bh_col = next((c for c in comp_qty_df.columns if 'ELEMENT (BH)' in c.upper() or 'ELEMENT' in c.upper()), None)
-                            exec_qty_m2_col = next((c for c in comp_qty_df.columns if 'EXECUTED QUANTITY' in c.upper()), None)
-                            target_rate_col = next((c for c in comp_qty_df.columns if 'TARGET DAILY RATE' in c.upper()), None)
-                            date_daily_col = next((c for c in comp_qty_df.columns if 'DATE (DAILY)' in c.upper()), None)
-                            sector_col = next((c for c in comp_qty_df.columns if 'SECTOR' in c.upper()), None)
-
+                            # فلتر الـ Elements المرتبط بالشركة المختارة
                             available_elements = ["All Elements"]
                             if elem_bh_col:
                                 available_elements += sorted([str(e) for e in comp_qty_df[elem_bh_col].dropna().unique() if str(e).lower() != 'nan'])
                                 
-                            sel_element = st.selectbox("🎯 Filter by Element:", available_elements, key=f"elem_sel_{selected_comp}")
+                            sel_element = st.selectbox("🎯 Filter by Element (BH):", available_elements, key=f"elem_sel_q_{exec_comp}")
                             
                             if sel_element != "All Elements" and elem_bh_col:
                                 comp_qty_df = comp_qty_df[comp_qty_df[elem_bh_col].astype(str) == sel_element]
-                                st.markdown(f"**Showing data for Element:** `{sel_element}`")
+                                st.markdown(f"**Showing data strictly for Element:** `{sel_element}`")
                             else:
                                 st.markdown("**Showing aggregated data for All Elements.**")
 
-                            total_exec_qty = pd.to_numeric(comp_qty_df[exec_qty_m2_col], errors='coerce').sum() if exec_qty_m2_col else 0
-                            total_target_qty = pd.to_numeric(comp_qty_df[target_rate_col], errors='coerce').sum() if target_rate_col else 0
+                            # تحويل العواميد لأرقام وتصفير الفراغات
+                            comp_qty_df[exec_qty_col] = pd.to_numeric(comp_qty_df[exec_qty_col], errors='coerce').fillna(0)
+                            if target_rate_col: comp_qty_df[target_rate_col] = pd.to_numeric(comp_qty_df[target_rate_col], errors='coerce').fillna(0)
+                            if total_qty_col: comp_qty_df[total_qty_col] = pd.to_numeric(comp_qty_df[total_qty_col], errors='coerce').fillna(0)
+
+                            # الحسابات
+                            total_exec_qty = comp_qty_df[exec_qty_col].sum()
                             
-                            performance_pct = (total_exec_qty / total_target_qty * 100) if total_target_qty > 0 else 0
-                            
-                            # 1. Performance KPIs
+                            # حساب إجمالي الكمية للمشروع (بناخد القيمة العظمى لكل Element عشان لو متكررة كل يوم منجمعهاش غلط)
+                            if total_qty_col and elem_bh_col:
+                                total_project_qty = comp_qty_df.groupby(elem_bh_col)[total_qty_col].max().sum()
+                            elif total_qty_col:
+                                total_project_qty = comp_qty_df[total_qty_col].max()
+                            else:
+                                total_project_qty = 0
+                                
+                            performance_pct = (total_exec_qty / total_project_qty * 100) if total_project_qty > 0 else 0
+
+                            # 1. Dashboard Cards
                             c1, c2, c3, c4 = st.columns(4)
-                            create_card(c1, "Total Executed (m³/m²)", f"{total_exec_qty:,.0f}")
-                            create_card(c2, "Total Target Required", f"{total_target_qty:,.0f}")
+                            create_card(c1, "Total Executed (m³)", f"{total_exec_qty:,.1f}")
+                            create_card(c2, "Overall Total Scope (m³)", f"{total_project_qty:,.1f}" if total_project_qty > 0 else "N/A")
                             
                             if performance_pct >= 90:
-                                perf_color = "#2ecc71"
-                                perf_icon = "🌟 Excellent"
+                                perf_color, perf_icon = "#2ecc71", "🌟 On Track"
                             elif performance_pct >= 50:
-                                perf_color = "#f1c40f"
-                                perf_icon = "⚠️ Moderate"
+                                perf_color, perf_icon = "#f1c40f", "⚠️ In Progress"
                             else:
-                                perf_color = "#e74c3c"
-                                perf_icon = "🚨 Underperforming"
+                                perf_color, perf_icon = "#e74c3c", "🚨 Lagging"
                                 
                             c3.markdown(f"""
                                 <div class="metric-card" style="border-left: 5px solid {perf_color};">
-                                    <div class="metric-label">Performance vs Target</div>
+                                    <div class="metric-label">Scope Completion</div>
                                     <div class="metric-value" style="color: {perf_color} !important;">{performance_pct:.1f}%</div>
                                     <div style="font-size: 14px; font-weight: bold; margin-top: 5px; color: {perf_color};">{perf_icon}</div>
+                                    <div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 10px;">
+                                        <div class="prog-fill" style="height: 100%; width: {min(100, performance_pct)}%; background: {perf_color}; border-radius: 10px;"></div>
+                                    </div>
                                 </div>
                             """, unsafe_allow_html=True)
                             
-                            if date_daily_col and not comp_qty_df.empty:
+                            if date_daily_col:
                                 comp_qty_df[date_daily_col] = pd.to_datetime(comp_qty_df[date_daily_col], errors='coerce')
                                 valid_dates_df = comp_qty_df.dropna(subset=[date_daily_col]).copy()
                                 
                                 active_days = valid_dates_df[date_daily_col].nunique()
                                 avg_velocity = total_exec_qty / active_days if active_days > 0 else 0
-                                create_card(c4, "Average Daily Velocity", f"{avg_velocity:,.0f} /day")
+                                create_card(c4, "Average Daily Velocity", f"{avg_velocity:,.1f} m³/day")
                                 
                                 st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                                 
-                                r1, r2 = st.columns([0.6, 0.4])
-                                
-                                # 2. Target vs Executed Trend Chart
-                                with r1:
-                                    st.markdown("#### 📈 Daily Execution vs. Target Rate")
-                                    if exec_qty_m2_col and target_rate_col:
-                                        daily_trend = valid_dates_df.groupby(date_daily_col).agg({
-                                            exec_qty_m2_col: 'sum',
-                                            target_rate_col: 'mean' 
-                                        }).reset_index()
+                                # 2. The WOW Charts Section
+                                if not valid_dates_df.empty and target_rate_col:
+                                    daily_trend = valid_dates_df.groupby(date_daily_col).agg({
+                                        exec_qty_col: 'sum',
+                                        target_rate_col: 'max' 
+                                    }).reset_index().sort_values(date_daily_col)
+                                    
+                                    daily_trend['Cum_Executed'] = daily_trend[exec_qty_col].cumsum()
+                                    daily_trend['Cum_Target'] = daily_trend[target_rate_col].cumsum()
+                                    
+                                    chart_col1, chart_col2 = st.columns(2)
+                                    
+                                    with chart_col1:
+                                        st.markdown("#### 🚀 Daily Execution vs. Target Rate")
+                                        st.caption("Bars light up Green 🟩 when Daily Target is achieved.")
                                         
-                                        daily_trend = daily_trend.sort_values(date_daily_col)
+                                        fig_daily = go.Figure()
                                         
-                                        fig_qty = go.Figure()
-                                        fig_qty.add_trace(go.Bar(x=daily_trend[date_daily_col], y=daily_trend[exec_qty_m2_col], name="Executed Qty", marker_color='#00d2ff', hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Volume:</b> %{y:,.0f}'))
-                                        fig_qty.add_trace(go.Scatter(x=daily_trend[date_daily_col], y=daily_trend[target_rate_col], name="Target Daily Rate", mode='lines+markers', line=dict(color='#ffaa00', width=3, dash='dash'), marker=dict(size=6), hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Target:</b> %{y:,.0f}'))
+                                        # Area Chart for Target (Background zone)
+                                        fig_daily.add_trace(go.Scatter(
+                                            x=daily_trend[date_daily_col], 
+                                            y=daily_trend[target_rate_col], 
+                                            name="Target Rate", 
+                                            mode='lines', 
+                                            line=dict(color='rgba(255, 170, 0, 0.8)', width=3, dash='dot'),
+                                            fill='tozeroy',
+                                            fillcolor='rgba(255, 170, 0, 0.1)',
+                                            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Target:</b> %{y:,.1f} m³'
+                                        ))
                                         
-                                        fig_qty.update_layout(height=400, barmode='group', margin=dict(l=0, r=0, t=30, b=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-                                        try: fig_qty = style_3d_glassy(fig_qty, chart_type="combo")
+                                        # Smart Bars for Execution (Color Logic)
+                                        colors = np.where(daily_trend[exec_qty_col] >= daily_trend[target_rate_col], '#2ecc71', '#00d2ff')
+                                        fig_daily.add_trace(go.Bar(
+                                            x=daily_trend[date_daily_col], 
+                                            y=daily_trend[exec_qty_col], 
+                                            name="Executed Qty", 
+                                            marker=dict(color=colors, line=dict(color='rgba(255,255,255,0.2)', width=1)),
+                                            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Volume:</b> %{y:,.1f} m³'
+                                        ))
+                                        
+                                        fig_daily.update_layout(height=420, barmode='overlay', hovermode='x unified', margin=dict(l=0, r=0, t=20, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                                        try: fig_daily = style_3d_glassy(fig_daily, chart_type="bar")
                                         except: pass
-                                        st.plotly_chart(fig_qty, use_container_width=True, key=f"qty_trend_new_{selected_comp}")
+                                        st.plotly_chart(fig_daily, use_container_width=True, key=f"wow_daily_{exec_comp}")
                                         
-                                # 3. Sector Distribution Pie Chart
-                                with r2:
-                                    st.markdown("#### 🗺️ Sector Distribution")
+                                    with chart_col2:
+                                        st.markdown("#### 📈 Cumulative S-Curve (Burn-up Chart)")
+                                        st.caption("Tracks overall progress against the planned schedule over time.")
+                                        
+                                        fig_cum = go.Figure()
+                                        
+                                        fig_cum.add_trace(go.Scatter(
+                                            x=daily_trend[date_daily_col], 
+                                            y=daily_trend['Cum_Target'], 
+                                            name="Planned Cumulative", 
+                                            mode='lines', 
+                                            line=dict(color='#ffaa00', width=4),
+                                            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Planned:</b> %{y:,.1f} m³'
+                                        ))
+                                        
+                                        fig_cum.add_trace(go.Scatter(
+                                            x=daily_trend[date_daily_col], 
+                                            y=daily_trend['Cum_Executed'], 
+                                            name="Actual Cumulative", 
+                                            mode='lines', 
+                                            fill='tonexty',
+                                            fillcolor='rgba(0, 210, 255, 0.2)',
+                                            line=dict(color='#00d2ff', width=4),
+                                            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Actual:</b> %{y:,.1f} m³'
+                                        ))
+                                        
+                                        fig_cum.update_layout(height=420, hovermode='x unified', margin=dict(l=0, r=0, t=20, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                                        try: fig_cum = style_3d_glassy(fig_cum, chart_type="scatter")
+                                        except: pass
+                                        st.plotly_chart(fig_cum, use_container_width=True, key=f"wow_cum_{exec_comp}")
+                                
+                                st.divider()
+                                
+                                # 3. Sector Distribution & Table
+                                r3, r4 = st.columns([0.4, 0.6])
+                                with r3:
+                                    st.markdown("#### 🗺️ Execution by Sector")
                                     if sector_col and not valid_dates_df.empty:
-                                        sector_df = valid_dates_df.groupby(sector_col)[exec_qty_m2_col].sum().reset_index()
-                                        fig_sector = px.pie(sector_df, names=sector_col, values=exec_qty_m2_col, hole=0.4, color_discrete_sequence=['#00d2ff', '#9b59b6'])
-                                        fig_sector.update_traces(textinfo='label+percent', hovertemplate='<b>Sector:</b> %{label}<br>Volume: %{value:,.0f}')
-                                        fig_sector.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+                                        sector_df = valid_dates_df.groupby(sector_col)[exec_qty_col].sum().reset_index()
+                                        fig_sector = px.pie(sector_df, names=sector_col, values=exec_qty_col, hole=0.5, color_discrete_sequence=['#00d2ff', '#9b59b6', '#2ecc71'])
+                                        fig_sector.update_traces(textinfo='label+percent', hovertemplate='<b>Sector:</b> %{label}<br>Volume: %{value:,.0f} m³')
+                                        fig_sector.update_layout(height=350, margin=dict(l=0, r=0, t=20, b=0))
                                         try: fig_sector = style_3d_glassy(fig_sector, chart_type="pie")
                                         except: pass
-                                        st.plotly_chart(fig_sector, use_container_width=True, key=f"sector_dist_{selected_comp}")
-                                    else:
-                                        st.info("No Sector data available.")
+                                        st.plotly_chart(fig_sector, use_container_width=True, key=f"sector_dist_wow_{exec_comp}")
                                         
-                                # 4. Element Analysis Table (Detailed Breakdown)
-                                st.markdown("#### 🏗️ Element Performance Analysis")
-                                if elem_bh_col and exec_qty_m2_col and target_rate_col:
-                                    elem_perf = valid_dates_df.groupby(elem_bh_col).agg({
-                                        exec_qty_m2_col: 'sum',
-                                        target_rate_col: 'sum'
-                                    }).reset_index()
-                                    elem_perf['Completion %'] = (elem_perf[exec_qty_m2_col] / elem_perf[target_rate_col] * 100).fillna(0).round(1)
-                                    elem_perf = elem_perf.sort_values('Completion %', ascending=False)
+                                with r4:
+                                    st.markdown("#### 📝 Daily Execution Ledger")
+                                    display_cols = [date_daily_col, sector_col, elem_bh_col, target_rate_col, exec_qty_col]
+                                    display_cols = [c for c in display_cols if c in valid_dates_df.columns]
                                     
-                                    def color_perf(val):
-                                        if pd.isna(val): return ''
-                                        if val >= 90: return 'color: #2ecc71; font-weight: bold;'
-                                        elif val >= 50: return 'color: #f1c40f; font-weight: bold;'
-                                        else: return 'color: #e74c3c; font-weight: bold;'
-                                        
-                                    st.dataframe(elem_perf.style.map(color_perf, subset=['Completion %']).format({exec_qty_m2_col: "{:,.0f}", target_rate_col: "{:,.0f}", 'Completion %': "{:.1f}%"}), use_container_width=True)
-                                
-                                # 5. AI Prescriptive Recommendations
-                                st.markdown("#### 🤖 AI Execution Directive")
-                                if performance_pct < 50:
-                                    st.markdown(f'''
-                                    <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px;">
-                                        <h4 style="color: #e74c3c; margin-top: 0; font-size: 16px;">🚨 CRITICAL UNDERPERFORMANCE DETECTED</h4>
-                                        <p style="color: white; margin: 5px 0 0 0; font-size: 14px;">
-                                            <b>{selected_comp.title()}</b> is operating at only <b>{performance_pct:.1f}%</b> of their required targets. 
-                                            <br><br><b>💡 Recommended Action:</b> Issue an immediate performance warning. Review resource allocation (equipment/manpower) for this contractor, especially in elements showing the lowest completion rates in the table above.
-                                        </p>
-                                    </div>
-                                    ''', unsafe_allow_html=True)
-                                elif performance_pct >= 90:
-                                    st.markdown(f'''
-                                    <div style="background: rgba(46, 204, 113, 0.1); border-left: 5px solid #2ecc71; padding: 20px; border-radius: 8px;">
-                                        <h4 style="color: #2ecc71; margin-top: 0; font-size: 16px;">🌟 OPTIMAL EXECUTION</h4>
-                                        <p style="color: white; margin: 5px 0 0 0; font-size: 14px;">
-                                            <b>{selected_comp.title()}</b> is meeting or exceeding targets ({performance_pct:.1f}%). 
-                                            <br><br><b>💡 Recommended Action:</b> Maintain current workflow. Ensure QC teams are synchronized to avoid uncovered production volumes.
-                                        </p>
-                                    </div>
-                                    ''', unsafe_allow_html=True)
-                                else:
-                                    st.markdown(f'''
-                                    <div style="background: rgba(241, 196, 15, 0.1); border-left: 5px solid #f1c40f; padding: 20px; border-radius: 8px;">
-                                        <h4 style="color: #f1c40f; margin-top: 0; font-size: 16px;">⚠️ MODERATE PERFORMANCE</h4>
-                                        <p style="color: white; margin: 5px 0 0 0; font-size: 14px;">
-                                            <b>{selected_comp.title()}</b> is performing at <b>{performance_pct:.1f}%</b>. 
-                                            <br><br><b>💡 Recommended Action:</b> Monitor daily progress closely. Identify if delays are caused by site conditions or contractor resources to prevent them from dropping into the critical zone.
-                                        </p>
-                                    </div>
-                                    ''', unsafe_allow_html=True)
-
+                                    styled_df = valid_dates_df[display_cols].sort_values(date_daily_col, ascending=False).head(100)
+                                    if date_daily_col in styled_df:
+                                        styled_df[date_daily_col] = styled_df[date_daily_col].dt.strftime('%Y-%m-%d')
+                                    st.dataframe(styled_df, use_container_width=True, height=350)
                             else:
-                                st.warning("No valid dates found in 'Date (Daily)' column to perform trend analysis.")
+                                st.warning("No valid dates found in the data to plot the charts.")
                         else:
-                            st.warning(f"No execution quantities logged for **{selected_comp}** in the 'Company Name2' column.")
+                            st.warning(f"No execution data found for **{exec_comp}**.")
                     else:
-                        st.info("🚨 **Column 'Company Name2' not found.** Please ensure your CSV includes this column for production analysis.")
-        # --- 🔍 Advanced Element Quality Auditor ---
+                        st.info("🚨 **Data Missing:** Please ensure your CSV includes 'Company Name2' and 'Executed Quantity' columns.")        # --- 🔍 Advanced Element Quality Auditor ---
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
         bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
         zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
