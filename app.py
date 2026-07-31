@@ -11,7 +11,6 @@ import pytz
 import base64
 import hashlib
 import sqlite3
-import io
 
 # ==========================================
 # 1. System Configuration & Constants
@@ -615,14 +614,14 @@ def create_card(column, label, value, delta_html="", progress=None):
         prog_html = f'<div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 15px;"><div class="prog-fill" style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 10px;"></div></div>'
     else:
         prog_html = ""
-    
-    html_str = f"""<div class="metric-card">
-<div class="metric-label">{label}</div>
-<div class="metric-value">{value}</div>
-{delta_html}
-{prog_html}
-</div>"""
-    column.markdown(html_str, unsafe_allow_html=True)
+    column.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">{label}</div>
+            <div class="metric-value">{value}</div>
+            {delta_html}
+            {prog_html}
+        </div>
+        """, unsafe_allow_html=True)
 
 def ai_assistant(query, data_summary):
     query = query.lower()
@@ -744,9 +743,6 @@ def render_home_page():
     ui = {
         'text_main': '#ffffff' if is_dark else '#1a1a1a',
         'text_muted': '#8da3b9' if is_dark else '#4a5568',
-        'card_bg': 'rgba(10, 20, 33, 0.8)' if is_dark else '#ffffff',
-        'card_shadow': '0 5px 15px rgba(0,0,0,0.4)' if is_dark else '0 5px 15px rgba(0,0,0,0.08)',
-        'border_color': 'rgba(255, 255, 255, 0.1)' if is_dark else 'rgba(0,0,0,0.12)',
     }
     
     # Header
@@ -860,143 +856,7 @@ def render_home_page():
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-    # ==========================================
-    # 🗜️ Matrix-to-Flat Data Converter
-    # ==========================================
-    st.markdown("### 🗜️ Data Transformation Hub (Matrix to Flat Converter)")
-    st.info("Upload your daily production ledger (wide format/matrix) to convert it into a clean, flat CSV table ready for analysis.")
-    
-    converter_file = st.file_uploader("Upload Matrix Excel File", type=['xlsx'], key="converter_upload")
-    
-    if converter_file and st.button("🔄 Convert to Flat Table", type="primary"):
-        with st.spinner("Processing sheets and flattening data..."):
-            try:
-                xls = pd.ExcelFile(converter_file)
-                all_flat_data = []
-                
-                for sheet in xls.sheet_names:
-                    if 'TABLE' in sheet.upper() or 'DASH' in sheet.upper(): 
-                        continue
-                    
-                    try:
-                        df_raw = pd.read_excel(xls, sheet_name=sheet, header=None)
-                        df_raw = df_raw.dropna(how='all', axis=1) 
-                        
-                        if df_raw.empty or len(df_raw) < 5:
-                            continue
-
-                        element_idx = 1
-                        company_idx = 0
-                        rate_idx = 2
-                        date_header_idx = 3
-                        data_start_idx = 4
-
-                        for i in range(min(10, len(df_raw))):
-                            row_vals = [str(x).upper() for x in df_raw.iloc[i].tolist() if pd.notna(x)]
-                            row_str = " ".join(row_vals)
-                            
-                            if 'ELMENT' in row_str or 'ELEMENT' in row_str:
-                                element_idx = i
-                                company_idx = max(0, i - 1)
-                                rate_idx = i + 1  
-                                date_header_idx = i + 2
-                                data_start_idx = i + 3
-                                break
-
-                        companies = df_raw.iloc[company_idx].ffill() 
-                        elements = df_raw.iloc[element_idx]
-                        daily_rates = df_raw.iloc[rate_idx]
-                        
-                        date_col_idx = None
-                        for col in df_raw.columns:
-                            val = str(df_raw.iloc[date_header_idx, col]).lower()
-                            if 'تاريخ' in val or 'date' in val:
-                                date_col_idx = col
-                                break
-                                
-                        if date_col_idx is None:
-                            for col in df_raw.columns:
-                                sample_val = df_raw.iloc[data_start_idx, col]
-                                if isinstance(sample_val, datetime) or (isinstance(sample_val, str) and sample_val.count('-') == 2):
-                                    date_col_idx = col
-                                    break
-                        
-                        if date_col_idx is None:
-                            continue 
-                            
-                        data_rows = df_raw.iloc[data_start_idx:].copy()
-                        data_rows['Date'] = pd.to_datetime(data_rows[date_col_idx], errors='coerce')
-                        data_rows = data_rows.dropna(subset=['Date'])
-                        
-                        sheet_melted_data = []
-                        for col in df_raw.columns:
-                            if col == date_col_idx: continue
-                            
-                            comp_name = str(companies[col]).strip()
-                            elem_name = str(elements[col]).strip()
-                            target_rate = pd.to_numeric(daily_rates[col], errors='coerce')
-                            
-                            col_header_val = str(df_raw.iloc[date_header_idx, col]).strip()
-                            if col_header_val == 'م':
-                                continue
-                                
-                            if comp_name.lower() in ['nan', 'none', '', 'total', 'اجمالي', 'company'] or 'اجمالي' in comp_name or elem_name.upper() in ['ELMENT', 'ELEMENT', 'NAN', 'NONE']:
-                                continue
-                                
-                            temp_df = data_rows[['Date', col]].copy()
-                            temp_df.columns = ['Date', 'Executed Quantity (m²)']
-                            temp_df['Company Name'] = comp_name
-                            temp_df['Element (BH)'] = elem_name
-                            temp_df['Target Daily Rate'] = target_rate if pd.notna(target_rate) else 0
-                            
-                            sheet_melted_data.append(temp_df)
-                            
-                        if sheet_melted_data:
-                            sheet_res = pd.concat(sheet_melted_data, ignore_index=True)
-                            sheet_res['Executed Quantity (m²)'] = pd.to_numeric(sheet_res['Executed Quantity (m²)'], errors='coerce').fillna(0)
-                            sheet_res = sheet_res[sheet_res['Executed Quantity (m²)'] > 0]
-                            
-                            if 'north' in sheet.lower() or 'شمال' in sheet:
-                                sector = "North Sector"
-                            elif 'south' in sheet.lower() or 'جنوب' in sheet:
-                                sector = "South Sector"
-                            else:
-                                sector = sheet
-                                
-                            sheet_res['Sector'] = sector
-                            all_flat_data.append(sheet_res[['Date', 'Sector', 'Company Name', 'Element (BH)', 'Target Daily Rate', 'Executed Quantity (m²)']])
-                            
-                    except Exception as e:
-                        st.warning(f"Skipped sheet '{sheet}' due to formatting issues. Error: {str(e)}")
-                
-                if all_flat_data:
-                    final_df = pd.concat(all_flat_data, ignore_index=True)
-                    final_df = final_df.sort_values(by=['Date', 'Sector', 'Company Name']).reset_index(drop=True)
-                    final_df.insert(0, 'No.', final_df.index + 3131) 
-                    final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
-                    
-                    st.success(f"✅ Successfully converted! Generated {len(final_df)} flat records.")
-                    
-                    with st.expander("👁️ Preview Converted Flat Data", expanded=True):
-                        st.dataframe(final_df.head(50), use_container_width=True)
-                    
-                    csv_data = final_df.to_csv(index=False).encode('utf-8-sig')
-                    
-                    st.download_button(
-                        label="📥 Download Clean CSV File",
-                        data=csv_data,
-                        file_name=f"Flat_Execution_Log_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv",
-                        type="primary"
-                    )
-                else:
-                    st.error("❌ Could not extract valid production data. Please ensure the Excel file follows the matrix format.")
-
-            except Exception as e:
-                st.error(f"An error occurred while processing the file: {str(e)}")
-                # ==========================================
+# ==========================================
 # 10. Analytics Hub (6 Levels with Advanced Additions)
 # ==========================================
 def render_analytics_hub(df):
@@ -1004,9 +864,7 @@ def render_analytics_hub(df):
     
     # --- 🛠️ Data Cleaning Injection ---
     df = df.copy()
-    df.columns = df.columns.astype(str).str.replace('\n', ' ').str.replace('\r', '').str.strip()
-    df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
-    
+    df.columns = df.columns.str.strip() 
     if 'Company Name' not in df.columns and 'Company' in df.columns:
         df.rename(columns={'Company': 'Company Name'}, inplace=True)
     if 'DURATION' in df.columns:
@@ -1298,7 +1156,8 @@ def render_alerts_module(df):
                 time.sleep(1.5)
             st.success("✅ Test Alert Sent Successfully!")
             st.balloons()
-            # ==========================================
+
+# ==========================================
 # 13. Main Dashboard Application
 # ==========================================
 def render_dashboard():
@@ -1410,7 +1269,7 @@ def render_dashboard():
     st.sidebar.divider()
 
     st.sidebar.markdown("### 📁 1. Data Source")
-    data_source = st.sidebar.selectbox("Connection Type:", ["Local CSV/Excel Upload", "Live SQL Database (Pending)"])
+    data_source = st.sidebar.selectbox("Connection Type:", ["Local CSV Upload", "Live SQL Database (Pending)"])
 
     with st.sidebar.expander("🗄️ History Database Management"):
         st.markdown(f"<span style='font-size:12px; color:{ui['text_muted']};'>Data is automatically saved to SQLite database and persists across sessions.</span>", unsafe_allow_html=True)
@@ -1474,8 +1333,8 @@ def render_dashboard():
     st.sidebar.divider()
 
     uploaded_file = None
-    if data_source == "Local CSV/Excel Upload":
-        uploaded_file = st.sidebar.file_uploader("Upload your Project Log (Excel or CSV) 📂", type=["xlsx", "csv"])
+    if data_source == "Local CSV Upload":
+        uploaded_file = st.sidebar.file_uploader("Upload your Project Log (CSV) 📂", type="csv")
 
     if uploaded_file is not None:
         uploaded_file.seek(0)
@@ -1486,25 +1345,19 @@ def render_dashboard():
         uploaded_file.seek(0)
         
         try:
-            if uploaded_file.name.endswith('.xlsx'):
-                df = pd.read_excel(uploaded_file)
-            else:
-                df = pd.read_csv(uploaded_file)
-
+            df = pd.read_csv(uploaded_file)
             if df.empty:
-                st.error("⚠️ الملف الأساسي لا يحتوي على بيانات!")
+                st.error("⚠️ الملف لا يحتوي على بيانات!")
                 st.stop()
-                
         except Exception as e:
             st.error(f"❌ خطأ في قراءة الملف: {str(e)}")
-            st.info("💡 تأكد أن البيانات منسقة بشكل صحيح.")
+            st.info("💡 تأكد أن الملف بصيغة CSV وأن البيانات منسقة بشكل صحيح.")
             st.stop()
         
         st.session_state["analytics_df"] = df.copy()
         
         # --- 🛠️ Data Cleaning (Global for Dashboard) ---
-        df.columns = df.columns.astype(str).str.replace('\n', ' ').str.replace('\r', '').str.strip()
-        df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)
+        df.columns = df.columns.str.strip() 
         
         if 'Company Name' not in df.columns and 'Company' in df.columns:
             df.rename(columns={'Company': 'Company Name'}, inplace=True)
@@ -1513,17 +1366,10 @@ def render_dashboard():
         if 'Date ( test)' in df.columns: df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
         if 'Date( SUB)' in df.columns: df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce', dayfirst=True)
 
-        if 'Date (Daily)' in df.columns:
-            df['Date (Daily)'] = pd.to_datetime(df['Date (Daily)'], errors='coerce', dayfirst=True)
-
         if 'DURATION' in df.columns:
             df['DURATION'] = pd.to_numeric(df['DURATION'], errors='coerce').fillna(0)
         if 'AVERAGE VALUE' in df.columns:
             df['AVERAGE VALUE'] = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce')
-            
-        for col in ['Executed Quantity (m²)', 'Executed Quantity', 'Target Daily Rate', 'Total Quantity', 'Required Quantity']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         # -----------------------------------------------
 
         total_rows = len(df)
@@ -1592,11 +1438,7 @@ def render_dashboard():
             df = df[mask]
             st.sidebar.success(f"🎯 Found {len(df)} records matching '{global_search}'")
             
-        comp1 = df['Company Name'].dropna().unique().tolist() if 'Company Name' in df.columns else []
-        comp_name2_col_temp = next((c for c in df.columns if 'Contractor' in c.upper() or 'COMPANY NAME 2' in c.upper()), None)
-        comp2 = df[comp_name2_col_temp].dropna().unique().tolist() if comp_name2_col_temp else []
-        companies = sorted(list(set([str(c).strip() for c in comp1 + comp2 if str(c).lower() != 'nan' and str(c) != ''])))
-
+        companies = df['Company Name'].dropna().unique() if 'Company Name' in df.columns else []
         selected_companies = st.sidebar.multiselect("🏢 Select Contractor:", options=companies, default=companies)
         
         statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
@@ -1618,12 +1460,7 @@ def render_dashboard():
             st.sidebar.info(f"AI Response: {ai_assistant(user_question, summary)}")
 
         filtered_df = df.copy()
-        
-        if len(companies) > 0: 
-            mask1 = filtered_df['Company Name'].astype(str).str.strip().isin(selected_companies) if 'Company Name' in filtered_df.columns else False
-            mask2 = filtered_df[comp_name2_col_temp].astype(str).str.strip().isin(selected_companies) if comp_name2_col_temp in filtered_df.columns else False
-            filtered_df = filtered_df[mask1 | mask2]
-            
+        if len(companies) > 0: filtered_df = filtered_df[filtered_df['Company Name'].isin(selected_companies)]
         if len(statuses) > 0: filtered_df = filtered_df[filtered_df['sample status'].isin(selected_statuses)]
         
         if battalion_col_filter and len(selected_battalions) > 0: 
@@ -1864,6 +1701,339 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
+        st.markdown('<div class="bi-title">🧪 Monthly Test Volume & Deficit Analysis</div>', unsafe_allow_html=True)
+        if 'Date ( test)' in filtered_df.columns and 'Test Type' in filtered_df.columns:
+            v_df = filtered_df.dropna(subset=['Date ( test)', 'Test Type']).copy()
+            v_df['Month_Sort'] = v_df['Date ( test)'].dt.to_period('M')
+            v_df['Month'] = v_df['Date ( test)'].dt.strftime('%b %Y')
+            monthly_summary = v_df.groupby(['Month_Sort', 'Month', 'Test Type']).size().reset_index(name='Volume')
+            monthly_summary = monthly_summary.sort_values('Month_Sort')
+            fig_vol = px.bar(monthly_summary, x='Month', y='Volume', color='Test Type', barmode='group', title="Testing Intensity & Production Coverage per Month", color_discrete_sequence=NEON_COLORS)
+            fig_vol.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Volume:</b> %{y} Submittals')
+            fig_vol = style_3d_glassy(fig_vol, chart_type="bar")
+            ch_col, txt_col = st.columns([0.7, 0.3])
+            ch_col.plotly_chart(fig_vol, use_container_width=True, key="vol_analysis")
+            with txt_col:
+                st.markdown("#### 💡 AI Production Insights")
+                if not monthly_summary.empty:
+                    top_row = monthly_summary.loc[monthly_summary['Volume'].idxmax()]
+                    st.info(f"📊 **Peak Activity:**\nIn **{top_row['Month']}**, the highest utilized test was **{top_row['Test Type']}** with **{top_row['Volume']}** submittals logged.")
+                    months_ordered = monthly_summary['Month_Sort'].drop_duplicates().sort_values().tolist()
+                    if len(months_ordered) > 1:
+                        last_month_sort = months_ordered[-1]
+                        prev_month_sort = months_ordered[-2]
+                        last_month_name = last_month_sort.strftime('%b %Y')
+                        prev_month_name = prev_month_sort.strftime('%b %Y')
+                        last_count = v_df[v_df['Month_Sort'] == last_month_sort].shape[0]
+                        prev_count = v_df[v_df['Month_Sort'] == prev_month_sort].shape[0]
+                        if last_count < prev_count:
+                            st.warning(f"⚠️ **Coverage Alert:**\nTotal log volume dropped from **{prev_count}** in {prev_month_name} to **{last_count}** in {last_month_name}. Verify potential field testing deficits.")
+                        else:
+                            st.success(f"✅ **Stable Volume:**\nTesting coverage is expanding smoothly from {prev_month_name} into {last_month_name}.")
+                else:
+                    st.text("No data available for tracking.")
+
+        if 'Date ( test)' in filtered_df.columns:
+            st.markdown('<div class="bi-title">🗓️ Activity Heatmap Calendar</div>', unsafe_allow_html=True)
+            cal_df = filtered_df.dropna(subset=['Date ( test)']).copy()
+            cal_df['Day'] = cal_df['Date ( test)'].dt.day
+            cal_df['Month_Name'] = cal_df['Date ( test)'].dt.strftime('%b %Y')
+            hm_data = cal_df.groupby(['Month_Name', 'Day']).size().reset_index(name='Submittals')
+            fig_hm = px.density_heatmap(hm_data, x="Day", y="Month_Name", z="Submittals", color_continuous_scale="Viridis", title="Daily Activity Intensity (GitHub Style)", labels={'Day': 'Day of Month', 'Month_Name': 'Month'})
+            fig_hm.update_traces(hovertemplate='<b>Date:</b> %{y} %{x}<br><b>Activity:</b> %{z} Tests Logged')
+            fig_hm = style_3d_glassy(fig_hm, chart_type="heatmap")
+            st.plotly_chart(fig_hm, use_container_width=True, key="heat_calendar")
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="bi-title">📈 Comprehensive Timeline (Workload vs Quality Correlation)</div>', unsafe_allow_html=True)
+        if 'Date ( test)' in filtered_df.columns and 'sample status' in filtered_df.columns:
+            tl_df = filtered_df.dropna(subset=['Date ( test)', 'sample status']).copy()
+            tl_df['Month_Plot'] = tl_df['Date ( test)'].dt.to_period('M').astype(str)
+            
+            monthly_stats = tl_df.groupby('Month_Plot').apply(lambda x: pd.Series({
+                'Total': len(x),
+                'Accepted': len(x[x['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]),
+                'Rejected': len(x[x['sample status'].str.upper().isin(['REJECTED', 'REVISE'])])
+            })).reset_index()
+            
+            monthly_stats['Acc_Pct'] = (monthly_stats['Accepted'] / monthly_stats['Total'] * 100).round(1)
+            monthly_stats['Rej_Pct'] = (monthly_stats['Rejected'] / monthly_stats['Total'] * 100).round(1)
+            
+            fig_combo = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            fig_combo.add_trace(go.Bar(x=monthly_stats['Month_Plot'], y=monthly_stats['Accepted'], name='Accepted/Approved', marker_color=STATUS_COLORS['ACCEPTED'], customdata=monthly_stats['Acc_Pct'], hovertemplate="<b>%{x}</b><br>Accepted: %{y} (%{customdata}%)<extra></extra>"), secondary_y=False)
+            fig_combo.add_trace(go.Bar(x=monthly_stats['Month_Plot'], y=monthly_stats['Rejected'], name='Rejected/Revise', marker_color=STATUS_COLORS['REJECTED'], customdata=monthly_stats['Rej_Pct'], hovertemplate="<b>%{x}</b><br>Rejected: %{y} (%{customdata}%)<extra></extra>"), secondary_y=False)
+            fig_combo.add_trace(go.Scatter(x=monthly_stats['Month_Plot'], y=monthly_stats['Total'], name='Total Workload', mode='lines+markers', line=dict(color='#00d2ff', width=4), marker=dict(size=8), hovertemplate="<b>%{x}</b><br>Total Logged: %{y}<extra></extra>"), secondary_y=True)
+            
+            fig_combo.update_layout(barmode='stack', title="Volume vs. Rejection Impact over Time", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+            fig_combo.update_yaxes(title_text="Submittals (Quality)", secondary_y=False)
+            fig_combo.update_yaxes(title_text="Total Workload", secondary_y=True)
+            
+            fig_combo = style_3d_glassy(fig_combo, chart_type="combo")
+            st.plotly_chart(fig_combo, use_container_width=True, key="combo_timeline")
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="bi-title">📊 Statistical Process Control (SPC) - Control Charts</div>', unsafe_allow_html=True)
+        st.caption("Monitor process stability and detect special cause variations using industry-standard control limits.")
+        
+        if 'AVERAGE VALUE' in filtered_df.columns and 'Company Name' in filtered_df.columns:
+            spc_df = filtered_df.dropna(subset=['AVERAGE VALUE']).copy()
+            spc_df['AVERAGE VALUE'] = pd.to_numeric(spc_df['AVERAGE VALUE'], errors='coerce')
+            spc_df = spc_df.dropna(subset=['AVERAGE VALUE'])
+            
+            if not spc_df.empty:
+                mean_val = spc_df['AVERAGE VALUE'].mean()
+                std_val = spc_df['AVERAGE VALUE'].std()
+                ucl = mean_val + 3 * std_val  
+                lcl = mean_val - 3 * std_val  
+                
+                spc_df['out_of_control'] = (spc_df['AVERAGE VALUE'] > ucl) | (spc_df['AVERAGE VALUE'] < lcl)
+                out_of_control_count = spc_df['out_of_control'].sum()
+                total_points = len(spc_df)
+                control_percentage = ((total_points - out_of_control_count) / total_points * 100) if total_points > 0 else 0
+                
+                spc_col1, spc_col2, spc_col3, spc_col4 = st.columns(4)
+                create_card(spc_col1, "Process Mean", f"{mean_val:.2f}")
+                create_card(spc_col2, "Std Deviation", f"{std_val:.2f}")
+                create_card(spc_col3, "Control Limits", f"UCL: {ucl:.2f}<br>LCL: {lcl:.2f}")
+                create_card(spc_col4, "In Control %", f"{control_percentage:.1f}%")
+                
+                fig_spc = go.Figure()
+                fig_spc.add_trace(go.Scatter(
+                    x=spc_df.index,
+                    y=spc_df['AVERAGE VALUE'],
+                    mode='markers',
+                    name='Data Points',
+                    marker=dict(
+                        size=8,
+                        color=['#e74c3c' if oc else '#00d2ff' for oc in spc_df['out_of_control']],
+                        line=dict(width=1, color='white')
+                    ),
+                    hovertemplate='<b>Index:</b> %{x}<br><b>Value:</b> %{y:.2f}<br><b>Status:</b> %{marker.color}<extra></extra>'
+                ))
+                fig_spc.add_hline(y=mean_val, line_dash="solid", line_color="#2ecc71", line_width=2, annotation_text=f"Mean: {mean_val:.2f}", annotation_position="top right")
+                fig_spc.add_hline(y=ucl, line_dash="dash", line_color="#e74c3c", line_width=2, annotation_text=f"UCL: {ucl:.2f}", annotation_position="top right")
+                fig_spc.add_hline(y=lcl, line_dash="dash", line_color="#e74c3c", line_width=2, annotation_text=f"LCL: {lcl:.2f}", annotation_position="bottom right")
+                fig_spc.update_layout(title="Control Chart - Process Stability Analysis", xaxis_title="Sample Index", yaxis_title="AVERAGE VALUE", showlegend=False, height=500)
+                
+                fig_spc = style_3d_glassy(fig_spc, chart_type="line")
+                st.plotly_chart(fig_spc, use_container_width=True, key="spc_chart")
+                
+                if out_of_control_count > 0:
+                    st.warning(f"⚠️ **Process Alert:** {out_of_control_count} out of {total_points} samples ({100-control_percentage:.1f}%) are outside control limits.")
+                    ooc_samples = spc_df[spc_df['out_of_control']].head(10)
+                    if not ooc_samples.empty:
+                        st.markdown("**Top Out-of-Control Samples:**")
+                        st.dataframe(ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']].head(10), use_container_width=True)
+                else:
+                    st.success("✅ **Process Stable:** All samples are within control limits.")
+                
+                st.markdown("#### 🎯 Process Capability Analysis")
+                cap_col1, cap_col2 = st.columns(2)
+                with cap_col1:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Process Performance</div>
+                        <div class="metric-value" style="font-size: 24px;">{control_percentage:.1f}%</div>
+                        <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 10px;">of samples within ±3σ control limits</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with cap_col2:
+                    if std_val > 0:
+                        cpk = min((ucl - mean_val) / (3 * std_val), (mean_val - lcl) / (3 * std_val))
+                        cpk_color = "#2ecc71" if cpk >= 1.33 else ("#f1c40f" if cpk >= 1.0 else "#e74c3c")
+                        cpk_status = "Excellent" if cpk >= 1.33 else ("Good" if cpk >= 1.0 else "Needs Improvement")
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Process Capability (Cpk)</div>
+                            <div class="metric-value" style="font-size: 24px; color: {cpk_color};">{cpk:.2f}</div>
+                            <div style="color: {cpk_color}; font-size: 14px; margin-top: 10px; font-weight: bold;">{cpk_status}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="bi-title">📊 Pareto Analysis - 80/20 Rule</div>', unsafe_allow_html=True)
+        st.caption("Identify the vital few causes that contribute to the majority of problems. Focus your improvement efforts where they matter most.")
+        
+        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
+            rej_by_comp = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])].groupby('Company Name').size().reset_index(name='Rejections')
+            rej_by_comp = rej_by_comp.sort_values('Rejections', ascending=False)
+            
+            if not rej_by_comp.empty:
+                total_rejections = rej_by_comp['Rejections'].sum()
+                rej_by_comp['Percentage'] = (rej_by_comp['Rejections'] / total_rejections * 100).round(2)
+                rej_by_comp['Cumulative_Percentage'] = rej_by_comp['Percentage'].cumsum().round(2)
+                
+                critical_threshold = 80
+                critical_contractors = rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]
+                critical_count = len(critical_contractors)
+                total_contractors = len(rej_by_comp)
+                critical_percentage = (critical_count / total_contractors * 100) if total_contractors > 0 else 0
+                
+                pareto_col1, pareto_col2, pareto_col3 = st.columns(3)
+                create_card(pareto_col1, "Total Contractors", f"{total_contractors}")
+                create_card(pareto_col2, "Critical Contractors", f"{critical_count} ({critical_percentage:.0f}%)")
+                create_card(pareto_col3, "Total Rejections", f"{total_rejections}")
+                
+                fig_pareto = make_subplots(specs=[[{"secondary_y": True}]])
+                fig_pareto.add_trace(go.Bar(x=rej_by_comp['Company Name'], y=rej_by_comp['Rejections'], name='Rejections', marker_color='#e74c3c', opacity=0.7, hovertemplate='<b>Contractor:</b> %{x}<br><b>Rejections:</b> %{y}<extra></extra>'), secondary_y=False)
+                fig_pareto.add_trace(go.Scatter(x=rej_by_comp['Company Name'], y=rej_by_comp['Cumulative_Percentage'], mode='lines+markers', name='Cumulative %', line=dict(color='#00d2ff', width=3), marker=dict(size=8, color='#00d2ff'), hovertemplate='<b>Contractor:</b> %{x}<br><b>Cumulative %:</b> %{y:.1f}%<extra></extra>'), secondary_y=True)
+                fig_pareto.add_hline(y=80, line_dash="dash", line_color="#ffaa00", line_width=2, annotation_text="80% Threshold", annotation_position="top right", secondary_y=True)
+                fig_pareto.update_layout(title="Pareto Chart - Rejections by Contractor", xaxis_title="Contractor", yaxis_title="Number of Rejections", yaxis2_title="Cumulative Percentage (%)", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=500)
+                fig_pareto.update_yaxes(title_text="Rejections", secondary_y=False)
+                fig_pareto.update_yaxes(title_text="Cumulative %", secondary_y=True, range=[0, 100])
+                fig_pareto = style_3d_glassy(fig_pareto, chart_type="combo")
+                st.plotly_chart(fig_pareto, use_container_width=True, key="pareto_comb")
+                
+                st.markdown("#### 🎯 Strategic Insights")
+                insight_col1, insight_col2 = st.columns(2)
+                with insight_col1:
+                    st.markdown(f"""
+                    <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
+                        <h4 style="color: #e74c3c; margin: 0 0 10px 0;">🎯 Critical Focus Area</h4>
+                        <p style="color: {ui['text_main']}; margin: 0; font-size: 14px; line-height: 1.6;">
+                            The top <b style="color: #ffaa00;">{critical_count} contractors</b> ({critical_percentage:.0f}% of total) are responsible for 
+                            <b style="color: #ffaa00;">{rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]['Cumulative_Percentage'].max():.1f}%</b> of all rejections.
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with insight_col2:
+                    top_5 = rej_by_comp.head(5)
+                    top_5_html = "<br>".join([f"<div style='display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 5px;'><span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span><span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span></div>" for _, row in top_5.iterrows()])
+                    st.markdown(f"""
+                    <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 10px;">
+                        <h4 style="color: #00d2ff; margin: 0 0 10px 0;">📊 Top 5 Contractors by Rejections</h4>
+                        {top_5_html}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with st.expander("📋 View Detailed Pareto Analysis Table"):
+                    st.dataframe(rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={'Company Name': 'Contractor', 'Rejections': 'Total Rejections', 'Percentage': '% of Total', 'Cumulative_Percentage': 'Cumulative %'}), use_container_width=True)
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="bi-title">🤖 Predictive Risk Forecasting</div>', unsafe_allow_html=True)
+        if 'Date ( test)' in filtered_df.columns and 'DURATION' in filtered_df.columns:
+            pred_df = filtered_df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
+            pred_df['7-Day Trend'] = pred_df['DURATION'].rolling(window=7, min_periods=1).mean()
+            fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], title="Duration Forecasting & Trendline Tracking", color_discrete_sequence=['#ffaa00', '#00d2ff'])
+            fig_pred = style_3d_glassy(fig_pred, chart_type="line")
+            latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
+            p1, p2 = st.columns([0.7, 0.3])
+            p1.plotly_chart(fig_pred, use_container_width=True, key="pred_risk")
+            with p2:
+                st.info("**AI Risk Assessment:**")
+                if latest_trend > current_metrics["Avg_Duration"]:
+                    st.error(f"🚨 **Warning:** The recent workflow trend is rising ({latest_trend:.1f} days) compared to the overall average. Bottlenecks are forming.")
+                else:
+                    st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
+
+        st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
+        if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
+            tree_df = filtered_df.copy()
+            tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
+            tree_df['status_upper'] = tree_df['sample status'].str.upper()
+            status_weights = {'ACCEPTED': 100, 'APPROVED AS NOTED': 80, 'REVISE': 40, 'REJECTED': 0, 'Unknown': 50}
+            tree_df['Heat_Score'] = tree_df['status_upper'].map(status_weights).fillna(50)
+            fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], color='Heat_Score', color_continuous_scale='RdYlGn', title="Project Hierarchy Heat Map (Green = High Approval, Red = Bottleneck/Rejections)")
+            fig_tree.update_traces(hovertemplate='<b>%{label}</b><br>Score: %{color:.1f}')
+            fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
+            st.plotly_chart(fig_tree, use_container_width=True, key="heatmap_sector")
+
+        st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
+        st.info("💡 **CEO Feature:** Click the button below to download a styled HTML report. When opened, it can be easily saved as a perfectly formatted PDF for your Daily/Weekly Briefing!")
+        html_report = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Executive Report - {uploaded_file.name}</title>
+            <style>
+                body {{ font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; background-color: #f9fbfd; }}
+                .container {{ max-width: 900px; margin: auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 8px solid #1e3d59; }}
+                .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 20px; margin-bottom: 30px; }}
+                .header h1 {{ color: #1e3d59; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 1px; }}
+                .header p {{ margin: 5px 0 0 0; color: #7f8c8d; font-size: 14px; }}
+                .kpi-row {{ display: flex; justify-content: space-between; margin-bottom: 30px; }}
+                .kpi-box {{ background: #f4f7f6; padding: 20px; border-radius: 8px; width: 30%; text-align: center; border-bottom: 4px solid #00d2ff; }}
+                .kpi-box h3 {{ margin: 0; color: #7f8c8d; font-size: 12px; text-transform: uppercase; }}
+                .kpi-box h2 {{ margin: 10px 0 0 0; color: #2c3e50; font-size: 28px; }}
+                .section-title {{ color: #e67e22; font-size: 18px; border-bottom: 1px solid #ecf0f1; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }}
+                th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #eee; }}
+                th {{ background-color: #1e3d59; color: white; }}
+                .highlight-red {{ color: #e74c3c; font-weight: bold; }}
+                .highlight-green {{ color: #2ecc71; font-weight: bold; }}
+            </style>
+        </head>
+        <body onload="window.print()">
+            <div class="container">
+                <div class="header">
+                    <div>
+                        <h1>KK Engineering - Executive Brief</h1>
+                        <p><strong>Dataset:</strong> {uploaded_file.name}</p>
+                        <p><strong>Generated On:</strong> {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d at %I:%M %p")}</p>
+                    </div>
+                    <div style="font-size: 40px;">🏗️</div>
+                </div>
+                
+                <div class="kpi-row">
+                    <div class="kpi-box" style="border-color: #2ecc71;">
+                        <h3>Overall Approval</h3>
+                        <h2 class="highlight-green">{overall_rate:.1f}%</h2>
+                    </div>
+                    <div class="kpi-box" style="border-color: #ffaa00;">
+                        <h3>Total Submittals</h3>
+                        <h2>{total_requests_count:,}</h2>
+                    </div>
+                    <div class="kpi-box" style="border-color: #e74c3c;">
+                        <h3>Avg Sector Delay</h3>
+                        <h2 class="highlight-red">{avg_duration_value} Days</h2>
+                    </div>
+                </div>
+
+                <div class="section-title">⚖️ 360° Accountability & Risk Assessment</div>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Identified Node / Value</th>
+                    </tr>
+                    <tr>
+                        <td><strong>🏆 Top Performing Contractor</strong></td>
+                        <td class="highlight-green">{global_best_comp} ({global_best_rate:.1f}% Yield)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>🚨 Critical Bottleneck (Contractor)</strong></td>
+                        <td class="highlight-red">{global_worst_comp} ({global_worst_delay:.1f} Days Avg Delay)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>⏱️ Worst Review Office</strong></td>
+                        <td class="highlight-red">{worst_office_name} ({worst_office_delay} Days Avg Delay)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>⚠️ Pending Rejections</strong></td>
+                        <td class="highlight-red">{rejected_count} Submittals</td>
+                    </tr>
+                    <tr>
+                        <td><strong>🛡️ Data Integrity Score</strong></td>
+                        <td>{health_score:.1f}%</td>
+                    </tr>
+                </table>
+                
+                <p style="text-align: center; color: #95a5a6; font-size: 11px; margin-top: 50px;">Confidential Document - Generated by AI Command Center BI Portal</p>
+            </div>
+        </body>
+        </html>
+        """
+        b64 = base64.b64encode(html_report.encode()).decode()
+        href = f'<a href="data:text/html;base64,{b64}" download="KK_Executive_Report_{datetime.now(EGYPT_TZ).strftime("%Y%m%d")}.html" style="background-color:#ffaa00; color:#1e3d59; padding:12px 24px; text-decoration:none; font-weight:bold; border-radius:8px; display:inline-block; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4); transition: all 0.3s;">📄 Download Ultra-Premium PDF Report</a>'
+        st.markdown(href, unsafe_allow_html=True)
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
         st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             comp_stats = []
@@ -1913,57 +2083,65 @@ def render_dashboard():
             st.divider()
 
             target_dict = {}
-            if 'Company Name' in df.columns and 'Required Quantity' in df.columns:
-                lookup_df = df[['Company Name', 'Required Quantity']].dropna(subset=['Company Name'])
+            battalion_col_main = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
+            
+            if 'Company' in df.columns and 'Required Quantity' in df.columns:
+                cols_to_extract = ['Company', 'Required Quantity']
+                if battalion_col_main: cols_to_extract.append(battalion_col_main)
+                lookup_df = df[cols_to_extract].dropna(subset=['Company'])
+                
                 for _, row in lookup_df.iterrows():
+                    c_key = str(row['Company']).strip()
                     c_qty = pd.to_numeric(row['Required Quantity'], errors='coerce')
                     if pd.notna(c_qty):
-                        target_dict[str(row['Company Name']).strip().lower()] = max(target_dict.get(str(row['Company Name']).strip().lower(), 0), c_qty)
+                        if battalion_col_main and pd.notna(row.get(battalion_col_main)):
+                            b_key = fmt_b(row[battalion_col_main])
+                            target_dict[f"{c_key}_{b_key}"] = c_qty
+                        else:
+                            target_dict[c_key] = c_qty
 
             st.markdown("#### 📥 Master Stockpile Targets Report")
             report_data = []
-            
-            log_companies = [str(c).strip() for c in mat_df['Company Name'].dropna().unique()]
-            comp_temp_name = 'Company Name'
-            target_companies = [str(c).strip() for c in df[comp_temp_name].dropna().unique()] if comp_temp_name in df.columns else []
-            
-            all_companies = sorted(list(set(log_companies + target_companies)))
-            
-            battalion_col_main = next((c for c in mat_df.columns if 'BATTAL' in c.upper()), None)
+            all_log_companies = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
+            battalion_col_stock = next((c for c in mat_df.columns if 'BATTAL' in c.upper()), None)
 
-            for c_name in all_companies:
-                c_key = c_name.lower()
+            for c_name in all_log_companies:
+                c_name_clean = str(c_name).strip()
+                c_df_stock = mat_df[(mat_df['Company Name'] == c_name) & (mat_df['Loc_Category'] == 'Stockpile')]
                 
-                comp_all_rows = mat_df[mat_df['Company Name'].astype(str).str.strip().str.lower() == c_key] if 'Company Name' in mat_df.columns else pd.DataFrame()
-                c_df_stock = comp_all_rows[comp_all_rows['Loc_Category'] == 'Stockpile'] if not comp_all_rows.empty else pd.DataFrame()
-                
-                b_str = "N/A"
-                if battalion_col_main and not comp_all_rows.empty:
-                    bats = comp_all_rows[battalion_col_main].dropna().unique()
-                    if len(bats) > 0:
-                        b_str = " & ".join([fmt_b(b) for b in bats]) 
-
-                req_qty = target_dict.get(c_key, np.nan)
-
-                if num_tests_col and not c_df_stock.empty:
-                    exec_qty = int(pd.to_numeric(c_df_stock[num_tests_col], errors='coerce').fillna(0).sum())
+                if battalion_col_stock:
+                    bats = c_df_stock[battalion_col_stock].dropna().unique()
+                    if len(bats) == 0: bats = ["Unknown"]
                 else:
-                    exec_qty = len(c_df_stock) if not c_df_stock.empty else 0
+                    bats = ["Global"]
 
-                if pd.notna(req_qty) and req_qty > 0:
-                    diff = exec_qty - int(req_qty)
-                    status = "✅ Target Exceeded" if diff >= 0 else f"⚠️ Missing {abs(diff)} Tests"
-                    req_val = int(req_qty)
-                    diff_val = diff
-                else:
-                    status = "No Target Defined"
-                    req_val = "N/A"
-                    diff_val = "N/A"
+                for b in bats:
+                    b_clean = fmt_b(b)
+                    if b == "Global" or b == "Unknown":
+                        bat_stock_df = c_df_stock
+                        req_qty = target_dict.get(c_name_clean, np.nan)
+                    else:
+                        bat_stock_df = c_df_stock[c_df_stock[battalion_col_stock] == b]
+                        req_qty = target_dict.get(f"{c_name_clean}_{b_clean}", np.nan)
 
-                if req_val != "N/A" or exec_qty > 0:
+                    if num_tests_col:
+                        exec_qty = int(pd.to_numeric(bat_stock_df[num_tests_col], errors='coerce').fillna(0).sum())
+                    else:
+                        exec_qty = len(bat_stock_df)
+
+                    if pd.notna(req_qty) and req_qty > 0:
+                        diff = exec_qty - int(req_qty)
+                        status = "✅ Target Exceeded" if diff >= 0 else f"⚠️ Missing {abs(diff)} Tests"
+                        req_val = int(req_qty)
+                        diff_val = diff
+                    else:
+                        status = "No Target Defined"
+                        req_val = "N/A"
+                        diff_val = "N/A"
+
                     report_data.append({
-                        "Contractor Name": c_name,
-                        "Battalion": b_str,
+                        "Contractor Name": c_name_clean,
+                        "Battalion": b_clean if b not in ["Global", "Unknown"] else "N/A",
                         "Executed Stockpile Tests": exec_qty,
                         "Required Target": req_val,
                         "Difference (+/-)": diff_val,
@@ -1972,7 +2150,6 @@ def render_dashboard():
                     
             report_df = pd.DataFrame(report_data)
             st.dataframe(report_df, use_container_width=True)
-            
             csv_export = report_df.to_csv(index=False).encode('utf-8-sig')
             st.download_button(
                 label="📥 Download Stockpile Master Report (CSV)",
@@ -1984,16 +2161,14 @@ def render_dashboard():
             st.divider()
 
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
-            all_log_companies = sorted(list(set([str(c).strip() for c in mat_df['Company Name'].dropna().unique() if str(c) != 'nan'])))
             if all_log_companies:
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies, key="deepdive_comp_sel")
                 comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
                 
-                tab_360, tab_stockpile, tab_execution, tab_quantities = st.tabs([
+                tab_360, tab_stockpile, tab_execution = st.tabs([
                     "🌐 360° Corporate Profile", 
                     "⛰️ Stockpile Sourcing", 
-                    "🏗️ Compaction Dashboard",
-                    "📊 Quantities Rate"
+                    "🏗️ Executive Progress & Compaction"
                 ])
                 
                 with tab_360:
@@ -2168,15 +2343,24 @@ def render_dashboard():
                             st.info("No valid dates found for timeline analysis.")
 
                 with tab_stockpile:
-                    req_qty = target_dict.get(selected_comp.strip().lower(), np.nan)
-                    
-                    comp_bat_df = comp_df_full
-                    battalion_col_stock = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
                     if battalion_col_stock:
                         avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
                         selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats, key=f"bat_stock_{selected_comp}")
+                        
                         if selected_bat != "All Battalions":
                             comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
+                            b_key = fmt_b(selected_bat)
+                            req_qty = target_dict.get(f"{selected_comp.strip()}_{b_key}", np.nan)
+                        else:
+                            comp_bat_df = comp_df_full
+                            m_keys = [k for k in target_dict.keys() if k.startswith(selected_comp.strip() + "_")]
+                            if m_keys:
+                                req_qty = sum(target_dict[k] for k in m_keys)
+                            else:
+                                req_qty = np.nan
+                    else:
+                        comp_bat_df = comp_df_full
+                        req_qty = target_dict.get(selected_comp.strip(), np.nan)
 
                     stock_df = comp_bat_df[comp_bat_df['Loc_Category'] == 'Stockpile']
                     
@@ -2391,7 +2575,18 @@ def render_dashboard():
                             st.info(f"No overall status data logged.")
 
                 with tab_execution:
-                    st.markdown(f"### 🏗️ Compaction Dashboard: `{selected_comp}`")
+                    st.markdown(f"### 🏗️ Executive Progress & Compaction: `{selected_comp}`")
+                    
+                    company_col_qty = next((c for c in df.columns if 'COMPANY' in c.upper() and c != 'Company Name'), 'Company Name')
+                    qty_match_df = df[df[company_col_qty].astype(str).str.strip().str.lower() == selected_comp.strip().lower()]
+                    if qty_match_df.empty: qty_match_df = comp_df_full
+                        
+                    tot_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in str(c).strip().upper()), None)
+                    exec_qty_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in str(c).strip().upper()), None)
+                    
+                    tot_qty = pd.to_numeric(qty_match_df[tot_qty_col], errors='coerce').max() if tot_qty_col else 0
+                    exe_qty = pd.to_numeric(qty_match_df[exec_qty_col], errors='coerce').max() if exec_qty_col else 0
+                    prog_pct = (exe_qty / tot_qty * 100) if pd.notna(tot_qty) and tot_qty > 0 else 0
                     
                     test_col = 'Test Type' if 'Test Type' in comp_df_full.columns else None
                     compaction_df = pd.DataFrame()
@@ -2408,493 +2603,142 @@ def render_dashboard():
                     total_test_points = dpl_pts + plate_pts
                     
                     avg_dpl = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in dpl_df.columns else np.nan
-                    
-                    c1, c2, c3 = st.columns(3)
-                    
-                    pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
-                    create_card(c1, "Total Test Points", f"{total_test_points:,}", delta_html=pts_html)
-                    
-                    create_card(c2, "Avg DPL Value", f"{avg_dpl:.2f}" if pd.notna(avg_dpl) else "N/A")
-                    
-                    if 'sample status' in compaction_df.columns and not compaction_df.empty:
-                        compaction_df['status_upper'] = compaction_df['sample status'].str.upper()
-                        accepted_comp = len(compaction_df[compaction_df['status_upper'].isin(['ACCEPTED', 'APPROVED AS NOTED'])])
-                        yield_pct = (accepted_comp / len(compaction_df)) * 100 if len(compaction_df) > 0 else 0
-                        yield_color = "#2ecc71" if yield_pct >= 90 else ("#f1c40f" if yield_pct >= 75 else "#e74c3c")
-                        create_card(c3, "Compaction Yield", f"<span style='color:{yield_color};'>{yield_pct:.1f}%</span>")
-                    else:
-                        create_card(c3, "Compaction Yield", "N/A")
                         
+                    c1, c2, c3, c4 = st.columns(4)
+                    create_card(c1, "Total Target Qty", f"{tot_qty:,.0f}" if pd.notna(tot_qty) and tot_qty>0 else "N/A")
+                    create_card(c2, "Executed Qty", f"{exe_qty:,.0f}" if pd.notna(exe_qty) and exe_qty>0 else "0")
+                    pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
+                    create_card(c3, "Total Compaction Points", f"{total_test_points:,}", delta_html=pts_html)
+                    create_card(c4, "Average DPL Value", f"{avg_dpl:.2f}" if pd.notna(avg_dpl) else "N/A")
+
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                     
-                    r2_c1, r2_c2 = st.columns([0.6, 0.4])
+                    r2_c1, r2_c2 = st.columns(2)
                     
                     with r2_c1:
-                        st.markdown("#### 📈 Compaction Trend (Submittals vs. Test Points)")
-                        if not compaction_df.empty and 'Date ( test)' in compaction_df.columns:
-                            compaction_df['Month'] = compaction_df['Date ( test)'].dt.strftime('%b %Y')
-                            compaction_df['Month_Sort'] = compaction_df['Date ( test)'].dt.to_period('M')
-                            
-                            submittals_trend = compaction_df.groupby(['Month_Sort', 'Month', test_col]).size().reset_index(name='Submittals')
-                            
-                            if num_tests_col_exec:
-                                points_trend = compaction_df.groupby(['Month_Sort', 'Month', test_col])[num_tests_col_exec].sum().reset_index(name='Test_Points')
-                            else:
-                                points_trend = submittals_trend.copy().rename(columns={'Submittals': 'Test_Points'})
-                                
-                            trend_merged = pd.merge(submittals_trend, points_trend, on=['Month_Sort', 'Month', test_col])
-                            trend_merged = trend_merged.sort_values('Month_Sort')
-
-                            fig_comp_trend = make_subplots(specs=[[{"secondary_y": True}]])
-                            
-                            for i, t_type in enumerate(trend_merged[test_col].unique()):
-                                df_t = trend_merged[trend_merged[test_col] == t_type]
-                                color = NEON_COLORS[i % len(NEON_COLORS)]
-                                fig_comp_trend.add_trace(
-                                    go.Bar(x=df_t['Month'], y=df_t['Test_Points'], name=f"{t_type} (Points)", marker_color=color, hovertemplate='<b>Month:</b> %{x}<br><b>Test Points:</b> %{y}'),
-                                    secondary_y=False
-                                )
-                                
-                            total_subs_per_month = trend_merged.groupby('Month')['Submittals'].sum().reset_index()
-                            total_subs_per_month['Month_Sort'] = pd.to_datetime(total_subs_per_month['Month'], format='%b %Y').dt.to_period('M')
-                            total_subs_per_month = total_subs_per_month.sort_values('Month_Sort')
-                            
-                            fig_comp_trend.add_trace(
-                                go.Scatter(x=total_subs_per_month['Month'], y=total_subs_per_month['Submittals'], name="Total Submittals", mode='lines+markers', line=dict(color='#ffffff', width=3, dash='dot'), marker=dict(size=8, color='#ffffff'), hovertemplate='<b>Month:</b> %{x}<br><b>Total Submittals:</b> %{y}'),
-                                secondary_y=True
-                            )
-
-                            fig_comp_trend.update_layout(title="Test Points Volume vs. Paperwork Submittals", barmode='group', height=350, margin=dict(l=20, r=20, t=40, b=20))
-                            fig_comp_trend.update_yaxes(title_text="Actual Test Points (Bars)", secondary_y=False)
-                            fig_comp_trend.update_yaxes(title_text="Submittals Count (Line)", secondary_y=True)
-                            fig_comp_trend = style_3d_glassy(fig_comp_trend, chart_type="combo")
-                            
-                            st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_dual_{selected_comp}")
+                        st.markdown("#### 🚀 Execution Progress vs Target")
+                        if pd.notna(tot_qty) and tot_qty > 0:
+                            fig_exec_kpi = go.Figure(go.Indicator(
+                                mode = "gauge+number+delta",
+                                value = exe_qty,
+                                title = {'text': "Completed Volume", 'font': {'size': 16, 'color': "white" if is_dark else "#2C3E50"}},
+                                number = {'font': {'size': 35, 'color': "white" if is_dark else "#2C3E50"}},
+                                delta = {'reference': tot_qty, 'increasing': {'color': "#2ecc71"}, 'decreasing': {'color': "#e74c3c"}},
+                                gauge = {
+                                    'axis': {'range': [None, tot_qty], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
+                                    'bar': {'color': "#00d2ff"},
+                                    'bgcolor': "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)",
+                                    'steps': [
+                                        {'range': [0, tot_qty*0.5], 'color': "rgba(231,76,60,0.3)"},
+                                        {'range': [tot_qty*0.5, tot_qty*0.8], 'color': "rgba(241,196,15,0.3)"},
+                                        {'range': [tot_qty*0.8, tot_qty], 'color': "rgba(46,204,113,0.3)"}
+                                    ],
+                                    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': tot_qty}
+                                }
+                            ))
+                            fig_exec_kpi.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=320, margin=dict(l=20, r=20, t=50, b=20), font={'family': 'Montserrat'})
+                            st.plotly_chart(fig_exec_kpi, use_container_width=True, key=f"exec_kpi_gauge_{selected_comp}")
                         else:
-                            st.info("No Data available for Trend Analysis.")
+                            st.info("No Target Quantity defined to show progress.")
                             
                     with r2_c2:
-                        st.markdown("#### ⚖️ Compaction Quality Metrics")
+                        st.markdown("#### ⚖️ Compaction Quality Metrics (Pass Rate)")
                         if 'sample status' in compaction_df.columns and not compaction_df.empty:
+                            compaction_df['status_upper'] = compaction_df['sample status'].str.upper()
                             fig_comp_qual = px.pie(compaction_df, names='status_upper', hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
                             fig_comp_qual.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Yield: %{percent}')
                             fig_comp_qual = style_3d_glassy(fig_comp_qual, chart_type="pie")
-                            fig_comp_qual.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20), showlegend=False)
+                            fig_comp_qual.update_layout(height=320, margin=dict(l=20, r=20, t=20, b=20))
                             st.plotly_chart(fig_comp_qual, use_container_width=True, key=f"comp_qual_pie_{selected_comp}")
                         else:
-                            st.info("No Quality data found for Compaction.")
-
-                # ==========================================
-                # 🚀 QUANTITIES RATE — NEW ENHANCED SECTION
-                # ==========================================
-                with tab_quantities:
-                    st.markdown(f"### 📊 Quantities Rate & Execution Analytics")
-                    st.caption("Full execution analysis — quantities, targets, elements coverage, and worst performer.")
-
-                    # ── Column Detection ───────────────────────────────────
-                    contractor_col   = next((c for c in df.columns if 'CONTRACTOR' in c.upper()), None)
-                    comp_main_col    = next((c for c in df.columns if 'COMPANY NAME' in c.upper() and 'CONTRACTOR' not in c.upper()), 'Company Name')
-                    exec_qty_m3_col  = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' in c.upper()), None)
-                    total_qty_col    = next((c for c in df.columns if 'TOTAL QUANTITY' in c.upper()), None)
-                    target_rate_col  = next((c for c in df.columns if 'TARGET DAILY RATE' in c.upper()), None)
-                    date_daily_col   = next((c for c in df.columns if 'DATE' in c.upper() and 'DAILY' in c.upper()), None)
-                    elem_all_col     = next((c for c in df.columns if 'ELEMENT (ALL)' in c.upper() or 'ELEMENT(ALL)' in c.upper()), None)
-                    elment_main_col  = next((c for c in df.columns if 'ELMENT' in c.upper() and 'ALL' not in c.upper()), None)
-                    sector_col       = next((c for c in df.columns if 'SECTOR' in c.upper()), None)
-                    num_tests_col_q  = next((c for c in df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
-
-                    # ── Numeric Conversion ─────────────────────────────────
-                    if exec_qty_m3_col:
-                        df[exec_qty_m3_col] = pd.to_numeric(df[exec_qty_m3_col], errors='coerce').fillna(0)
-                    if total_qty_col:
-                        df[total_qty_col] = pd.to_numeric(df[total_qty_col], errors='coerce').fillna(0)
-                    if target_rate_col:
-                        df[target_rate_col] = pd.to_numeric(df[target_rate_col], errors='coerce').fillna(0)
-
-                    # ── Sector Filter ──────────────────────────────────────
-                    if sector_col:
-                        sectors = ['All Sectors'] + sorted(df[sector_col].dropna().astype(str).unique().tolist())
-                        sel_sector = st.selectbox("🗺️ Filter by Sector:", sectors, key="qty_sector_sel")
-                        df_qty = df[df[sector_col].astype(str) == sel_sector].copy() if sel_sector != 'All Sectors' else df.copy()
+                            st.info("No Quality/Status data found for Compaction.")
+                            
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    
+                    st.markdown("#### 📈 Monthly Compaction Trend Analysis")
+                    if not compaction_df.empty and 'Date ( test)' in compaction_df.columns:
+                        compaction_df['Month'] = compaction_df['Date ( test)'].dt.strftime('%b %Y')
+                        compaction_df['Month_Sort'] = compaction_df['Date ( test)'].dt.to_period('M')
+                        monthly_comp = compaction_df.groupby(['Month_Sort', 'Month', test_col]).size().reset_index(name='Count').sort_values('Month_Sort')
+                        
+                        fig_comp_trend = px.bar(monthly_comp, x='Month', y='Count', color=test_col, barmode='group', color_discrete_sequence=NEON_COLORS)
+                        fig_comp_trend.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Tests:</b> %{y}')
+                        fig_comp_trend = style_3d_glassy(fig_comp_trend, chart_type="bar")
+                        fig_comp_trend.update_layout(height=350)
+                        st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_bar_{selected_comp}")
                     else:
-                        df_qty = df.copy()
-                        sel_sector = 'All Sectors'
-
-                    # ── Contractor Filter ──────────────────────────────────
-                    contractors_list = ['All Contractors']
-                    if contractor_col:
-                        contractors_list += sorted(df_qty[contractor_col].dropna().astype(str).str.strip().unique().tolist())
-                    sel_contractor = st.selectbox("🏢 Filter by Contractor:", contractors_list, key="qty_contractor_sel")
-
-                    if sel_contractor != 'All Contractors' and contractor_col:
-                        df_qty = df_qty[df_qty[contractor_col].astype(str).str.strip() == sel_contractor]
-
+                        st.info("No Date data found for Compaction Trend.")
+                        
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ══════════════════════════════════════════════════════
-                    # 1. CARD: Total Project Scope (Company Name + Total Qty)
-                    # ══════════════════════════════════════════════════════
-                    st.markdown("#### 📦 KPI Cards")
-                    c1, c2, c3, c4 = st.columns(4)
-
-                    # Card 1 — Total Project Scope from Company Name + Total Quantity
-                    total_scope = 0
-                    if comp_main_col in df_qty.columns and total_qty_col:
-                        if sel_contractor != 'All Contractors':
-                            scope_df = df_qty[df_qty[comp_main_col].astype(str).str.strip() == sel_contractor]
-                        else:
-                            scope_df = df_qty
-                        if elment_main_col and elment_main_col in scope_df.columns:
-                            total_scope = scope_df.groupby(elment_main_col)[total_qty_col].max().sum()
-                        else:
-                            total_scope = scope_df[total_qty_col].max()
-
-                    create_card(c1, "🏗️ Total Project Scope (m³)",
-                                f"{total_scope:,.1f}" if total_scope > 0 else "N/A",
-                                delta_html="<span style='color:#00d2ff;font-size:11px'>From Company + Total Quantity</span>")
-
-                    # Card 2 — Executed Qty from Company Name + Executed Quantity
-                    company_exec = 0
-                    if comp_main_col in df_qty.columns and exec_qty_m3_col:
-                        if sel_contractor != 'All Contractors':
-                            ce_df = df_qty[df_qty[comp_main_col].astype(str).str.strip() == sel_contractor]
-                        else:
-                            ce_df = df_qty
-                        company_exec = ce_df[exec_qty_m3_col].sum()
-
-                    create_card(c2, "✅ Executed Qty — Company (m³)",
-                                f"{company_exec:,.1f}",
-                                delta_html="<span style='color:#2ecc71;font-size:11px'>From Company Name + Executed Qty</span>")
-
-                    # Card 3 — Executed Qty from Contractor + Executed Quantity (m³) SUM
-                    contractor_exec = 0
-                    if contractor_col and exec_qty_m3_col:
-                        if sel_contractor != 'All Contractors':
-                            ct_df = df_qty[df_qty[contractor_col].astype(str).str.strip() == sel_contractor]
-                        else:
-                            ct_df = df_qty
-                        contractor_exec = ct_df[exec_qty_m3_col].sum()
-
-                    create_card(c3, "🚧 Executed Qty — Contractor (m³)",
-                                f"{contractor_exec:,.1f}",
-                                delta_html="<span style='color:#ffaa00;font-size:11px'>From Contractor + Executed Qty (m³)</span>")
-
-                    # Card 4 — Scope Completion %
-                    completion_pct = (contractor_exec / total_scope * 100) if total_scope > 0 else 0
-                    completion_color = "#2ecc71" if completion_pct >= 80 else ("#f1c40f" if completion_pct >= 50 else "#e74c3c")
-                    create_card(c4, "📈 Scope Completion %",
-                                f"{completion_pct:.1f}%",
-                                delta_html=f"<span style='color:{completion_color};font-size:11px'>{'On Track ✅' if completion_pct>=80 else 'Needs Attention ⚠️'}</span>",
-                                progress=min(100, completion_pct))
-
-                    # ══════════════════════════════════════════════════════
-                    # 4. CARD: Executed Qty per Element (Element All + Contractor + Exec Qty)
-                    # ══════════════════════════════════════════════════════
-                    if elem_all_col and contractor_col and exec_qty_m3_col:
-                        st.markdown("#### 🔍 Executed Quantity per Element")
-                        elem_group = df_qty.groupby([contractor_col, elem_all_col])[exec_qty_m3_col].sum().reset_index()
-                        elem_group.columns = ['Contractor', 'Element (All)', 'Executed (m³)']
-                        elem_group = elem_group[elem_group['Executed (m³)'] > 0].sort_values('Executed (m³)', ascending=False)
-
-                        if not elem_group.empty:
-                            # KPI cards for top elements
-                            top_elems = elem_group.head(4)
-                            elem_cols = st.columns(min(len(top_elems), 4))
-                            for i, (_, row) in enumerate(top_elems.iterrows()):
-                                create_card(elem_cols[i],
-                                            f"📍 {row['Element (All)']}",
-                                            f"{row['Executed (m³)']:,.1f} m³",
-                                            delta_html=f"<span style='color:#8da3b9;font-size:10px'>{row['Contractor']}</span>")
-
-                            # Full table
-                            with st.expander("📋 View All Elements Breakdown"):
-                                st.dataframe(elem_group, use_container_width=True)
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ══════════════════════════════════════════════════════
-                    # 5. CHART: Target Daily Rate vs Executed Qty per Contractor
-                    # ══════════════════════════════════════════════════════
-                    st.markdown("#### 🚀 Daily Execution vs Target Rate — Per Contractor")
-                    if date_daily_col and target_rate_col and exec_qty_m3_col and contractor_col:
-                        df_daily = df_qty.copy()
-                        df_daily[date_daily_col] = pd.to_datetime(df_daily[date_daily_col], errors='coerce')
-                        df_daily = df_daily.dropna(subset=[date_daily_col])
-
-                        daily_agg = df_daily.groupby([date_daily_col, contractor_col]).agg(
-                            Executed=(exec_qty_m3_col, 'sum'),
-                            Target=(target_rate_col, 'max')
-                        ).reset_index()
-                        daily_agg.columns = ['Date', 'Contractor', 'Executed (m³)', 'Target Rate']
-                        daily_agg['Status'] = daily_agg.apply(
-                            lambda r: '✅ Met' if r['Executed (m³)'] >= r['Target Rate'] and r['Target Rate'] > 0
-                                      else ('⚠️ Below Target' if r['Target Rate'] > 0 else '➖ No Target'),
-                            axis=1
-                        )
-
-                        if not daily_agg.empty:
-                            ch1, ch2 = st.columns([0.65, 0.35])
-                            with ch1:
-                                fig_daily = go.Figure()
-                                fig_daily.add_trace(go.Scatter(
-                                    x=daily_agg['Date'], y=daily_agg['Target Rate'],
-                                    name='Target Daily Rate', mode='lines+markers',
-                                    line=dict(color='#e74c3c', width=3, shape='spline'),
-                                    marker=dict(size=7, color='white', line=dict(color='#e74c3c', width=2)),
-                                    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Target: %{y:,.1f}'
-                                ))
-                                for ctractor in daily_agg['Contractor'].unique():
-                                    ct_df = daily_agg[daily_agg['Contractor'] == ctractor]
-                                    fig_daily.add_trace(go.Bar(
-                                        x=ct_df['Date'], y=ct_df['Executed (m³)'],
-                                        name=ctractor, opacity=0.8,
-                                        hovertemplate=f'<b>{ctractor}</b><br>Date: %{{x|%Y-%m-%d}}<br>Executed: %{{y:,.1f}}'
-                                    ))
-                                fig_daily.update_layout(
-                                    height=400, barmode='group', hovermode='x unified',
-                                    margin=dict(l=0, r=0, t=30, b=0),
-                                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-                                )
-                                try: fig_daily = style_3d_glassy(fig_daily, "combo")
-                                except: pass
-                                st.plotly_chart(fig_daily, use_container_width=True, key="qty_daily_chart")
-
-                            with ch2:
-                                # Performance summary per contractor
-                                st.markdown("**Performance Summary**")
-                                perf_summary = daily_agg.groupby('Contractor').apply(
-                                    lambda x: pd.Series({
-                                        'Days Worked': len(x),
-                                        'Days Met Target': (x['Executed (m³)'] >= x['Target Rate']).sum(),
-                                        'Total Executed (m³)': x['Executed (m³)'].sum(),
-                                        'Avg vs Target (%)': (
-                                            (x['Executed (m³)'] / x['Target Rate'].replace(0, float('nan'))).mean() * 100
-                                        ) if x['Target Rate'].sum() > 0 else 0
-                                    })
-                                ).reset_index()
-                                perf_summary['Hit Rate %'] = (perf_summary['Days Met Target'] / perf_summary['Days Worked'] * 100).round(1)
-                                perf_summary['Avg vs Target (%)'] = perf_summary['Avg vs Target (%)'].round(1)
-                                st.dataframe(
-                                    perf_summary[['Contractor', 'Days Worked', 'Days Met Target', 'Hit Rate %', 'Total Executed (m³)']],
-                                    use_container_width=True
-                                )
-                    else:
-                        st.info("Missing: Date (Daily), Target Daily Rate, Executed Quantity, or Contractor columns.")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ══════════════════════════════════════════════════════
-                    # 6. KPI SUMMARY — All metrics with color-coded status
-                    # ══════════════════════════════════════════════════════
-                    st.markdown("#### 🎯 KPI Summary Dashboard")
-
-                    kpi_data = []
-                    if contractor_col and exec_qty_m3_col and target_rate_col:
-                        for ctractor in df_qty[contractor_col].dropna().unique():
-                            ct = df_qty[df_qty[contractor_col].astype(str).str.strip() == str(ctractor).strip()]
-                            exec_sum  = ct[exec_qty_m3_col].sum()
-                            tgt_sum   = ct[target_rate_col].sum()
-                            hit_rate  = len(ct[ct[exec_qty_m3_col] >= ct[target_rate_col]]) / len(ct) * 100 if len(ct) > 0 else 0
-                            scope_val = 0
-                            if total_qty_col:
-                                if elment_main_col and elment_main_col in ct.columns:
-                                    scope_val = ct.groupby(elment_main_col)[total_qty_col].max().sum()
+                    st.markdown("#### 🧠 Executive AI Insights & Alerts")
+                    
+                    pred_date_str = "Insufficient Data"
+                    daily_rate = 0
+                    if 'Date ( test)' in qty_match_df.columns and pd.notna(tot_qty) and tot_qty > 0:
+                        dates = qty_match_df['Date ( test)'].dropna()
+                        if len(dates) >= 2 and exe_qty > 0:
+                            min_date = dates.min()
+                            max_date = dates.max()
+                            days_worked = (max_date - min_date).days
+                            if days_worked > 0:
+                                daily_rate = exe_qty / days_worked
+                                if exe_qty >= tot_qty:
+                                    pred_date_str = "Target Achieved ✅"
                                 else:
-                                    scope_val = ct[total_qty_col].max()
-                            completion = (exec_sum / scope_val * 100) if scope_val > 0 else 0
-                            kpi_data.append({
-                                'Contractor': ctractor,
-                                'Total Scope (m³)': round(scope_val, 1),
-                                'Executed (m³)': round(exec_sum, 1),
-                                'Completion %': round(completion, 1),
-                                'Target Hit Rate %': round(hit_rate, 1),
-                                'Status': '🟢 Good' if hit_rate >= 70 else ('🟡 Fair' if hit_rate >= 40 else '🔴 Poor')
-                            })
+                                    rem_qty = tot_qty - exe_qty
+                                    rem_days = rem_qty / daily_rate
+                                    pred_date = max_date + timedelta(days=rem_days)
+                                    pred_date_str = pred_date.strftime('%B %Y')
+                    
+                    rej_rate = 0
+                    top_fail_str = "None"
+                    if 'sample status' in compaction_df.columns and not compaction_df.empty:
+                        rej_df = compaction_df[compaction_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
+                        rej_rate = (len(rej_df) / len(compaction_df)) * 100
+                        if not rej_df.empty:
+                            if test_col in rej_df.columns:
+                                top_fail_str = rej_df[test_col].value_counts().idxmax()
+                    
+                    insight_c1, insight_c2, insight_c3 = st.columns(3)
+                    
+                    with insight_c1:
+                        st.markdown(f"""
+                        <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 8px; height: 100%;">
+                            <h4 style="color: #00d2ff; margin-top: 0; font-size: 16px;">📊 Performance vs Target</h4>
+                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                • <b>Completion:</b> {prog_pct:.1f}% of total target.<br>
+                                • <b>Daily Velocity:</b> ~{int(daily_rate):,} units/day.<br>
+                                • <b>Status:</b> {"On Track" if prog_pct > 50 else "Requires Acceleration"}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    with insight_c2:
+                        qual_color = "#e74c3c" if rej_rate > 15 else "#2ecc71"
+                        st.markdown(f"""
+                        <div style="background: rgba(231, 76, 60, 0.05); border-left: 4px solid {qual_color}; padding: 20px; border-radius: 8px; height: 100%;">
+                            <h4 style="color: {qual_color}; margin-top: 0; font-size: 16px;">⚠️ Quality Issues</h4>
+                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                • <b>Rejection Rate:</b> {rej_rate:.1f}% in compaction.<br>
+                                • <b>Most Failed Test:</b> {top_fail_str}.<br>
+                                • <b>Action:</b> {"Urgent audit needed for equipment." if rej_rate > 15 else "Quality is within acceptable limits."}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    with insight_c3:
+                        st.markdown(f"""
+                        <div style="background: rgba(241, 196, 15, 0.05); border-left: 4px solid #f1c40f; padding: 20px; border-radius: 8px; height: 100%;">
+                            <h4 style="color: #f1c40f; margin-top: 0; font-size: 16px;">🔮 Predictive Completion</h4>
+                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                • <b>Forecasted Finish:</b> <b style="color:#ffaa00; font-size:16px;">{pred_date_str}</b><br>
+                                • <b>Algorithm:</b> Based on historical velocity of {int(daily_rate):,} avg volume per active day.<br>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                    if kpi_data:
-                        kpi_df = pd.DataFrame(kpi_data).sort_values('Completion %', ascending=False)
-                        st.dataframe(kpi_df, use_container_width=True)
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-                        # KPI bar chart
-                        fig_kpi = px.bar(kpi_df, x='Contractor', y=['Completion %', 'Target Hit Rate %'],
-                                         barmode='group', color_discrete_sequence=['#00d2ff', '#ffaa00'],
-                                         title="Completion % vs Target Hit Rate % per Contractor",
-                                         text_auto=True)
-                        try: fig_kpi = style_3d_glassy(fig_kpi, "bar")
-                        except: pass
-                        st.plotly_chart(fig_kpi, use_container_width=True, key="kpi_summary_chart")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ══════════════════════════════════════════════════════
-                    # 7. ELEMENT COVERAGE AUDIT
-                    # Which elements have quantities and which don't
-                    # Uses: Element (all) + Contractor + Company Name + ELMENT
-                    # ══════════════════════════════════════════════════════
-                    st.markdown("#### 🕵️ Element Coverage Audit — Missing Quantities Detector")
-                    st.caption("Cross-checks Element (All) vs ELMENT column to find elements missing quantities.")
-
-                    if elem_all_col and contractor_col and comp_main_col in df.columns and elment_main_col:
-                        # Elements the contractor should cover (from Element All + Contractor)
-                        expected = df_qty[[contractor_col, elem_all_col]].dropna()
-                        expected = expected[expected[elem_all_col].astype(str).str.strip() != '']
-                        expected_set = set(zip(
-                            expected[contractor_col].astype(str).str.strip(),
-                            expected[elem_all_col].astype(str).str.strip()
-                        ))
-
-                        # Elements that actually received quantities (from Company Name + ELMENT)
-                        received = df_qty[[comp_main_col, elment_main_col, exec_qty_m3_col]].dropna(subset=[elment_main_col]) if exec_qty_m3_col else df_qty[[comp_main_col, elment_main_col]].dropna()
-                        received_qty = received.groupby([comp_main_col, elment_main_col])[exec_qty_m3_col].sum().reset_index() if exec_qty_m3_col else pd.DataFrame()
-
-                        # Find missing
-                        missing_elements = []
-                        covered_elements = []
-                        for contractor, element in expected_set:
-                            # Match contractor in Company Name col
-                            match = received_qty[
-                                (received_qty[comp_main_col].astype(str).str.strip() == contractor) &
-                                (received_qty[elment_main_col].astype(str).str.strip() == element)
-                            ] if not received_qty.empty else pd.DataFrame()
-
-                            if match.empty or (exec_qty_m3_col and match[exec_qty_m3_col].sum() == 0):
-                                missing_elements.append({'Contractor': contractor, 'Element': element, 'Status': '❌ No Quantity'})
-                            else:
-                                qty = match[exec_qty_m3_col].sum() if exec_qty_m3_col else 0
-                                covered_elements.append({'Contractor': contractor, 'Element': element, 'Executed (m³)': round(qty, 1), 'Status': '✅ Has Quantity'})
-
-                        col_miss, col_cov = st.columns(2)
-
-                        with col_miss:
-                            if missing_elements:
-                                miss_df = pd.DataFrame(missing_elements).sort_values(['Contractor', 'Element'])
-                                st.markdown(f"""
-                                <div style="background:rgba(231,76,60,0.1);border-left:4px solid #e74c3c;padding:15px;border-radius:8px;margin-bottom:10px;">
-                                    <b style="color:#e74c3c;">🚨 {len(missing_elements)} Element(s) Missing Quantities</b><br>
-                                    <span style="font-size:12px;color:#d1d5da;">Request quantities from the Technical Office for these elements:</span>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                st.dataframe(miss_df, use_container_width=True)
-                            else:
-                                st.success("✅ All elements have quantities assigned!")
-
-                        with col_cov:
-                            if covered_elements:
-                                cov_df = pd.DataFrame(covered_elements).sort_values('Executed (m³)', ascending=False)
-                                st.markdown(f"""
-                                <div style="background:rgba(46,204,113,0.1);border-left:4px solid #2ecc71;padding:15px;border-radius:8px;margin-bottom:10px;">
-                                    <b style="color:#2ecc71;">✅ {len(covered_elements)} Element(s) Covered</b><br>
-                                    <span style="font-size:12px;color:#d1d5da;">These elements have quantities from the Technical Office.</span>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                st.dataframe(cov_df, use_container_width=True)
-                    else:
-                        st.info("Requires columns: Element (All), Contractor, Company Name, and ELMENT.")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ══════════════════════════════════════════════════════
-                    # 8. WORST PERFORMER per Sector
-                    # North & South — worst avg rate vs target
-                    # Uses: Contractor + Target Daily Rate + Executed Qty (m³)
-                    # ══════════════════════════════════════════════════════
-                    st.markdown("#### 🏆 Worst Performer Analysis — By Sector")
-                    st.caption("Identifies the contractor with the lowest execution rate vs daily target per sector.")
-
-                    if contractor_col and target_rate_col and exec_qty_m3_col and sector_col:
-                        worst_data = []
-                        for sector_name in df[sector_col].dropna().unique():
-                            sec_df = df[df[sector_col].astype(str) == str(sector_name)].copy()
-                            sec_df = sec_df[sec_df[target_rate_col] > 0]
-
-                            if sec_df.empty:
-                                continue
-
-                            # Performance ratio per day per contractor
-                            sec_df['performance_ratio'] = sec_df[exec_qty_m3_col] / sec_df[target_rate_col].replace(0, float('nan'))
-
-                            perf = sec_df.groupby(contractor_col).agg(
-                                Avg_Performance=('performance_ratio', 'mean'),
-                                Total_Executed=(exec_qty_m3_col, 'sum'),
-                                Days_Below=(exec_qty_m3_col, lambda x: (x < sec_df.loc[x.index, target_rate_col]).sum())
-                            ).reset_index()
-                            perf.columns = ['Contractor', 'Avg Performance Ratio', 'Total Executed (m³)', 'Days Below Target']
-                            perf['Avg Performance %'] = (perf['Avg Performance Ratio'] * 100).round(1)
-                            perf = perf.sort_values('Avg Performance %')
-
-                            if not perf.empty:
-                                worst = perf.iloc[0]
-                                worst_data.append({
-                                    'Sector': sector_name,
-                                    'Worst Contractor': worst['Contractor'],
-                                    'Avg Performance %': worst['Avg Performance %'],
-                                    'Total Executed (m³)': round(worst['Total Executed (m³)'], 1),
-                                    'Days Below Target': int(worst['Days Below Target'])
-                                })
-
-                                # Sector leaderboard
-                                st.markdown(f"**{sector_name}**")
-                                worst_col, best_col = st.columns(2)
-
-                                worst_contractor = perf.iloc[0]
-                                best_contractor  = perf.iloc[-1]
-
-                                worst_col.markdown(f"""
-                                <div style="background:rgba(231,76,60,0.1);border-left:5px solid #e74c3c;border-radius:12px;padding:16px;margin-bottom:12px;">
-                                    <div style="color:#e74c3c;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:6px;">🔴 Worst Performer</div>
-                                    <div style="color:#ffffff;font-size:20px;font-weight:700;">{worst_contractor['Contractor']}</div>
-                                    <div style="color:#8da3b9;font-size:13px;margin-top:6px;">
-                                        Avg: <b style="color:#e74c3c">{worst_contractor['Avg Performance %']:.1f}%</b> of target<br>
-                                        Days below target: <b style="color:#e74c3c">{int(worst_contractor['Days Below Target'])}</b>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                                best_col.markdown(f"""
-                                <div style="background:rgba(46,204,113,0.1);border-left:5px solid #2ecc71;border-radius:12px;padding:16px;margin-bottom:12px;">
-                                    <div style="color:#2ecc71;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:6px;">🟢 Best Performer</div>
-                                    <div style="color:#ffffff;font-size:20px;font-weight:700;">{best_contractor['Contractor']}</div>
-                                    <div style="color:#8da3b9;font-size:13px;margin-top:6px;">
-                                        Avg: <b style="color:#2ecc71">{best_contractor['Avg Performance %']:.1f}%</b> of target<br>
-                                        Days below target: <b style="color:#2ecc71">{int(best_contractor['Days Below Target'])}</b>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                                # Full sector ranking chart
-                                fig_worst = px.bar(
-                                    perf.sort_values('Avg Performance %'),
-                                    x='Contractor', y='Avg Performance %',
-                                    color='Avg Performance %',
-                                    color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'],
-                                    range_color=[0, 150],
-                                    title=f"{sector_name} — Contractor Performance vs Target (%)",
-                                    text_auto=True
-                                )
-                                fig_worst.add_hline(y=100, line_dash="dash", line_color="#ffaa00",
-                                                    annotation_text="100% Target", annotation_position="top right")
-                                try: fig_worst = style_3d_glassy(fig_worst, "bar")
-                                except: pass
-                                st.plotly_chart(fig_worst, use_container_width=True, key=f"worst_{sector_name}")
-
-                    elif contractor_col and target_rate_col and exec_qty_m3_col:
-                        # No sector column — show overall worst
-                        st.info("No 'Sector' column detected. Showing overall worst performer.")
-                        df_w = df.copy()
-                        df_w = df_w[df_w[target_rate_col] > 0]
-                        df_w['perf_ratio'] = df_w[exec_qty_m3_col] / df_w[target_rate_col].replace(0, float('nan'))
-                        overall_perf = df_w.groupby(contractor_col)['perf_ratio'].mean().reset_index()
-                        overall_perf.columns = ['Contractor', 'Avg Performance %']
-                        overall_perf['Avg Performance %'] = (overall_perf['Avg Performance %'] * 100).round(1)
-                        overall_perf = overall_perf.sort_values('Avg Performance %')
-                        if not overall_perf.empty:
-                            worst_overall = overall_perf.iloc[0]
-                            st.error(f"🔴 Overall Worst Performer: **{worst_overall['Contractor']}** — {worst_overall['Avg Performance %']:.1f}% of target")
-                            st.dataframe(overall_perf, use_container_width=True)
-                    else:
-                        st.info("Requires: Contractor, Target Daily Rate, Executed Quantity (m³), and Sector columns.")
-
-        # --- 🔍 Advanced Element Quality Auditor ---
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
         bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
         zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
@@ -2942,14 +2786,13 @@ def render_dashboard():
                         create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
                         create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
 
-                        comp_lab_col_global = next((c for c in bh_df.columns if str(c).strip().upper() in ['COMPANY', 'COMPANY NAME']), None)
-                        if comp_lab_col_global:
+                        if 'Company Name' in bh_df.columns:
                             if 'Date ( test)' in bh_df.columns:
-                                comp_stats = bh_df.dropna(subset=[comp_lab_col_global]).groupby(comp_lab_col_global)['Date ( test)'].agg(['min', 'max']).reset_index()
-                                comp_details = [f"<span style='color:#2ecc71;'><b>{r[comp_lab_col_global]}</b></span>: <span style='font-size:16px; color:{ui['text_muted']};'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
+                                comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
+                                comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:{ui['text_muted']};'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
                                 companies_str = "<br>".join(comp_details) if comp_details else "N/A"
                             else:
-                                companies_worked = bh_df[comp_lab_col_global].dropna().unique()
+                                companies_worked = bh_df['Company Name'].dropna().unique()
                                 companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
                             st.markdown(f"""
                                 <div class="custom-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
@@ -3091,6 +2934,7 @@ def render_dashboard():
         with st.expander("📂 View Complete Operational Records (Raw Data)"):
             st.dataframe(filtered_df, use_container_width=True)
 
+        # Back to Home Button
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
             st.session_state["current_page"] = "home"
@@ -3122,18 +2966,15 @@ def main():
             if "analytics_df" not in st.session_state:
                 st.markdown("### 📥 Welcome to Advanced Analytics Hub")
                 st.info("You can upload your dataset directly here to begin analysis.")
-                hub_init_upload = st.file_uploader("Upload Dataset (CSV/Excel) 📂", type=["csv", "xlsx"], key="hub_init_uploader")
+                hub_init_upload = st.file_uploader("Upload Dataset (CSV) 📂", type=["csv"], key="hub_init_uploader")
                 if hub_init_upload is not None:
-                    if hub_init_upload.name.endswith('.xlsx'):
-                         st.session_state["analytics_df"] = pd.read_excel(hub_init_upload, sheet_name=0)
-                    else:
-                         st.session_state["analytics_df"] = pd.read_csv(hub_init_upload)
+                    st.session_state["analytics_df"] = pd.read_csv(hub_init_upload)
                     st.rerun()
             
             if "analytics_df" in st.session_state:
                 render_analytics_hub(st.session_state["analytics_df"])
             else:
-                st.warning("⚠️ Please upload a dataset from the Main Dashboard first to use Analytics Hub")
+                st.warning("⚠️ Please upload a CSV file from the Main Dashboard first to use Analytics Hub")
                 if st.button("📊 Go to Main Dashboard", use_container_width=True, type="primary"):
                     st.session_state["current_page"] = "dashboard"
                     st.rerun()
