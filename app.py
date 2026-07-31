@@ -2555,7 +2555,7 @@ def render_dashboard():
 
                     create_card(c1, "🏗️ Total Project Scope (m³)",
                                 f"{total_scope:,.1f}" if total_scope > 0 else "N/A",
-                                delta_html="<span style='color:#00d2ff;font-size:11px'>From Company Name + Total Quantity</span>")
+                                delta_html="<span style='color:#00d2ff;font-size:11px'>From Company + Total Quantity</span>")
 
                     # Card 2 — Executed Qty from Company Name + Executed Quantity
                     company_exec = 0
