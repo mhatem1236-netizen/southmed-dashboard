@@ -16,17 +16,14 @@ import sqlite3
 # 1. System Configuration & Constants
 # ==========================================
 st.set_page_config(page_title="Command Center BI Dashboard", layout="wide", initial_sidebar_state="expanded")
-
 EGYPT_TZ = pytz.timezone('Africa/Cairo')
 NEON_COLORS = ['#00d2ff', '#ffaa00', '#2ecc71', '#ff007f', '#f1c40f', '#9b59b6', '#38f9d7', '#ff7eb3', '#00f2fe', '#4facfe']
-
 STATUS_COLORS = {
-    'ACCEPTED': '#2ecc71', 
-    'APPROVED AS NOTED': '#00d2ff', 
-    'REVISE': '#f1c40f', 
+    'ACCEPTED': '#2ecc71',
+    'APPROVED AS NOTED': '#00d2ff',
+    'REVISE': '#f1c40f',
     'REJECTED': '#e74c3c'
 }
-
 USERS_DB_FILE = "users_db.csv"
 LOGIN_LOGS_FILE = "login_logs.csv"
 AUDIT_LOG_FILE = "audit_trail.csv"
@@ -45,7 +42,6 @@ if "current_page" not in st.session_state:
 # ==========================================
 def inject_custom_css():
     is_dark = st.session_state["theme"] == "Dark"
-    
     if is_dark:
         bg_main = "radial-gradient(circle at top right, #0b1a2e, #050a11)"
         bg_sidebar = "rgba(5, 10, 17, 0.95)"
@@ -76,19 +72,15 @@ def inject_custom_css():
     custom_css = f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
-    
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stHeader"] {{background: transparent !important;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
-    
     html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
     h1, h2, h3, h4, h5, h6, .login-title {{ font-family: 'Montserrat', sans-serif !important; color: {text_main} !important; }}
     p, .stMarkdown, label {{ color: {text_main} !important; }}
-    
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
-    
     [data-testid="stTextInput"] input,
     [data-testid="stSelectbox"] div,
     [data-testid="stMultiselect"] div {{
@@ -96,19 +88,19 @@ def inject_custom_css():
         color: {text_main} !important;
         border: 1px solid {card_border} !important;
     }}
-    
     [data-testid="stButton"] button {{
         background: {button_bg} !important;
         color: {button_text} !important;
         border: none !important;
         font-weight: 600 !important;
     }}
-    
     [data-testid="stButton"] button:hover {{
         opacity: 0.9 !important;
         transform: translateY(-2px) !important;
     }}
-    
+    [data-testid="stSidebar"] [data-testid="stButton"] button:hover {{
+        background: {hover_bg} !important;
+    }}
     ::-webkit-scrollbar {{
         width: 8px;
         height: 8px;
@@ -124,7 +116,6 @@ def inject_custom_css():
     ::-webkit-scrollbar-thumb:hover {{
         background: linear-gradient(180deg, #ffaa00, #00d2ff);
     }}
-    
     .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card {{
         background: {card_bg} !important;
         padding: 25px;
@@ -136,13 +127,11 @@ def inject_custom_css():
         position: relative;
         overflow: hidden;
     }}
-    
     .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover {{
         transform: translateY(-5px) scale(1.02) !important;
         box-shadow: 0 20px 40px rgba(0, 210, 255, 0.3) !important;
         border-color: #00d2ff !important;
     }}
-    
     .metric-card::before, .leaderboard-card::before {{
         content: '';
         position: absolute;
@@ -153,11 +142,9 @@ def inject_custom_css():
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
         transition: left 0.5s;
     }}
-    
     .metric-card:hover::before, .leaderboard-card:hover::before {{
         left: 100%;
     }}
-    
     .bi-title {{
         background: linear-gradient(135deg, #00d2ff 0%, #ffaa00 50%, #ff007f 100%);
         -webkit-background-clip: text;
@@ -169,7 +156,6 @@ def inject_custom_css():
         margin-bottom: 20px;
         position: relative;
     }}
-    
     .bi-title::after {{
         content: '';
         position: absolute;
@@ -180,18 +166,14 @@ def inject_custom_css():
         background: linear-gradient(90deg, #00d2ff, #ffaa00);
         transition: width 0.5s ease;
     }}
-    
     .bi-title:hover::after {{
         width: 100%;
     }}
-    
     .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; font-family: 'Montserrat', sans-serif; }}
     .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; font-family: 'Montserrat', sans-serif; }}
-    
     .delta-up {{ color: #2ecc71 !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-down {{ color: #e74c3c !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-neutral {{ color: {text_muted} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
-    
     .gradient-divider {{
         height: 2px;
         background: linear-gradient(90deg, transparent 0%, #00d2ff 20%, #ffaa00 50%, #00d2ff 80%, transparent 100%);
@@ -201,54 +183,44 @@ def inject_custom_css():
         border: none;
         opacity: 0.5;
     }}
-    
     @keyframes shimmer-divider {{
         0% {{ background-position: 200% 0; }}
         100% {{ background-position: -200% 0; }}
     }}
-    
     .ticker-wrap {{ background: {card_bg}; border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
     .ticker {{ display: inline-block; padding-right: 100%; animation: ticker 35s linear infinite; }}
     @keyframes ticker {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
     .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; }}
     .ticker-item span {{ color: #00d2ff; font-weight: 800; }}
-    
     .chat-container {{ background: {card_bg}; padding: 20px; border-radius: 15px; border: 1px solid {card_border}; margin-bottom: 20px; max-height: 400px; overflow-y: auto; }}
     .user-msg {{ background: rgba(0, 210, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: right; border-right: 3px solid #00d2ff; }}
     .ai-msg {{ background: rgba(255, 170, 0, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }}
-    
     .site-btn {{ background: linear-gradient(145deg, #00d2ff, #008cba); color: white; padding: 25px; border-radius: 15px; text-align: center; font-size: 20px; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.2s; margin-bottom: 15px; }}
     .site-btn:hover {{ transform: translateY(-5px); }}
     .site-btn:active {{ transform: translateY(2px); }}
-    
     @keyframes pulse-glow {{
         0%, 100% {{ box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); }}
         50% {{ box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }}
     }}
-    
     .metric-value.critical {{
         animation: pulse-glow 2s infinite;
         color: #e74c3c !important;
     }}
-    
     @keyframes pulse {{
         0%, 100% {{ opacity: 1; transform: scale(1); }}
         50% {{ opacity: 0.5; transform: scale(1.2); }}
     }}
-    
     .live-indicator {{
         display: flex;
         align-items: center;
         gap: 8px;
     }}
-    
     .live-dot {{
         width: 10px;
         height: 10px;
         border-radius: 50%;
         animation: pulse 2s infinite;
     }}
-    
     [data-testid="stAppViewContainer"]::before {{
         content: '';
         position: fixed;
@@ -262,20 +234,17 @@ def inject_custom_css():
         pointer-events: none;
         z-index: -1;
     }}
-    
     [data-testid="stSidebar"] hr {{
         border: none;
         height: 1px;
         background: linear-gradient(90deg, transparent 0%, #00d2ff 50%, transparent 100%);
         margin: 20px 0;
     }}
-    
     .dataframe {{
         border-radius: 12px !important;
         overflow: hidden;
         box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
     }}
-    
     .dataframe th {{
         background: linear-gradient(135deg, #00d2ff, #008cba) !important;
         color: white !important;
@@ -284,11 +253,9 @@ def inject_custom_css():
         font-size: 12px !important;
         letter-spacing: 1px;
     }}
-    
     .dataframe tr:hover {{
         background: rgba(0, 210, 255, 0.05) !important;
     }}
-    
     .navigation-card {{
         background: {card_bg} !important;
         padding: 40px;
@@ -304,11 +271,22 @@ def inject_custom_css():
         align-items: center;
         text-align: center;
     }}
-    
     .navigation-card:hover {{
         transform: translateY(-10px) scale(1.05);
         border-color: #00d2ff !important;
         box-shadow: 0 30px 60px rgba(0, 210, 255, 0.4) !important;
+    }}
+    .prog-bg {{
+        height: 6px;
+        background: rgba(127,140,141,0.2);
+        border-radius: 10px;
+        margin-top: 15px;
+        overflow: hidden;
+    }}
+    .prog-fill {{
+        height: 100%;
+        border-radius: 10px;
+        transition: width 1s ease-in-out;
     }}
     </style>
     """
@@ -320,21 +298,20 @@ def inject_custom_css():
 def show_breadcrumbs(path):
     parts = path.split(" > ")
     breadcrumb_html = " > ".join([
-        f'<span style="color: #00d2ff; cursor: pointer;">{p}</span>' 
-        if i < len(parts) - 1 
+        f'<span style="color: #00d2ff; cursor: pointer;">{p}</span>'
+        if i < len(parts) - 1
         else f'<span style="color: #ffaa00; font-weight: bold;">{p}</span>'
         for i, p in enumerate(parts)
     ])
-    
     st.markdown(f"""
     <div style="
-        background: rgba(255,255,255,0.05);
-        padding: 10px 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-size: 14px;
+    background: rgba(255,255,255,0.05);
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
     ">
-        🏠 Home {breadcrumb_html}
+     Home {breadcrumb_html}
     </div>
     """, unsafe_allow_html=True)
 
@@ -344,7 +321,6 @@ def live_indicator(status="online"):
         "offline": "#e74c3c",
         "warning": "#f1c40f"
     }
-    
     st.markdown(f"""
     <div class="live-indicator">
         <div class="live-dot" style="background: {colors[status]}; box-shadow: 0 0 10px {colors[status]};"></div>
@@ -356,22 +332,21 @@ def live_indicator(status="online"):
 
 def create_progress_ring(percentage, label):
     color = "#2ecc71" if percentage > 80 else ("#f1c40f" if percentage > 50 else "#e74c3c")
-    
     st.markdown(f"""
     <div style="text-align: center; padding: 20px;">
         <svg width="120" height="120" style="transform: rotate(-90deg);">
-            <circle cx="60" cy="60" r="50" 
-                    stroke="rgba(255,255,255,0.1)" 
-                    stroke-width="8" 
-                    fill="none"/>
-            <circle cx="60" cy="60" r="50" 
-                    stroke="{color}" 
-                    stroke-width="8" 
-                    fill="none"
-                    stroke-dasharray="{2 * 3.14 * 50}"
-                    stroke-dashoffset="{2 * 3.14 * 50 * (1 - percentage/100)}"
-                    stroke-linecap="round"
-                    style="transition: stroke-dashoffset 1s ease;"/>
+            <circle cx="60" cy="60" r="50"
+                stroke="rgba(255,255,255,0.1)"
+                stroke-width="8"
+                fill="none"/>
+            <circle cx="60" cy="60" r="50"
+                stroke="{color}"
+                stroke-width="8"
+                fill="none"
+                stroke-dasharray="{2 * 3.14 * 50}"
+                stroke-dashoffset="{2 * 3.14 * 50 * (1 - percentage/100)}"
+                stroke-linecap="round"
+                style="transition: stroke-dashoffset 1s ease;"/>
         </svg>
         <div style="margin-top: -80px; font-size: 24px; font-weight: bold; color: {color};">
             {percentage}%
@@ -411,7 +386,6 @@ def init_auth_system():
         ])
         default_users.to_csv(USERS_DB_FILE, index=False)
         clear_users_cache()
-    
     if not os.path.exists(LOGIN_LOGS_FILE):
         logs_df = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Role"])
         logs_df.to_csv(LOGIN_LOGS_FILE, index=False)
@@ -453,7 +427,7 @@ def style_3d_glassy(fig, chart_type="bar"):
     grid_color = 'rgba(255,255,255,0.05)' if is_dark else 'rgba(0,0,0,0.1)'
     line_color = 'rgba(255, 255, 255, 0.4)' if is_dark else 'rgba(0, 0, 0, 0.2)'
     marker_line = 'white' if is_dark else '#2C3E50'
-
+    
     fig.update_layout(
         template=template,
         paper_bgcolor="rgba(0,0,0,0)",
@@ -471,9 +445,10 @@ def style_3d_glassy(fig, chart_type="bar"):
     elif chart_type == "combo":
         fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85, selector=dict(type='bar'))
         fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color=marker_line, width=1.5)), selector=dict(type='scatter'))
-        
+    
     fig.update_xaxes(showgrid=False, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
+    
     return fig
 
 # ==========================================
@@ -507,7 +482,7 @@ class HistoryManager:
         conn = sqlite3.connect(HistoryManager.DB_FILE)
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO kpi_history 
+            INSERT INTO kpi_history
             (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (
@@ -552,7 +527,6 @@ class HistoryManager:
             return ""
         
         file_history = history_df[history_df['file_name'] == current_file_name] if 'file_name' in history_df.columns else pd.DataFrame()
-        
         if file_history.empty:
             return ""
         
@@ -567,13 +541,13 @@ class HistoryManager:
         elif diff < 0:
             return f'<div class="delta-down">▼ {diff_fmt} ({pct_str})</div>'
         else:
-            return f'<div class="delta-neutral">➖ No change</div>'
+            return f'<div class="delta-neutral"> No change</div>'
     
     @staticmethod
     def export_to_csv():
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
-        df = pd.read_sql_query("SELECT * FROM kpi_history", conn)
+        df = pd.read_sql_query("SELECT * FROM kpi_history ORDER BY id", conn)
         conn.close()
         return df
     
@@ -582,46 +556,62 @@ class HistoryManager:
         HistoryManager.init_db()
         conn = sqlite3.connect(HistoryManager.DB_FILE)
         df.columns = df.columns.str.strip().str.lower()
+        col_map = {
+            'total_requests': None,
+            'total_tests': None,
+            'avg_dpl': None,
+            'avg_duration': None,
+            'total_paperwork': None,
+            'timestamp': None,
+            'file_name': None
+        }
+        for col in df.columns:
+            if 'total_req' in col: col_map['total_requests'] = col
+            elif 'total_test' in col: col_map['total_tests'] = col
+            elif 'avg_dpl' in col: col_map['avg_dpl'] = col
+            elif 'avg_dur' in col or 'duration' in col: col_map['avg_duration'] = col
+            elif 'total_pap' in col: col_map['total_paperwork'] = col
+            elif 'timestamp' in col or 'time' in col: col_map['timestamp'] = col
+            elif 'file_name' in col or 'file' in col: col_map['file_name'] = col
         
+        imported_count = 0
         for index, row in df.iterrows():
-            req = row.get('total_requests', 0)
-            tst = row.get('total_tests', 0)
-            dpl = row.get('avg_dpl', 0)
-            dur = row.get('avg_duration', 0)
-            pap = row.get('total_paperwork', 0)
-            ts = row.get('timestamp', datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"))
-            fn = row.get('file_name', 'Legacy_Import.csv')
-            
-            conn.execute("""
-                INSERT INTO kpi_history 
-                (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                str(ts),
-                str(fn).strip(),
-                pd.to_numeric(req, errors='coerce') or 0,
-                pd.to_numeric(tst, errors='coerce') or 0,
-                pd.to_numeric(dpl, errors='coerce') or 0,
-                pd.to_numeric(dur, errors='coerce') or 0,
-                pd.to_numeric(pap, errors='coerce') or 0
-            ))
+            try:
+                cursor.execute("""
+                    INSERT INTO kpi_history
+                    (timestamp, file_name, total_requests, total_tests, avg_dpl, avg_duration, total_paperwork)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get(col_map['timestamp'], datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"))),
+                    str(row.get(col_map['file_name'], 'Legacy_Import.csv')),
+                    pd.to_numeric(row.get(col_map['total_requests'], 0), errors='coerce') or 0,
+                    pd.to_numeric(row.get(col_map['total_tests'], 0), errors='coerce') or 0,
+                    pd.to_numeric(row.get(col_map['avg_dpl'], 0), errors='coerce') or 0,
+                    pd.to_numeric(row.get(col_map['avg_duration'], 0), errors='coerce') or 0,
+                    pd.to_numeric(row.get(col_map['total_paperwork'], 0), errors='coerce') or 0
+                ))
+                imported_count += 1
+            except Exception as e:
+                print(f"Error importing row {index}: {e}")
+                continue
         conn.commit()
         conn.close()
+        return imported_count
 
 def create_card(column, label, value, delta_html="", progress=None):
     if progress is not None:
         prog_color = "#2ecc71" if progress > 80 else ("#f1c40f" if progress > 50 else "#e74c3c")
-        prog_html = f'<div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 15px;"><div class="prog-fill" style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 10px;"></div></div>'
+        prog_html = f'<div class="prog-bg"><div class="prog-fill" style="width: {progress}%; background: {prog_color};"></div></div>'
     else:
         prog_html = ""
     column.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">{label}</div>
-            <div class="metric-value">{value}</div>
-            {delta_html}
-            {prog_html}
-        </div>
-        """, unsafe_allow_html=True)
+    <div class="metric-card">
+        <div class="metric-label">{label}</div>
+        <div class="metric-value">{value}</div>
+        {delta_html}
+        {prog_html}
+    </div>
+    """, unsafe_allow_html=True)
 
 def ai_assistant(query, data_summary):
     query = query.lower()
@@ -656,7 +646,7 @@ def check_audit_trail(uploaded_file):
                 old_rows = last_record.iloc[-1]['Row_Count']
                 new_rows = len(file_content.decode('utf-8', errors='ignore').strip().split('\n')) - 1
                 diff = new_rows - old_rows
-                return f"🔄 <b>Data Changed!</b> Previous: {old_rows} rows. Current: {new_rows} rows. (<b>{'+' if diff>=0 else ''}{diff} rows</b> modified/added)."
+                return f" <b>Data Changed!</b> Previous: {old_rows} rows. Current: {new_rows} rows. (<b>{'+' if diff>=0 else ''}{diff} rows</b> modified/added)."
     
     new_audit = pd.DataFrame([{
         "Timestamp": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"),
@@ -664,16 +654,17 @@ def check_audit_trail(uploaded_file):
         "Hash": file_hash,
         "Row_Count": len(file_content.decode('utf-8', errors='ignore').strip().split('\n')) - 1
     }])
+    
     if os.path.exists(AUDIT_LOG_FILE):
         pd.concat([pd.read_csv(AUDIT_LOG_FILE), new_audit], ignore_index=True).to_csv(AUDIT_LOG_FILE, index=False)
     else:
         new_audit.to_csv(AUDIT_LOG_FILE, index=False)
-    return "✅ <b>New File Registered</b> in the Audit Trail System."
+    
+    return " <b>New File Registered</b> in the Audit Trail System."
 
 def genai_chat_engine(query, df):
     query = query.lower()
-    response = "🤖 **AI Engineering Assistant:**\n\n"
-    
+    response = "🤖 **AI Engineering Assistant:**\n"
     if "contractor" in query or "مقاول" in query:
         if 'Company Name' in df.columns and 'sample status' in df.columns:
             df_temp = df.copy()
@@ -682,7 +673,7 @@ def genai_chat_engine(query, df):
             if not rej_df.empty:
                 worst = rej_df['Company Name'].value_counts().idxmax()
                 count = rej_df['Company Name'].value_counts().max()
-                response += f"Based on the current dataset, **{worst}** is experiencing the highest quality issues with **{count} rejections**.\n\n"
+                response += f"Based on the current dataset, **{worst}** is experiencing the highest quality issues with **{count} rejections**.\n"
                 response += "**Root Cause Analysis:**\nMy neural network indicates that a significant portion of these rejections are linked to compaction and material tests. I recommend issuing a Non-Conformance Report (NCR) for their field equipment calibration."
             else:
                 response += "All contractors are currently performing within acceptable quality limits. No critical anomalies detected."
@@ -691,12 +682,12 @@ def genai_chat_engine(query, df):
     elif "delay" in query or "تأخير" in query:
         if 'DURATION' in df.columns:
             avg_dur = df['DURATION'].mean()
-            response += f"The global average delay is **{avg_dur:.1f} days**.\n\n"
+            response += f"The global average delay is **{avg_dur:.1f} days**.\n"
             response += "**Predictive Insight:**\nIf the current trend continues, the project will exceed the baseline schedule. I suggest reallocating resources to mitigate this risk."
         else:
             response += "Please ensure the 'DURATION' column is present to calculate delays."
     else:
-        response += "I am ready to analyze your project data. You can ask me about:\n- Contractor performance and rejections.\n- Delay analysis and critical paths.\n- Material quality correlations.\n\n*Try asking: 'Which contractor has the most rejections?'*"
+        response += "I am ready to analyze your project data. You can ask me about:\n- Contractor performance and rejections.\n- Delay analysis and critical paths.\n- Material quality correlations.\n*Try asking: 'Which contractor has the most rejections?'*"
     return response
 
 # ==========================================
@@ -711,17 +702,19 @@ def render_login_screen():
         text_col = "#1e3d59" if not is_dark else "#00d2ff"
         
         st.markdown(f"""
-            <div style="background: {bg_color}; padding: 50px; border-radius: 15px; box-shadow: 0px 10px 40px rgba(0,0,0,0.2);">
-                <div style="text-align:center; margin-bottom: 20px;">
-                    <h1 style="color: {text_col}; font-weight: 800; margin:0; letter-spacing: 2px; font-family:'Montserrat', sans-serif;">KK ENGINEERING</h1>
-                    <p style="color: #7f8c8d; font-size: 16px; margin:0;">Command Center Portal</p>
-                </div>
-                <hr style="border: 0.5px solid #eee; margin-bottom: 30px;">
+        <div style="background: {bg_color}; padding: 50px; border-radius: 15px; box-shadow: 0px 10px 40px rgba(0,0,0,0.2);">
+            <div style="text-align:center; margin-bottom: 20px;">
+                <h1 style="color: {text_col}; font-weight: 800; margin:0; letter-spacing: 2px; font-family:'Montserrat', sans-serif;">KK ENGINEERING</h1>
+                <p style="color: #7f8c8d; font-size: 16px; margin:0;">Command Center Portal</p>
+            </div>
+            <hr style="border: 0.5px solid #eee; margin-bottom: 30px;">
         """, unsafe_allow_html=True)
+        
         st.markdown('<div class="login-title">SIGN IN</div>', unsafe_allow_html=True)
         email = st.text_input("Email Address", placeholder="e.g., Mohamedhatem@kk.com")
         password = st.text_input("Password", type="password", placeholder="••••••••••••")
         st.markdown("<br>", unsafe_allow_html=True)
+        
         if st.button("Secure Login", use_container_width=True, type="primary"):
             success, msg = authenticate_user(email, password)
             if success:
@@ -729,6 +722,7 @@ def render_login_screen():
                 st.rerun()
             else:
                 st.error(msg)
+        
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -736,16 +730,13 @@ def render_login_screen():
 # 9. Home/Navigation Page
 # ==========================================
 def render_home_page():
-    """Main navigation page after login"""
     user = st.session_state["current_user"]
-    
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     ui = {
         'text_main': '#ffffff' if is_dark else '#1a1a1a',
         'text_muted': '#8da3b9' if is_dark else '#4a5568',
     }
     
-    # Header
     col_h1, col_h2 = st.columns([0.8, 0.2])
     with col_h1:
         st.title("🏗️ Mega Infrastructure Command Center")
@@ -757,13 +748,13 @@ def render_home_page():
             <span style='color:#2ecc71; font-size:12px;'>{user["Role"]} Account</span>
         </div>
         """, unsafe_allow_html=True)
+        
         if st.button("Logout", use_container_width=True):
             st.session_state["authenticated"] = False
             st.rerun()
-    
+            
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
     
-    # Welcome Message
     st.markdown(f"""
     <div style="text-align: center; margin-bottom: 50px;">
         <h2 style="color: {ui['text_main']}; font-size: 32px; margin-bottom: 10px;">
@@ -775,9 +766,7 @@ def render_home_page():
     </div>
     """, unsafe_allow_html=True)
     
-    # Navigation Cards
     card_col1, card_col2 = st.columns(2)
-    
     with card_col1:
         st.markdown("""
         <div class="navigation-card">
@@ -791,11 +780,10 @@ def render_home_page():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        
-        if st.button("📊 Enter Main Dashboard", use_container_width=True, type="primary", key="btn_dashboard"):
+        if st.button(" Enter Main Dashboard", use_container_width=True, type="primary", key="btn_dashboard"):
             st.session_state["current_page"] = "dashboard"
             st.rerun()
-    
+            
     with card_col2:
         st.markdown("""
         <div class="navigation-card">
@@ -809,17 +797,14 @@ def render_home_page():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        
         if st.button("🔬 Enter Advanced Analytics", use_container_width=True, type="primary", key="btn_analytics"):
             st.session_state["current_page"] = "analytics"
             st.rerun()
-    
+            
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
     
-    # Quick Stats
     st.markdown("### 📈 Quick Overview")
     stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
-    
     with stats_col1:
         st.markdown("""
         <div class="metric-card" style="text-align: center;">
@@ -828,7 +813,6 @@ def render_home_page():
             <div style="color: #8da3b9; font-size: 14px;">Active Projects</div>
         </div>
         """, unsafe_allow_html=True)
-    
     with stats_col2:
         st.markdown("""
         <div class="metric-card" style="text-align: center;">
@@ -837,7 +821,6 @@ def render_home_page():
             <div style="color: #8da3b9; font-size: 14px;">Completed Tests</div>
         </div>
         """, unsafe_allow_html=True)
-    
     with stats_col3:
         st.markdown("""
         <div class="metric-card" style="text-align: center;">
@@ -846,7 +829,6 @@ def render_home_page():
             <div style="color: #8da3b9; font-size: 14px;">Pending Reviews</div>
         </div>
         """, unsafe_allow_html=True)
-    
     with stats_col4:
         st.markdown("""
         <div class="metric-card" style="text-align: center;">
@@ -860,11 +842,8 @@ def render_home_page():
 # 10. Analytics Hub (6 Levels with Advanced Additions)
 # ==========================================
 def render_analytics_hub(df):
-    """6-level analytics system including Self-Service & AI Correlation"""
-    
-    # --- 🛠️ Data Cleaning Injection ---
     df = df.copy()
-    df.columns = df.columns.str.strip() 
+    df.columns = df.columns.str.strip()
     if 'Company Name' not in df.columns and 'Company' in df.columns:
         df.rename(columns={'Company': 'Company Name'}, inplace=True)
     if 'DURATION' in df.columns:
@@ -873,11 +852,9 @@ def render_analytics_hub(df):
         df['AVERAGE VALUE'] = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce')
     if 'Date ( test)' in df.columns:
         df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
-    # -------------------------------------------------------------
     
     st.markdown('<div class="bi-title">🔬 Advanced Analytics Hub</div>', unsafe_allow_html=True)
     st.caption("Explore data through 6 levels of analytical intelligence")
-    
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     ui = {
         'text_main': '#ffffff' if is_dark else '#1a1a1a',
@@ -895,7 +872,7 @@ def render_analytics_hub(df):
     
     analytics_tab1, analytics_tab2, analytics_tab3, analytics_tab4, analytics_tab5, analytics_tab6 = st.tabs([
         "📊 Descriptive",
-        "🔍 Diagnostic", 
+        "🔍 Diagnostic",
         "🔮 Predictive",
         "💡 Prescriptive",
         "🎛️ Self-Service BI",
@@ -903,11 +880,9 @@ def render_analytics_hub(df):
     ])
     
     with analytics_tab1:
-        st.markdown("### 📊 Descriptive Analytics - What Happened?")
+        st.markdown("###  Descriptive Analytics - What Happened?")
         st.info("This section shows historical data and current status")
-        
         kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
-        
         total_samples = len(df)
         accepted = len(df[df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in df.columns else 0
         rejected = len(df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) if 'sample status' in df.columns else 0
@@ -920,7 +895,6 @@ def render_analytics_hub(df):
                 <div class="metric-value">{total_samples:,}</div>
             </div>
             """, unsafe_allow_html=True)
-        
         with kpi_col2:
             st.markdown(f"""
             <div class="metric-card">
@@ -928,7 +902,6 @@ def render_analytics_hub(df):
                 <div class="metric-value" style="color: #2ecc71;">{accepted:,}</div>
             </div>
             """, unsafe_allow_html=True)
-        
         with kpi_col3:
             st.markdown(f"""
             <div class="metric-card">
@@ -936,7 +909,6 @@ def render_analytics_hub(df):
                 <div class="metric-value" style="color: #e74c3c;">{rejected:,}</div>
             </div>
             """, unsafe_allow_html=True)
-        
         with kpi_col4:
             st.markdown(f"""
             <div class="metric-card">
@@ -953,26 +925,22 @@ def render_analytics_hub(df):
     with analytics_tab2:
         st.markdown("### 🔍 Diagnostic Analytics - Why Did It Happen?")
         st.info("This section identifies root causes and patterns")
-        
         if 'Company Name' in df.columns and 'sample status' in df.columns:
             st.markdown("#### Pareto Analysis: Top Problem Sources")
-            
             rej_df = df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
             if not rej_df.empty:
                 pareto_data = rej_df['Company Name'].value_counts().reset_index()
                 pareto_data.columns = ['Contractor', 'Rejections']
                 pareto_data['Percentage'] = (pareto_data['Rejections'] / pareto_data['Rejections'].sum() * 100).round(2)
                 pareto_data['Cumulative_Percentage'] = pareto_data['Percentage'].cumsum().round(2)
-                
-                fig_pareto = px.bar(pareto_data, x='Contractor', y='Rejections', 
-                                   title="Rejections by Contractor (Pareto)",
-                                   color='Rejections',
-                                   color_continuous_scale='Reds')
+                fig_pareto = px.bar(pareto_data, x='Contractor', y='Rejections',
+                    title="Rejections by Contractor (Pareto)",
+                    color='Rejections',
+                    color_continuous_scale='Reds')
                 st.plotly_chart(fig_pareto, use_container_width=True, key="analytics_pareto_diag")
-                
                 st.markdown(f"""
                 <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px;">
-                    <b>🔑 Key Insight:</b> The top contractors are responsible for the majority of rejections. 
+                    <b>🔑 Key Insight:</b> The top contractors are responsible for the majority of rejections.
                     Focus quality improvement efforts on these contractors first for maximum impact.
                 </div>
                 """, unsafe_allow_html=True)
@@ -980,22 +948,17 @@ def render_analytics_hub(df):
     with analytics_tab3:
         st.markdown("### 🔮 Predictive Analytics - What Will Happen?")
         st.info("This section forecasts future trends and risks")
-        
         if 'Date ( test)' in df.columns and 'DURATION' in df.columns:
             st.markdown("#### Duration Trend Forecasting")
-            
             pred_df = df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
             pred_df['7-Day Trend'] = pred_df['DURATION'].rolling(window=7, min_periods=1).mean()
-            
-            fig_trend = px.line(pred_df, x='Date ( test)', 
-                               y=['DURATION', '7-Day Trend'],
-                               title="Duration Trend Analysis",
-                               color_discrete_sequence=['#ffaa00', '#00d2ff'])
+            fig_trend = px.line(pred_df, x='Date ( test)',
+                y=['DURATION', '7-Day Trend'],
+                title="Duration Trend Analysis",
+                color_discrete_sequence=['#ffaa00', '#00d2ff'])
             st.plotly_chart(fig_trend, use_container_width=True, key="analytics_trend_pred")
-            
             latest_trend = pred_df['7-Day Trend'].iloc[-1]
             avg_dur = df['DURATION'].mean()
-            
             if latest_trend > avg_dur:
                 st.error(f"🚨 **Warning:** Recent trend ({latest_trend:.1f} days) is rising above average ({avg_dur:.1f} days)")
             else:
@@ -1004,11 +967,8 @@ def render_analytics_hub(df):
     with analytics_tab4:
         st.markdown("### 💡 Prescriptive Analytics - What Should We Do?")
         st.info("This section provides actionable recommendations")
-        
         st.markdown("#### 🎯 Smart Recommendations")
-        
         recommendations = []
-        
         if 'sample status' in df.columns:
             rej_rate = len(df[df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) / len(df) * 100
             if rej_rate > 20:
@@ -1017,7 +977,6 @@ def render_analytics_hub(df):
                     "action": "Immediate Quality Audit",
                     "detail": f"Rejection rate is {rej_rate:.1f}%. Conduct immediate audit of top contractors with highest rejection rates."
                 })
-        
         if 'DURATION' in df.columns:
             avg_dur = df['DURATION'].mean()
             if avg_dur > 15:
@@ -1026,7 +985,6 @@ def render_analytics_hub(df):
                     "action": "Process Optimization",
                     "detail": f"Average duration is {avg_dur:.1f} days. Review workflow bottlenecks and consider adding review resources."
                 })
-        
         if recommendations:
             for rec in recommendations:
                 st.markdown(f"""
@@ -1039,14 +997,12 @@ def render_analytics_hub(df):
                 """, unsafe_allow_html=True)
         else:
             st.success("✅ No critical issues detected. Continue monitoring.")
-            
+    
     with analytics_tab5:
         st.markdown("### 🎛️ Flexible Self-Service BI (Tableau Style)")
         st.info("Build your own custom reports dynamically.")
-        
         col_x, col_y, col_agg = st.columns(3)
         available_cols = df.columns.tolist()
-        
         with col_x:
             x_axis = st.selectbox("Select X-Axis (Dimension):", available_cols, index=0)
         with col_y:
@@ -1055,7 +1011,6 @@ def render_analytics_hub(df):
             y_axis = st.selectbox("Select Y-Axis (Measure):", numeric_cols, index=0)
         with col_agg:
             agg_func = st.selectbox("Aggregation:", ["count", "sum", "mean", "max", "min"])
-            
         if st.button("📊 Generate Custom Chart", type="primary"):
             try:
                 custom_df = df.groupby(x_axis).agg({y_axis: agg_func}).reset_index()
@@ -1064,11 +1019,10 @@ def render_analytics_hub(df):
                 st.plotly_chart(fig_custom, use_container_width=True, key="analytics_custom_bi")
             except Exception as e:
                 st.error(f"Cannot perform this aggregation. Please choose valid numerical combinations. Error: {str(e)}")
-
+    
     with analytics_tab6:
         st.markdown("### 🔗 Geotechnical Correlation Engine & Risk Scoring")
         st.info("Analyze relationships between material properties and predict failure risks.")
-        
         st.markdown("#### 🎲 Predictive Risk Scoring")
         if 'Test Type' in df.columns and 'Company Name' in df.columns and 'sample status' in df.columns:
             st.markdown("""
@@ -1082,8 +1036,8 @@ def render_analytics_hub(df):
             """, unsafe_allow_html=True)
         else:
             st.warning("Insufficient columns to run Predictive Risk Scoring.")
-            
-        st.markdown("#### 🌡️ Variable Correlation Heatmap")
+        
+        st.markdown("#### ️ Variable Correlation Heatmap")
         num_df = df.select_dtypes(include=np.number)
         if len(num_df.columns) >= 2:
             corr = num_df.corr().round(2)
@@ -1105,16 +1059,13 @@ def render_analytics_hub(df):
 def render_site_mode():
     st.title("📱 Site Engineer Mobile Mode")
     st.markdown("### 🚧 Quick Field Actions")
-    
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown('<div class="site-btn"><br>Add New Sample</div>', unsafe_allow_html=True)
+        st.markdown('<div class="site-btn">➕<br>Add New Sample</div>', unsafe_allow_html=True)
     with c2:
         st.markdown('<div class="site-btn">📸<br>Upload Site Photo</div>', unsafe_allow_html=True)
-        
     st.markdown("<br>", unsafe_allow_html=True)
     st.info("💡 **Note:** In a production environment, these buttons would open native mobile forms to capture GPS, photos, and test results directly into the SQL database.")
-    
     st.markdown("### 📋 Recent Site Activities")
     st.dataframe(pd.DataFrame({
         "Time": ["08:30 AM", "09:15 AM", "10:00 AM"],
@@ -1128,7 +1079,6 @@ def render_site_mode():
 def render_alerts_module(df):
     st.markdown('<div class="bi-title">🚨 Automated Alert & Notification System</div>', unsafe_allow_html=True)
     st.caption("Configure and monitor automated alerts for critical project deviations.")
-    
     c1, c2 = st.columns([0.6, 0.4])
     with c1:
         st.markdown("#### 📡 Active Alerts Log")
@@ -1145,9 +1095,8 @@ def render_alerts_module(df):
         if not alerts:
             alerts.append({"Time": "Now", "Severity": "✅ OK", "Message": "All systems nominal. No critical alerts."})
         st.dataframe(pd.DataFrame(alerts), use_container_width=True, hide_index=True)
-
     with c2:
-        st.markdown("#### ⚙️ Alert Configuration")
+        st.markdown("#### ️ Alert Configuration")
         st.toggle("Enable WhatsApp Alerts (Twilio)", value=True)
         st.toggle("Enable Email Alerts (SMTP)", value=False)
         st.number_input("Rejection Threshold (%)", min_value=5, max_value=50, value=20)
@@ -1162,7 +1111,6 @@ def render_alerts_module(df):
 # ==========================================
 def render_dashboard():
     user = st.session_state["current_user"]
-    
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     ui = {
         'text_main': '#ffffff' if is_dark else '#1a1a1a',
@@ -1178,7 +1126,7 @@ def render_dashboard():
             st.image("5.jpg", use_container_width=True)
         except Exception:
             pass
-
+    
     col_h1, col_h2 = st.columns([0.8, 0.2])
     with col_h1: st.title("🏗️ Mega Infrastructure Command Center")
     with col_h2:
@@ -1186,22 +1134,22 @@ def render_dashboard():
         if st.button("Logout", use_container_width=True):
             st.session_state["authenticated"] = False
             st.rerun()
-
+    
     st.sidebar.markdown("### 🎨 UI/UX Mode")
     theme_col1, theme_col2 = st.sidebar.columns(2)
-    if theme_col1.button("🌙 Dark"):
+    if theme_col1.button(" Dark"):
         st.session_state["theme"] = "Dark"
         st.rerun()
     if theme_col2.button("☀️ Light"):
         st.session_state["theme"] = "Light"
         st.rerun()
+    
     st.sidebar.divider()
-
     st.session_state["site_mode"] = st.sidebar.toggle("📱 Activate Site Engineer Mode (Mobile)", value=st.session_state["site_mode"])
     if st.session_state["site_mode"]:
         render_site_mode()
         return
-
+    
     if user["Role"] == "Admin":
         with st.sidebar.expander("🔐 Admin Control Panel", expanded=False):
             st.markdown("#### User Management")
@@ -1265,25 +1213,22 @@ def render_dashboard():
             st.markdown("#### System Access Logs")
             logs_df = _load_login_logs()
             st.dataframe(logs_df.tail(10), use_container_width=True)
-            
+    
     st.sidebar.divider()
-
     st.sidebar.markdown("### 📁 1. Data Source")
     data_source = st.sidebar.selectbox("Connection Type:", ["Local CSV Upload", "Live SQL Database (Pending)"])
-
+    
     with st.sidebar.expander("🗄️ History Database Management"):
         st.markdown(f"<span style='font-size:12px; color:{ui['text_muted']};'>Data is automatically saved to SQLite database and persists across sessions.</span>", unsafe_allow_html=True)
-        
         if st.button("🗑️ Wipe Database & Start Fresh", type="primary", use_container_width=True):
             if os.path.exists(HistoryManager.DB_FILE):
                 os.remove(HistoryManager.DB_FILE)
-            HistoryManager.init_db()
-            if "restored_files" in st.session_state:
-                st.session_state["restored_files"] = set()
-            st.success("✅ Database Wiped Successfully! Start logging fresh data.")
-            time.sleep(1)
-            st.rerun()
-        
+                HistoryManager.init_db()
+                if "restored_files" in st.session_state:
+                    st.session_state["restored_files"] = set()
+                st.success("✅ Database Wiped Successfully! Start logging fresh data.")
+                time.sleep(1)
+                st.rerun()
         if st.button("📥 Download Backup CSV", use_container_width=True):
             backup_df = HistoryManager.export_to_csv()
             if not backup_df.empty:
@@ -1300,16 +1245,15 @@ def render_dashboard():
         
         if "restored_files" not in st.session_state:
             st.session_state["restored_files"] = set()
-        
         history_upload = st.file_uploader("📤 Restore from Backup (Optional)", type="csv")
         if history_upload is not None:
             file_id = f"{history_upload.name}_{history_upload.size}"
             if file_id not in st.session_state["restored_files"]:
                 try:
                     restored_df = pd.read_csv(history_upload)
-                    HistoryManager.import_from_csv(restored_df)
+                    imported_count = HistoryManager.import_from_csv(restored_df)
                     st.session_state["restored_files"].add(file_id)
-                    st.success("✅ History Restored Successfully!")
+                    st.success(f"✅ History Restored Successfully! {imported_count} records imported.")
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
@@ -1326,22 +1270,18 @@ def render_dashboard():
                 if f_ts > 30000: last_ts = (datetime(1899, 12, 30) + timedelta(days=f_ts)).strftime("%Y-%m-%d %H:%M:%S")
             except: pass
             st.markdown(f"📅 **Last Entry:** {last_ts}")
-            
             with st.expander("👁️ Preview Database"):
                 st.dataframe(history_df.tail(10), use_container_width=True)
     
     st.sidebar.divider()
-
     uploaded_file = None
     if data_source == "Local CSV Upload":
         uploaded_file = st.sidebar.file_uploader("Upload your Project Log (CSV) 📂", type="csv")
-
+        
     if uploaded_file is not None:
         uploaded_file.seek(0)
-        
         audit_msg = check_audit_trail(uploaded_file)
         st.sidebar.success(audit_msg, icon="✅")
-        
         uploaded_file.seek(0)
         
         try:
@@ -1355,23 +1295,13 @@ def render_dashboard():
             st.stop()
         
         st.session_state["analytics_df"] = df.copy()
-        
-        # --- 🛠️ Data Cleaning (Global for Dashboard) ---
-        df.columns = df.columns.str.strip() 
-        
+        df.columns = df.columns.str.strip()
         if 'Company Name' not in df.columns and 'Company' in df.columns:
             df.rename(columns={'Company': 'Company Name'}, inplace=True)
-            
         if 'Test Type' in df.columns: df['Test Type'] = df['Test Type'].str.strip().str.upper()
         if 'Date ( test)' in df.columns: df['Date ( test)'] = pd.to_datetime(df['Date ( test)'], errors='coerce', dayfirst=True)
         if 'Date( SUB)' in df.columns: df['Date( SUB)'] = pd.to_datetime(df['Date( SUB)'], errors='coerce', dayfirst=True)
-
-        if 'DURATION' in df.columns:
-            df['DURATION'] = pd.to_numeric(df['DURATION'], errors='coerce').fillna(0)
-        if 'AVERAGE VALUE' in df.columns:
-            df['AVERAGE VALUE'] = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce')
-        # -----------------------------------------------
-
+        
         total_rows = len(df)
         missing_dates = df['Date ( test)'].isnull().sum() if 'Date ( test)' in df.columns else 0
         missing_status = df['sample status'].isnull().sum() if 'sample status' in df.columns else 0
@@ -1379,34 +1309,34 @@ def render_dashboard():
         total_errors = missing_dates + missing_status + duplicate_serials
         health_score = max(0, 100 - (total_errors / (total_rows+1) * 100)) if total_rows > 0 else 0
         health_color = "#2ecc71" if health_score >= 95 else ("#f1c40f" if health_score >= 80 else "#e74c3c")
-        health_icon = "✅" if health_score >= 95 else ("⚠️" if health_score >= 80 else "🚨")
+        health_icon = "✅" if health_score >= 95 else ("️" if health_score >= 80 else "🚨")
         
         error_details = []
         if missing_dates > 0: error_details.append(f"{missing_dates} Missing Dates")
         if missing_status > 0: error_details.append(f"{missing_status} Missing Status")
         if duplicate_serials > 0: error_details.append(f"{duplicate_serials} Duplicate Serials")
+        
         scanned_msg = f"<span style='color:#00d2ff; font-weight:bold;'>Scanned {total_rows:,} Rows</span>"
         error_str = f"{scanned_msg} &rarr; " + " | ".join(error_details) if error_details else f"{scanned_msg} &rarr; Data is 100% clean and structured."
         
         st.markdown(f"""
-            <div class="health-card" style="border-left: 5px solid {health_color}; background:{ui['card_bg']}; color:{ui['text_main']}; margin-bottom: 20px;">
-                <div>
-                    <h4 style="margin: 0; color: {ui['text_main']}; font-size: 15px; text-transform: uppercase;">{health_icon} Data Integrity Inspector</h4>
-                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 13px;">{error_str}</p>
-                </div>
-                <div>
-                    <h2 style="margin: 0; color: {health_color}; text-shadow: 0 0 10px {health_color};">{health_score:.1f}%</h2>
-                </div>
+        <div class="health-card" style="border-left: 5px solid {health_color}; background:{ui['card_bg']}; color:{ui['text_main']}; margin-bottom: 20px;">
+            <div>
+                <h4 style="margin: 0; color: {ui['text_main']}; font-size: 15px; text-transform: uppercase;">{health_icon} Data Integrity Inspector</h4>
+                <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 13px;">{error_str}</p>
             </div>
+            <div>
+                <h2 style="margin: 0; color: {health_color}; text-shadow: 0 0 10px {health_color};">{health_score:.1f}%</h2>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
-
+        
         st.markdown("### 🚀 Select Advanced Module to Explore")
         mod1 = st.button("🚨 Alert System", use_container_width=True)
-
         if mod1:
             render_alerts_module(df)
-            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
+        
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🧠 Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
         st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
         
@@ -1417,68 +1347,64 @@ def render_dashboard():
                 if msg['role'] == 'user':
                     st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="ai-msg"><b> AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
-
+        
         prompt = st.chat_input("Ask the AI Engineering Assistant...")
         if prompt:
             st.session_state["chat_history"].append({"role": "user", "content": prompt})
-            with st.spinner(" AI is analyzing the dataset..."):
+            with st.spinner("🧠 AI is analyzing the dataset..."):
                 time.sleep(1.5)
                 ai_response = genai_chat_engine(prompt, df)
             st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
             st.rerun()
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.sidebar.markdown("### 🎯 2. Smart Filters")
         global_search = st.sidebar.text_input("🔍 Global Search:", placeholder="Keyword (Serial, Date)...")
         if global_search:
             mask = df.astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
             df = df[mask]
-            st.sidebar.success(f"🎯 Found {len(df)} records matching '{global_search}'")
-            
+            st.sidebar.success(f" Found {len(df)} records matching '{global_search}'")
+        
         companies = df['Company Name'].dropna().unique() if 'Company Name' in df.columns else []
         selected_companies = st.sidebar.multiselect("🏢 Select Contractor:", options=companies, default=companies)
-        
         statuses = df['sample status'].dropna().unique() if 'sample status' in df.columns else []
         selected_statuses = st.sidebar.multiselect("📊 Sample Status:", options=statuses, default=statuses)
-
         battalion_col_filter = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
         selected_battalions = []
         if battalion_col_filter:
             battalions_list = df[battalion_col_filter].dropna().unique()
-            selected_battalions = st.sidebar.multiselect(" Select Battalion:", options=battalions_list, default=battalions_list)
-
-        st.sidebar.markdown("### 🧠 3. AI & Simulation")
-        sim_days_saved = st.sidebar.slider(" Simulate Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
+            selected_battalions = st.sidebar.multiselect("🚩 Select Battalion:", options=battalions_list, default=battalions_list)
+        
+        st.sidebar.markdown("###  3. AI & Simulation")
+        sim_days_saved = st.sidebar.slider("🎛️ Simulate Delay Reduction (Days):", min_value=0, max_value=10, value=0, step=1)
         curr_avg_dpl = pd.to_numeric(df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in df.columns else 0
         curr_avg_dur = pd.to_numeric(df['DURATION'], errors='coerce').mean() if 'DURATION' in df.columns else 0
-        user_question = st.sidebar.text_input(" Ask AI about any log issue:")
+        user_question = st.sidebar.text_input("🤖 Ask AI about any log issue:")
         if user_question:
             summary = {"avg_dpl": round(curr_avg_dpl, 2), "avg_duration": round(curr_avg_dur, 1)}
             st.sidebar.info(f"AI Response: {ai_assistant(user_question, summary)}")
-
+        
         filtered_df = df.copy()
         if len(companies) > 0: filtered_df = filtered_df[filtered_df['Company Name'].isin(selected_companies)]
         if len(statuses) > 0: filtered_df = filtered_df[filtered_df['sample status'].isin(selected_statuses)]
-        
-        if battalion_col_filter and len(selected_battalions) > 0: 
+        if battalion_col_filter and len(selected_battalions) > 0:
             filtered_df = filtered_df[filtered_df[battalion_col_filter].isin(selected_battalions)]
-
+        
         num_tests_col = next((c for c in filtered_df.columns if 'NUM' in c.upper() and 'TEST' in c.upper()), None)
         if num_tests_col: filtered_df[num_tests_col] = pd.to_numeric(filtered_df[num_tests_col], errors='coerce').fillna(0)
         if 'DURATION' in filtered_df.columns: filtered_df['DURATION'] = pd.to_numeric(filtered_df['DURATION'], errors='coerce')
-
+        
         total_requests_count = len(filtered_df)
         total_tests_count = int(filtered_df[num_tests_col].sum() if num_tests_col else 0)
         avg_dpl_value = round(pd.to_numeric(filtered_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in filtered_df.columns else 0, 2)
         avg_duration_value = round(filtered_df['DURATION'].mean(), 1) if 'DURATION' in filtered_df.columns else 0
         page_col_name = next((c for c in filtered_df.columns if 'PAGE' in c.upper()), None)
         total_paperwork_pages = int(pd.to_numeric(filtered_df[page_col_name], errors='coerce').fillna(0).sum()) if page_col_name else 0
-
+        
         current_metrics = {
-            "File_Name": uploaded_file.name, 
+            "File_Name": uploaded_file.name,
             "Total_Requests": total_requests_count,
             "Total_Tests": total_tests_count,
             "Avg_DPL": avg_dpl_value,
@@ -1488,22 +1414,20 @@ def render_dashboard():
         
         overall_acc = len(filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in filtered_df.columns else 0
         overall_rate = (overall_acc / total_requests_count * 100) if total_requests_count > 0 else 0
-
         rejected_count = len(filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]) if 'sample status' in filtered_df.columns else 0
-
+        
         ticker_html = f"""
         <div class="ticker-wrap">
             <div class="ticker">
                 <div class="ticker-item">🚀 <b>Total Logged Submittals:</b> <span>{total_requests_count:,}</span></div>
                 <div class="ticker-item">✅ <b>Current Global Yield:</b> <span>{overall_rate:.1f}%</span></div>
-                <div class="ticker-item">⏱️ <b>Sector Avg Delay:</b> <span>{avg_duration_value} Days</span></div>
+                <div class="ticker-item">️ <b>Sector Avg Delay:</b> <span>{avg_duration_value} Days</span></div>
                 <div class="ticker-item">🚨 <b>Pending Rejections:</b> <span>{rejected_count}</span></div>
                 <div class="ticker-item">🧪 <b>Total Field Tests:</b> <span>{total_tests_count:,}</span></div>
             </div>
         </div>
         """
         st.markdown(ticker_html, unsafe_allow_html=True)
-        
         live_indicator("online")
         
         worst_office_name = "N/A"
@@ -1514,7 +1438,7 @@ def render_dashboard():
                 worst_office = office_delays.loc[office_delays['DURATION'].idxmax()]
                 worst_office_name = worst_office['Done BY']
                 worst_office_delay = round(worst_office['DURATION'], 1)
-
+        
         global_best_comp, global_worst_comp = "N/A", "N/A"
         global_best_rate, global_worst_delay = 0, 0
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns and 'DURATION' in filtered_df.columns:
@@ -1532,27 +1456,27 @@ def render_dashboard():
                 global_best_rate = valid_g.loc[valid_g['Rate'].idxmax()]['Rate']
                 global_worst_comp = valid_g.loc[valid_g['Delay'].idxmax()]['Comp']
                 global_worst_delay = valid_g.loc[valid_g['Delay'].idxmax()]['Delay']
-
+        
         st.markdown(f"""
-            <div class="alert-banner" style="background: linear-gradient(90deg, #e74c3c, #c0392b); padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; color: white;">
-                <div>
-                    <h3 style="margin:0; font-size:22px; color:white;">🚨 Command Center Live Alerts</h3>
-                    <p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">Top issues requiring immediate management attention today.</p>
-                </div>
-                <div style="text-align:right;">
-                    <div style="background:rgba(0,0,0,0.2); padding:8px 15px; border-radius:8px; margin-bottom:5px;"><b>Worst Delay Node:</b> {worst_office_name} ({worst_office_delay} Days)</div>
-                    <div style="background:rgba(0,0,0,0.2); padding:8px 15px; border-radius:8px;"><b>Critical Rejections:</b> {rejected_count} Submittals pending</div>
-                </div>
+        <div class="alert-banner" style="background: linear-gradient(90deg, #e74c3c, #c0392b); padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; color: white;">
+            <div>
+                <h3 style="margin:0; font-size:22px; color:white;">🚨 Command Center Live Alerts</h3>
+                <p style="margin:5px 0 0 0; font-size:14px; opacity:0.9;">Top issues requiring immediate management attention today.</p>
             </div>
+            <div style="text-align:right;">
+                <div style="background:rgba(0,0,0,0.2); padding:8px 15px; border-radius:8px; margin-bottom:5px;"><b>Worst Delay Node:</b> {worst_office_name} ({worst_office_delay} Days)</div>
+                <div style="background:rgba(0,0,0,0.2); padding:8px 15px; border-radius:8px;"><b>Critical Rejections:</b> {rejected_count} Submittals pending</div>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
-
+        
         col_btn, col_msg = st.columns([0.2, 0.8])
         with col_btn:
-            if st.button("💾 Save to BI History"):
+            if st.button(" Save to BI History"):
                 HistoryManager.save_metrics(current_metrics)
                 st.success("✅ Logged Successfully!")
-                st.rerun() 
-
+                st.rerun()
+        
         st.markdown("### 📊 Executive Key Performance Indicators")
         col1, col2, col3, col4, col5 = st.columns(5)
         t_req = 1000; t_test = 5000; t_dpl = 20; t_dur = 10
@@ -1567,69 +1491,66 @@ def render_dashboard():
         create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog)
         d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
         create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
-
+        
         st.markdown('<div class="bi-title" style="margin-top: 20px;">⚖️ 360° Accountability Board (Eye in the Sky)</div>', unsafe_allow_html=True)
         acc_c1, acc_c2 = st.columns(2)
         acc_c1.markdown(f"""
-            <div class="leaderboard-card" style="border-left: 6px solid #2ecc71; background: {ui['card_bg']};">
-                <div style="color: #2ecc71; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px;">🏆 Top Performing Contractor</div>
-                <div style="color: {ui['text_main']}; font-size: 28px; font-weight: 800; font-family: 'Montserrat';">{global_best_comp}</div>
-                <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 5px;">Maintains highest Quality Yield at <b style="color: #2ecc71;">{global_best_rate:.1f}%</b>.</div>
-            </div>
+        <div class="leaderboard-card" style="border-left: 6px solid #2ecc71; background: {ui['card_bg']};">
+            <div style="color: #2ecc71; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px;">🏆 Top Performing Contractor</div>
+            <div style="color: {ui['text_main']}; font-size: 28px; font-weight: 800; font-family: 'Montserrat';">{global_best_comp}</div>
+            <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 5px;">Maintains highest Quality Yield at <b style="color: #2ecc71;">{global_best_rate:.1f}%</b>.</div>
+        </div>
         """, unsafe_allow_html=True)
         acc_c2.markdown(f"""
-            <div class="leaderboard-card" style="border-left: 6px solid #e74c3c; background: {ui['card_bg']};">
-                <div style="color: #e74c3c; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px;">🚨 Critical Bottleneck (Highest Delay)</div>
-                <div style="color: {ui['text_main']}; font-size: 28px; font-weight: 800; font-family: 'Montserrat';">{global_worst_comp}</div>
-                <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 5px;">Causes sector slowdown with <b style="color: #e74c3c;">{global_worst_delay:.1f} Days</b> avg delay.</div>
-            </div>
+        <div class="leaderboard-card" style="border-left: 6px solid #e74c3c; background: {ui['card_bg']};">
+            <div style="color: #e74c3c; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px;">🚨 Critical Bottleneck (Highest Delay)</div>
+            <div style="color: {ui['text_main']}; font-size: 28px; font-weight: 800; font-family: 'Montserrat';">{global_worst_comp}</div>
+            <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 5px;">Causes sector slowdown with <b style="color: #e74c3c;">{global_worst_delay:.1f} Days</b> avg delay.</div>
+        </div>
         """, unsafe_allow_html=True)
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         g_col, s_col = st.columns([0.4, 0.6])
         with g_col:
             gauge_font_color = "white" if is_dark else "#2C3E50"
             gauge_bg = "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)"
-            
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number", value=overall_rate,
                 title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': gauge_font_color}},
                 number={'suffix': "%", 'font': {'size': 40, 'color': gauge_font_color}},
-                gauge={'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"}, 
-                       'bar': {'color': "#00d2ff", 'thickness': 0.25}, 
-                       'bgcolor': gauge_bg, 
-                       'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}]}
+                gauge={'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
+                    'bar': {'color': "#00d2ff", 'thickness': 0.25},
+                    'bgcolor': gauge_bg,
+                    'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}]}
             ))
             fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20), font={'family': 'Montserrat'})
             st.plotly_chart(fig_gauge, use_container_width=True, key="overall_gauge_main")
-
+        
         with s_col:
             if sim_days_saved > 0:
                 total_time_recovered = sim_days_saved * total_requests_count
                 st.markdown(f"""
-                    <div class="simulator-card">
-                        <h4 style="color: #2ecc71; margin: 0; text-transform: uppercase; font-size: 16px; letter-spacing: 1px;">✨ Simulated Optimization Impact</h4>
-                        <p style="font-size: 38px; font-weight: 800; color: {ui['text_main']}; margin: 5px 0;">{total_time_recovered:,} <span style="font-size:16px; color:{ui['text_muted']}; font-weight:500;">Project Days Saved</span></p>
-                        <p style="font-size: 14px; color: {ui['text_muted']}; margin: 0; line-height: 1.6;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                <div class="simulator-card">
+                    <h4 style="color: #2ecc71; margin: 0; text-transform: uppercase; font-size: 16px; letter-spacing: 1px;">✨ Simulated Optimization Impact</h4>
+                    <p style="font-size: 38px; font-weight: 800; color: {ui['text_main']}; margin: 5px 0;">{total_time_recovered:,} <span style="font-size:16px; color:{ui['text_muted']}; font-weight:500;">Project Days Saved</span></p>
+                    <p style="font-size: 14px; color: {ui['text_muted']}; margin: 0; line-height: 1.6;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
-                    <div class="simulator-card" style="border-color: {ui['border_color']}; background: {ui['card_bg']};">
-                        <h4 style="color: {ui['text_muted']}; margin: 0; font-size: 18px;">🎛️ Optimization Simulator Inactive</h4>
-                        <p style="font-size: 14px; color: {ui['text_muted']}; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
+                <div class="simulator-card" style="border-color: {ui['border_color']}; background: {ui['card_bg']};">
+                    <h4 style="color: {ui['text_muted']}; margin: 0; font-size: 18px;">🎛️ Optimization Simulator Inactive</h4>
+                    <p style="font-size: 14px; color: {ui['text_muted']}; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown("#### 📝 AI Executive Auto-Narrative")
         narrative = f"The dataset encompasses <b>{total_requests_count:,}</b> submittals involving <b>{total_tests_count:,}</b> field tests. The current overall approval index stands at <b>{overall_rate:.1f}%</b>, with an average turnaround time of <b>{avg_duration_value} days</b>. "
         if worst_office_name != "N/A":
             narrative += f"Attention is required for <b>{worst_office_name}</b>, which currently flags the highest processing delays across the logged sectors."
         st.markdown(f"<div style='font-size: 15px; color: {ui['text_main']}; line-height: 1.6; background: {ui['highlight_bg']}; padding: 20px; border-radius: 10px; border-left: 4px solid #00d2ff; margin-bottom: 25px;'>{narrative}</div>", unsafe_allow_html=True)
-
+        
         st.markdown('<div class="bi-title">🤖 Live Anomaly & Root Cause Detector</div>', unsafe_allow_html=True)
         anomalies = []
         if 'Company Name' in filtered_df.columns and 'DURATION' in filtered_df.columns:
@@ -1645,14 +1566,14 @@ def render_dashboard():
                 fail_pct = (len(rejections_df) / total_requests_count * 100) if total_requests_count > 0 else 0
                 if fail_pct > 10:
                     anomalies.append(f"🔍 <b>Root Cause Insight:</b> Global rejection rate is high ({fail_pct:.1f}%). The primary contributor is the <b>{top_fail_test}</b> test, most frequently failing under contractor <b>{top_fail_comp}</b>.")
+        
         if anomalies:
             for anomaly in anomalies:
                 st.markdown(f'<div style="background: rgba(231,76,60,0.1); border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: {ui["text_main"]};">{anomaly}</div>', unsafe_allow_html=True)
         else:
             st.markdown(f'<div style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: {ui["text_main"]};">✅ No severe workflow anomalies or critical bottlenecks detected in the current data scope.</div>', unsafe_allow_html=True)
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown('<div class="bi-title">🏆 Benchmark Engine</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns:
             bm_comp = st.selectbox("Select Contractor for Benchmarking against Global Averages:", companies, key="bm_engine")
@@ -1667,14 +1588,13 @@ def render_dashboard():
                 y_icon = "▲" if y_diff >= 0 else "▼"
                 b1.markdown(f"<div class='metric-card'><h4>Yield vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_yield:.1f}%</h2><p style='color:{y_color}; font-weight:bold;'>{y_icon} {abs(y_diff):.1f}% vs Global ({overall_rate:.1f}%)</p></div>", unsafe_allow_html=True)
                 d_diff = bm_dur - avg_duration_value
-                d_color = "#e74c3c" if d_diff > 0 else "#2ecc71" 
+                d_color = "#e74c3c" if d_diff > 0 else "#2ecc71"
                 d_icon = "▲" if d_diff > 0 else "▼"
                 b2.markdown(f"<div class='metric-card'><h4>Delay vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_dur:.1f} Days</h2><p style='color:{d_color}; font-weight:bold;'>{d_icon} {abs(d_diff):.1f} Days vs Global ({avg_duration_value:.1f})</p></div>", unsafe_allow_html=True)
         else:
             st.info("Company Name column is required for benchmarking.")
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
             cc1, cc2 = st.columns(2)
@@ -1698,9 +1618,8 @@ def render_dashboard():
             """, unsafe_allow_html=True)
         else:
             st.info("Requires 'Company Name' column and at least 2 contractors to enable Head-to-Head comparison.")
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown('<div class="bi-title">🧪 Monthly Test Volume & Deficit Analysis</div>', unsafe_allow_html=True)
         if 'Date ( test)' in filtered_df.columns and 'Test Type' in filtered_df.columns:
             v_df = filtered_df.dropna(subset=['Date ( test)', 'Test Type']).copy()
@@ -1732,9 +1651,9 @@ def render_dashboard():
                             st.success(f"✅ **Stable Volume:**\nTesting coverage is expanding smoothly from {prev_month_name} into {last_month_name}.")
                 else:
                     st.text("No data available for tracking.")
-
+        
         if 'Date ( test)' in filtered_df.columns:
-            st.markdown('<div class="bi-title">🗓️ Activity Heatmap Calendar</div>', unsafe_allow_html=True)
+            st.markdown('<div class="bi-title">️ Activity Heatmap Calendar</div>', unsafe_allow_html=True)
             cal_df = filtered_df.dropna(subset=['Date ( test)']).copy()
             cal_df['Day'] = cal_df['Date ( test)'].dt.day
             cal_df['Month_Name'] = cal_df['Date ( test)'].dt.strftime('%b %Y')
@@ -1743,52 +1662,41 @@ def render_dashboard():
             fig_hm.update_traces(hovertemplate='<b>Date:</b> %{y} %{x}<br><b>Activity:</b> %{z} Tests Logged')
             fig_hm = style_3d_glassy(fig_hm, chart_type="heatmap")
             st.plotly_chart(fig_hm, use_container_width=True, key="heat_calendar")
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown('<div class="bi-title">📈 Comprehensive Timeline (Workload vs Quality Correlation)</div>', unsafe_allow_html=True)
         if 'Date ( test)' in filtered_df.columns and 'sample status' in filtered_df.columns:
             tl_df = filtered_df.dropna(subset=['Date ( test)', 'sample status']).copy()
             tl_df['Month_Plot'] = tl_df['Date ( test)'].dt.to_period('M').astype(str)
-            
             monthly_stats = tl_df.groupby('Month_Plot').apply(lambda x: pd.Series({
                 'Total': len(x),
                 'Accepted': len(x[x['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]),
                 'Rejected': len(x[x['sample status'].str.upper().isin(['REJECTED', 'REVISE'])])
             })).reset_index()
-            
             monthly_stats['Acc_Pct'] = (monthly_stats['Accepted'] / monthly_stats['Total'] * 100).round(1)
             monthly_stats['Rej_Pct'] = (monthly_stats['Rejected'] / monthly_stats['Total'] * 100).round(1)
-            
             fig_combo = make_subplots(specs=[[{"secondary_y": True}]])
-            
             fig_combo.add_trace(go.Bar(x=monthly_stats['Month_Plot'], y=monthly_stats['Accepted'], name='Accepted/Approved', marker_color=STATUS_COLORS['ACCEPTED'], customdata=monthly_stats['Acc_Pct'], hovertemplate="<b>%{x}</b><br>Accepted: %{y} (%{customdata}%)<extra></extra>"), secondary_y=False)
             fig_combo.add_trace(go.Bar(x=monthly_stats['Month_Plot'], y=monthly_stats['Rejected'], name='Rejected/Revise', marker_color=STATUS_COLORS['REJECTED'], customdata=monthly_stats['Rej_Pct'], hovertemplate="<b>%{x}</b><br>Rejected: %{y} (%{customdata}%)<extra></extra>"), secondary_y=False)
             fig_combo.add_trace(go.Scatter(x=monthly_stats['Month_Plot'], y=monthly_stats['Total'], name='Total Workload', mode='lines+markers', line=dict(color='#00d2ff', width=4), marker=dict(size=8), hovertemplate="<b>%{x}</b><br>Total Logged: %{y}<extra></extra>"), secondary_y=True)
-            
             fig_combo.update_layout(barmode='stack', title="Volume vs. Rejection Impact over Time", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
             fig_combo.update_yaxes(title_text="Submittals (Quality)", secondary_y=False)
             fig_combo.update_yaxes(title_text="Total Workload", secondary_y=True)
-            
             fig_combo = style_3d_glassy(fig_combo, chart_type="combo")
             st.plotly_chart(fig_combo, use_container_width=True, key="combo_timeline")
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown('<div class="bi-title">📊 Statistical Process Control (SPC) - Control Charts</div>', unsafe_allow_html=True)
         st.caption("Monitor process stability and detect special cause variations using industry-standard control limits.")
-        
         if 'AVERAGE VALUE' in filtered_df.columns and 'Company Name' in filtered_df.columns:
             spc_df = filtered_df.dropna(subset=['AVERAGE VALUE']).copy()
             spc_df['AVERAGE VALUE'] = pd.to_numeric(spc_df['AVERAGE VALUE'], errors='coerce')
             spc_df = spc_df.dropna(subset=['AVERAGE VALUE'])
-            
             if not spc_df.empty:
                 mean_val = spc_df['AVERAGE VALUE'].mean()
                 std_val = spc_df['AVERAGE VALUE'].std()
-                ucl = mean_val + 3 * std_val  
-                lcl = mean_val - 3 * std_val  
-                
+                ucl = mean_val + 3 * std_val
+                lcl = mean_val - 3 * std_val
                 spc_df['out_of_control'] = (spc_df['AVERAGE VALUE'] > ucl) | (spc_df['AVERAGE VALUE'] < lcl)
                 out_of_control_count = spc_df['out_of_control'].sum()
                 total_points = len(spc_df)
@@ -1817,7 +1725,6 @@ def render_dashboard():
                 fig_spc.add_hline(y=ucl, line_dash="dash", line_color="#e74c3c", line_width=2, annotation_text=f"UCL: {ucl:.2f}", annotation_position="top right")
                 fig_spc.add_hline(y=lcl, line_dash="dash", line_color="#e74c3c", line_width=2, annotation_text=f"LCL: {lcl:.2f}", annotation_position="bottom right")
                 fig_spc.update_layout(title="Control Chart - Process Stability Analysis", xaxis_title="Sample Index", yaxis_title="AVERAGE VALUE", showlegend=False, height=500)
-                
                 fig_spc = style_3d_glassy(fig_spc, chart_type="line")
                 st.plotly_chart(fig_spc, use_container_width=True, key="spc_chart")
                 
@@ -1830,7 +1737,7 @@ def render_dashboard():
                 else:
                     st.success("✅ **Process Stable:** All samples are within control limits.")
                 
-                st.markdown("#### 🎯 Process Capability Analysis")
+                st.markdown("####  Process Capability Analysis")
                 cap_col1, cap_col2 = st.columns(2)
                 with cap_col1:
                     st.markdown(f"""
@@ -1854,19 +1761,15 @@ def render_dashboard():
                         """, unsafe_allow_html=True)
         
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown('<div class="bi-title">📊 Pareto Analysis - 80/20 Rule</div>', unsafe_allow_html=True)
-        st.caption("Identify the vital few causes that contribute to the majority of problems. Focus your improvement efforts where they matter most.")
-        
+        st.caption("Identify the vital few causes that contribute to the majority of problems.")
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             rej_by_comp = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])].groupby('Company Name').size().reset_index(name='Rejections')
             rej_by_comp = rej_by_comp.sort_values('Rejections', ascending=False)
-            
             if not rej_by_comp.empty:
                 total_rejections = rej_by_comp['Rejections'].sum()
                 rej_by_comp['Percentage'] = (rej_by_comp['Rejections'] / total_rejections * 100).round(2)
                 rej_by_comp['Cumulative_Percentage'] = rej_by_comp['Percentage'].cumsum().round(2)
-                
                 critical_threshold = 80
                 critical_contractors = rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]
                 critical_count = len(critical_contractors)
@@ -1879,8 +1782,14 @@ def render_dashboard():
                 create_card(pareto_col3, "Total Rejections", f"{total_rejections}")
                 
                 fig_pareto = make_subplots(specs=[[{"secondary_y": True}]])
-                fig_pareto.add_trace(go.Bar(x=rej_by_comp['Company Name'], y=rej_by_comp['Rejections'], name='Rejections', marker_color='#e74c3c', opacity=0.7, hovertemplate='<b>Contractor:</b> %{x}<br><b>Rejections:</b> %{y}<extra></extra>'), secondary_y=False)
-                fig_pareto.add_trace(go.Scatter(x=rej_by_comp['Company Name'], y=rej_by_comp['Cumulative_Percentage'], mode='lines+markers', name='Cumulative %', line=dict(color='#00d2ff', width=3), marker=dict(size=8, color='#00d2ff'), hovertemplate='<b>Contractor:</b> %{x}<br><b>Cumulative %:</b> %{y:.1f}%<extra></extra>'), secondary_y=True)
+                fig_pareto.add_trace(
+                    go.Bar(x=rej_by_comp['Company Name'], y=rej_by_comp['Rejections'], name='Rejections', marker_color='#e74c3c', opacity=0.7, hovertemplate='<b>Contractor:</b> %{x}<br><b>Rejections:</b> %{y}<extra></extra>'),
+                    secondary_y=False
+                )
+                fig_pareto.add_trace(
+                    go.Scatter(x=rej_by_comp['Company Name'], y=rej_by_comp['Cumulative_Percentage'], mode='lines+markers', name='Cumulative %', line=dict(color='#00d2ff', width=3), marker=dict(size=8, color='#00d2ff'), hovertemplate='<b>Contractor:</b> %{x}<br><b>Cumulative %:</b> %{y:.1f}%<extra></extra>'),
+                    secondary_y=True
+                )
                 fig_pareto.add_hline(y=80, line_dash="dash", line_color="#ffaa00", line_width=2, annotation_text="80% Threshold", annotation_position="top right", secondary_y=True)
                 fig_pareto.update_layout(title="Pareto Chart - Rejections by Contractor", xaxis_title="Contractor", yaxis_title="Number of Rejections", yaxis2_title="Cumulative Percentage (%)", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=500)
                 fig_pareto.update_yaxes(title_text="Rejections", secondary_y=False)
@@ -1895,7 +1804,7 @@ def render_dashboard():
                     <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
                         <h4 style="color: #e74c3c; margin: 0 0 10px 0;">🎯 Critical Focus Area</h4>
                         <p style="color: {ui['text_main']}; margin: 0; font-size: 14px; line-height: 1.6;">
-                            The top <b style="color: #ffaa00;">{critical_count} contractors</b> ({critical_percentage:.0f}% of total) are responsible for 
+                            The top <b style="color: #ffaa00;">{critical_count} contractors</b> ({critical_percentage:.0f}% of total) are responsible for
                             <b style="color: #ffaa00;">{rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]['Cumulative_Percentage'].max():.1f}%</b> of all rejections.
                         </p>
                     </div>
@@ -1909,131 +1818,59 @@ def render_dashboard():
                         {top_5_html}
                     </div>
                     """, unsafe_allow_html=True)
-                
-                with st.expander("📋 View Detailed Pareto Analysis Table"):
-                    st.dataframe(rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={'Company Name': 'Contractor', 'Rejections': 'Total Rejections', 'Percentage': '% of Total', 'Cumulative_Percentage': 'Cumulative %'}), use_container_width=True)
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="bi-title">🤖 Predictive Risk Forecasting</div>', unsafe_allow_html=True)
-        if 'Date ( test)' in filtered_df.columns and 'DURATION' in filtered_df.columns:
-            pred_df = filtered_df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
-            pred_df['7-Day Trend'] = pred_df['DURATION'].rolling(window=7, min_periods=1).mean()
-            fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], title="Duration Forecasting & Trendline Tracking", color_discrete_sequence=['#ffaa00', '#00d2ff'])
-            fig_pred = style_3d_glassy(fig_pred, chart_type="line")
-            latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
-            p1, p2 = st.columns([0.7, 0.3])
-            p1.plotly_chart(fig_pred, use_container_width=True, key="pred_risk")
-            with p2:
-                st.info("**AI Risk Assessment:**")
-                if latest_trend > current_metrics["Avg_Duration"]:
-                    st.error(f"🚨 **Warning:** The recent workflow trend is rising ({latest_trend:.1f} days) compared to the overall average. Bottlenecks are forming.")
+        st.markdown("### 💡 Strategic Insights & Recommendations")
+        ins_col1, ins_col2 = st.columns(2)
+        with ins_col1:
+            st.success("✅ **Quality Improvement:**\n* Maintain tight oversight on duration KPIs.\n* Stable DPL curves confirm materials testing compliance.")
+        with ins_col2:
+            st.warning("⚠️ **Risk Mitigation:**\n* Closely audit moisture metrics for failed trials.\n* Intervene in lagging workflow review desks.")
+        
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        chart_col1, chart_col2 = st.columns(2)
+        with chart_col1:
+            if 'Company Name' in filtered_df.columns and 'Test Type' in filtered_df.columns:
+                if num_tests_col:
+                    c1_df = filtered_df.groupby(['Company Name', 'Test Type'])[num_tests_col].sum().reset_index(name='Count')
+                    c1_title = "Workload per Contractor (Total Test Points)"
                 else:
-                    st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
-
-        st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
-        if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
-            tree_df = filtered_df.copy()
-            tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
-            tree_df['status_upper'] = tree_df['sample status'].str.upper()
-            status_weights = {'ACCEPTED': 100, 'APPROVED AS NOTED': 80, 'REVISE': 40, 'REJECTED': 0, 'Unknown': 50}
-            tree_df['Heat_Score'] = tree_df['status_upper'].map(status_weights).fillna(50)
-            fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], color='Heat_Score', color_continuous_scale='RdYlGn', title="Project Hierarchy Heat Map (Green = High Approval, Red = Bottleneck/Rejections)")
-            fig_tree.update_traces(hovertemplate='<b>%{label}</b><br>Score: %{color:.1f}')
-            fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
-            st.plotly_chart(fig_tree, use_container_width=True, key="heatmap_sector")
-
-        st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
-        st.info("💡 **CEO Feature:** Click the button below to download a styled HTML report. When opened, it can be easily saved as a perfectly formatted PDF for your Daily/Weekly Briefing!")
-        html_report = f"""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Executive Report - {uploaded_file.name}</title>
-            <style>
-                body {{ font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; background-color: #f9fbfd; }}
-                .container {{ max-width: 900px; margin: auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 8px solid #1e3d59; }}
-                .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 20px; margin-bottom: 30px; }}
-                .header h1 {{ color: #1e3d59; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 1px; }}
-                .header p {{ margin: 5px 0 0 0; color: #7f8c8d; font-size: 14px; }}
-                .kpi-row {{ display: flex; justify-content: space-between; margin-bottom: 30px; }}
-                .kpi-box {{ background: #f4f7f6; padding: 20px; border-radius: 8px; width: 30%; text-align: center; border-bottom: 4px solid #00d2ff; }}
-                .kpi-box h3 {{ margin: 0; color: #7f8c8d; font-size: 12px; text-transform: uppercase; }}
-                .kpi-box h2 {{ margin: 10px 0 0 0; color: #2c3e50; font-size: 28px; }}
-                .section-title {{ color: #e67e22; font-size: 18px; border-bottom: 1px solid #ecf0f1; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }}
-                th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #eee; }}
-                th {{ background-color: #1e3d59; color: white; }}
-                .highlight-red {{ color: #e74c3c; font-weight: bold; }}
-                .highlight-green {{ color: #2ecc71; font-weight: bold; }}
-            </style>
-        </head>
-        <body onload="window.print()">
-            <div class="container">
-                <div class="header">
-                    <div>
-                        <h1>KK Engineering - Executive Brief</h1>
-                        <p><strong>Dataset:</strong> {uploaded_file.name}</p>
-                        <p><strong>Generated On:</strong> {datetime.now(EGYPT_TZ).strftime("%Y-%m-%d at %I:%M %p")}</p>
-                    </div>
-                    <div style="font-size: 40px;">🏗️</div>
-                </div>
-                
-                <div class="kpi-row">
-                    <div class="kpi-box" style="border-color: #2ecc71;">
-                        <h3>Overall Approval</h3>
-                        <h2 class="highlight-green">{overall_rate:.1f}%</h2>
-                    </div>
-                    <div class="kpi-box" style="border-color: #ffaa00;">
-                        <h3>Total Submittals</h3>
-                        <h2>{total_requests_count:,}</h2>
-                    </div>
-                    <div class="kpi-box" style="border-color: #e74c3c;">
-                        <h3>Avg Sector Delay</h3>
-                        <h2 class="highlight-red">{avg_duration_value} Days</h2>
-                    </div>
-                </div>
-
-                <div class="section-title">⚖️ 360° Accountability & Risk Assessment</div>
-                <table>
-                    <tr>
-                        <th>Metric</th>
-                        <th>Identified Node / Value</th>
-                    </tr>
-                    <tr>
-                        <td><strong>🏆 Top Performing Contractor</strong></td>
-                        <td class="highlight-green">{global_best_comp} ({global_best_rate:.1f}% Yield)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>🚨 Critical Bottleneck (Contractor)</strong></td>
-                        <td class="highlight-red">{global_worst_comp} ({global_worst_delay:.1f} Days Avg Delay)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>⏱️ Worst Review Office</strong></td>
-                        <td class="highlight-red">{worst_office_name} ({worst_office_delay} Days Avg Delay)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>⚠️ Pending Rejections</strong></td>
-                        <td class="highlight-red">{rejected_count} Submittals</td>
-                    </tr>
-                    <tr>
-                        <td><strong>🛡️ Data Integrity Score</strong></td>
-                        <td>{health_score:.1f}%</td>
-                    </tr>
-                </table>
-                
-                <p style="text-align: center; color: #95a5a6; font-size: 11px; margin-top: 50px;">Confidential Document - Generated by AI Command Center BI Portal</p>
-            </div>
-        </body>
-        </html>
-        """
-        b64 = base64.b64encode(html_report.encode()).decode()
-        href = f'<a href="data:text/html;base64,{b64}" download="KK_Executive_Report_{datetime.now(EGYPT_TZ).strftime("%Y%m%d")}.html" style="background-color:#ffaa00; color:#1e3d59; padding:12px 24px; text-decoration:none; font-weight:bold; border-radius:8px; display:inline-block; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4); transition: all 0.3s;">📄 Download Ultra-Premium PDF Report</a>'
-        st.markdown(href, unsafe_allow_html=True)
-
+                    c1_df = filtered_df.groupby(['Company Name', 'Test Type']).size().reset_index(name='Count')
+                    c1_title = "Workload per Contractor (Total Submittals)"
+                fig_c1 = px.bar(c1_df, x='Company Name', y='Count', color='Test Type', title=c1_title, color_discrete_sequence=NEON_COLORS)
+                fig_c1.update_traces(hovertemplate='<b>%{x}</b><br>Test: %{data.name}<br>Count: %{y}')
+                fig_c1 = style_3d_glassy(fig_c1, chart_type="bar")
+                st.plotly_chart(fig_c1, use_container_width=True)
+            
+            if 'Done BY' in filtered_df.columns and 'Test Type' in filtered_df.columns:
+                if num_tests_col:
+                    c2_df = filtered_df.groupby(['Done BY', 'Test Type'])[num_tests_col].sum().reset_index(name='Count')
+                    c2_title = "Office Performance Analysis (Total Test Points)"
+                else:
+                    c2_df = filtered_df.groupby(['Done BY', 'Test Type']).size().reset_index(name='Count')
+                    c2_title = "Office Performance Analysis (Total Submittals)"
+                fig_c2 = px.bar(c2_df, x='Done BY', y='Count', color='Test Type', title=c2_title, color_discrete_sequence=NEON_COLORS)
+                fig_c2.update_traces(hovertemplate='<b>Office:</b> %{x}<br>Test: %{data.name}<br>Count: %{y}')
+                fig_c2 = style_3d_glassy(fig_c2, chart_type="bar")
+                st.plotly_chart(fig_c2, use_container_width=True)
+        
+        with chart_col2:
+            if 'sample status' in filtered_df.columns:
+                filtered_df['status_upper'] = filtered_df['sample status'].str.upper()
+                fig_p1 = px.pie(filtered_df, names='status_upper', hole=0.4, title="Sample Status Distribution", color='status_upper', color_discrete_map=STATUS_COLORS)
+                fig_p1.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
+                fig_p1 = style_3d_glassy(fig_p1, chart_type="pie")
+                st.plotly_chart(fig_p1, use_container_width=True)
+            
+            if 'Classification' in filtered_df.columns:
+                class_df = filtered_df.dropna(subset=['Classification']).copy()
+                if not class_df.empty:
+                    fig_p2 = px.pie(class_df, names='Classification', title="Sample Classification Distribution", color_discrete_sequence=NEON_COLORS)
+                    fig_p2.update_traces(textinfo='label+percent', hovertemplate='<b>Class:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
+                    fig_p2 = style_3d_glassy(fig_p2, chart_type="pie")
+                    st.plotly_chart(fig_p2, use_container_width=True)
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             comp_stats = []
@@ -2050,20 +1887,20 @@ def render_dashboard():
                 worst_comp = valid_c_df.loc[valid_c_df['Rate'].idxmin()]
                 l_col1, l_col2 = st.columns(2)
                 l_col1.markdown(f"""
-                    <div class="leaderboard-card" style="border-left-color: #2ecc71;">
-                        <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
-                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{best_comp['Company']}</h2>
-                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
-                    </div>
+                <div class="leaderboard-card" style="border-left-color: #2ecc71;">
+                    <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
+                    <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{best_comp['Company']}</h2>
+                    <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
+                </div>
                 """, unsafe_allow_html=True)
                 l_col2.markdown(f"""
-                    <div class="leaderboard-card" style="border-left-color: #e74c3c;">
-                        <h4 style="margin:0; color:#e74c3c; text-transform: uppercase; font-size: 14px;">⚠️ Needs Attention</h4>
-                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{worst_comp['Company']}</h2>
-                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#e74c3c; font-size: 18px;">{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
-                    </div>
+                <div class="leaderboard-card" style="border-left-color: #e74c3c;">
+                    <h4 style="margin:0; color:#e74c3c; text-transform: uppercase; font-size: 14px;">⚠️ Needs Attention</h4>
+                    <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{worst_comp['Company']}</h2>
+                    <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#e74c3c; font-size: 18px;">{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
+                </div>
                 """, unsafe_allow_html=True)
-
+        
         if 'Company Name' in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
             mat_df = filtered_df.copy()
             mat_df['Sampling_Lower'] = mat_df['Sampling Location'].astype(str).str.lower()
@@ -2081,15 +1918,13 @@ def render_dashboard():
             summary_pivot = summary_pivot[existing_cols]
             st.dataframe(summary_pivot, use_container_width=True)
             st.divider()
-
+            
             target_dict = {}
             battalion_col_main = next((c for c in df.columns if 'BATTAL' in c.upper()), None)
-            
             if 'Company' in df.columns and 'Required Quantity' in df.columns:
                 cols_to_extract = ['Company', 'Required Quantity']
                 if battalion_col_main: cols_to_extract.append(battalion_col_main)
                 lookup_df = df[cols_to_extract].dropna(subset=['Company'])
-                
                 for _, row in lookup_df.iterrows():
                     c_key = str(row['Company']).strip()
                     c_qty = pd.to_numeric(row['Required Quantity'], errors='coerce')
@@ -2099,55 +1934,47 @@ def render_dashboard():
                             target_dict[f"{c_key}_{b_key}"] = c_qty
                         else:
                             target_dict[c_key] = c_qty
-
+            
             st.markdown("#### 📥 Master Stockpile Targets Report")
             report_data = []
             all_log_companies = sorted([c for c in mat_df['Company Name'].unique() if str(c) != 'nan'])
             battalion_col_stock = next((c for c in mat_df.columns if 'BATTAL' in c.upper()), None)
-
             for c_name in all_log_companies:
                 c_name_clean = str(c_name).strip()
                 c_df_stock = mat_df[(mat_df['Company Name'] == c_name) & (mat_df['Loc_Category'] == 'Stockpile')]
-                
                 if battalion_col_stock:
                     bats = c_df_stock[battalion_col_stock].dropna().unique()
                     if len(bats) == 0: bats = ["Unknown"]
-                else:
-                    bats = ["Global"]
-
-                for b in bats:
-                    b_clean = fmt_b(b)
-                    if b == "Global" or b == "Unknown":
-                        bat_stock_df = c_df_stock
-                        req_qty = target_dict.get(c_name_clean, np.nan)
-                    else:
-                        bat_stock_df = c_df_stock[c_df_stock[battalion_col_stock] == b]
-                        req_qty = target_dict.get(f"{c_name_clean}_{b_clean}", np.nan)
-
-                    if num_tests_col:
-                        exec_qty = int(pd.to_numeric(bat_stock_df[num_tests_col], errors='coerce').fillna(0).sum())
-                    else:
-                        exec_qty = len(bat_stock_df)
-
-                    if pd.notna(req_qty) and req_qty > 0:
-                        diff = exec_qty - int(req_qty)
-                        status = "✅ Target Exceeded" if diff >= 0 else f"⚠️ Missing {abs(diff)} Tests"
-                        req_val = int(req_qty)
-                        diff_val = diff
-                    else:
-                        status = "No Target Defined"
-                        req_val = "N/A"
-                        diff_val = "N/A"
-
-                    report_data.append({
-                        "Contractor Name": c_name_clean,
-                        "Battalion": b_clean if b not in ["Global", "Unknown"] else "N/A",
-                        "Executed Stockpile Tests": exec_qty,
-                        "Required Target": req_val,
-                        "Difference (+/-)": diff_val,
-                        "Status": status
-                    })
-                    
+                    else: bats = ["Global"]
+                    for b in bats:
+                        b_clean = fmt_b(b)
+                        if b == "Global" or b == "Unknown":
+                            bat_stock_df = c_df_stock
+                            req_qty = target_dict.get(c_name_clean, np.nan)
+                        else:
+                            bat_stock_df = c_df_stock[c_df_stock[battalion_col_stock] == b]
+                            req_qty = target_dict.get(f"{c_name_clean}_{b_clean}", np.nan)
+                        if num_tests_col:
+                            exec_qty = int(pd.to_numeric(bat_stock_df[num_tests_col], errors='coerce').fillna(0).sum())
+                        else:
+                            exec_qty = len(bat_stock_df)
+                        if pd.notna(req_qty) and req_qty > 0:
+                            diff = exec_qty - int(req_qty)
+                            status = "✅ Target Exceeded" if diff >= 0 else f"⚠️ Missing {abs(diff)} Tests"
+                            req_val = int(req_qty)
+                            diff_val = diff
+                        else:
+                            status = "No Target Defined"
+                            req_val = "N/A"
+                            diff_val = "N/A"
+                        report_data.append({
+                            "Contractor Name": c_name_clean,
+                            "Battalion": b_clean if b not in ["Global", "Unknown"] else "N/A",
+                            "Executed Stockpile Tests": exec_qty,
+                            "Required Target": req_val,
+                            "Difference (+/-)": diff_val,
+                            "Status": status
+                        })
             report_df = pd.DataFrame(report_data)
             st.dataframe(report_df, use_container_width=True)
             csv_export = report_df.to_csv(index=False).encode('utf-8-sig')
@@ -2158,31 +1985,31 @@ def render_dashboard():
                 mime="text/csv",
                 type="primary"
             )
+            
             st.divider()
-
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
             if all_log_companies:
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies, key="deepdive_comp_sel")
                 comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
                 
-                tab_360, tab_stockpile, tab_execution = st.tabs([
-                    "🌐 360° Corporate Profile", 
-                    "⛰️ Stockpile Sourcing", 
-                    "🏗️ Executive Progress & Compaction"
+                # ==========================================
+                # 🔥 NEW: 3 Tabs instead of 2
+                # ==========================================
+                tab_360, tab_stockpile, tab_quantities = st.tabs([
+                    "🌐 360° Corporate Profile",
+                    "️ Stockpile Sourcing & AI Targets",
+                    "📊 Quantities Rate & Execution Analytics"
                 ])
                 
                 with tab_360:
-                    st.markdown(f"### 🌐 Executive Profile: `{selected_comp}`")
-                    
+                    st.markdown(f"###  Executive Profile: `{selected_comp}`")
                     battalion_col_360 = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
                     zone_col_360 = next((c for c in comp_df_full.columns if 'ZONE' in c.upper()), None)
                     elment_col_360 = next((c for c in comp_df_full.columns if 'ELMEN' in c.upper() or 'ELEMENT' in c.upper()), None)
-                    
                     total_tests_360 = int(pd.to_numeric(comp_df_full[num_tests_col], errors='coerce').fillna(0).sum()) if num_tests_col else len(comp_df_full)
                     battalions_count = comp_df_full[battalion_col_360].nunique() if battalion_col_360 else "N/A"
                     zones_count = comp_df_full[zone_col_360].nunique() if zone_col_360 else "N/A"
                     avg_dur_360 = pd.to_numeric(comp_df_full['DURATION'], errors='coerce').mean() if 'DURATION' in comp_df_full.columns else "N/A"
-                    
                     c1, c2, c3, c4 = st.columns(4)
                     create_card(c1, "Total Test Points", total_tests_360)
                     create_card(c2, "Active Battalions", battalions_count)
@@ -2198,7 +2025,7 @@ def render_dashboard():
                         fig_tree_360 = px.treemap(tree_grouped, path=[battalion_col_360, zone_col_360], values='Submittals', title=f"Workload Distribution for {selected_comp}", color='Submittals', color_continuous_scale='Blues')
                         fig_tree_360 = style_3d_glassy(fig_tree_360, chart_type="treemap")
                         st.plotly_chart(fig_tree_360, use_container_width=True, key=f"tree_360_{selected_comp}")
-                        
+                    
                     col_q1, col_q2 = st.columns(2)
                     with col_q1:
                         if battalion_col_360 and 'sample status' in comp_df_full.columns:
@@ -2208,7 +2035,6 @@ def render_dashboard():
                             fig_qual = px.bar(qual_df, x=battalion_col_360, y='Count', color='status_upper', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map=STATUS_COLORS)
                             fig_qual = style_3d_glassy(fig_qual, chart_type="bar")
                             st.plotly_chart(fig_qual, use_container_width=True, key=f"qual_{selected_comp}")
-                            
                     with col_q2:
                         if elment_col_360:
                             st.markdown("#### 🏗️ Workload by Element")
@@ -2218,7 +2044,7 @@ def render_dashboard():
                             st.plotly_chart(fig_elment, use_container_width=True, key=f"elment_{selected_comp}")
                         else:
                             st.info("No Element column found for workload breakdown.")
-                                
+                    
                     col_d1, col_d2 = st.columns(2)
                     with col_d1:
                         if 'Done BY' in comp_df_full.columns:
@@ -2229,7 +2055,6 @@ def render_dashboard():
                             fig_off.update_traces(customdata=off_df['Percent'], hovertemplate='<b>Office:</b> %{x}<br>Count: %{y}<br>Percentage: %{customdata}%')
                             fig_off = style_3d_glassy(fig_off, chart_type="bar")
                             st.plotly_chart(fig_off, use_container_width=True, key=f"off_{selected_comp}")
-                            
                     with col_d2:
                         if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
                             st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
@@ -2251,40 +2076,33 @@ def render_dashboard():
                                 st.success("✅ All rejected layers have been successfully re-tested and approved!")
                         else:
                             st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
-
+                    
                     if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
                         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                         st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
-                        
                         rework_df = comp_df_full.copy()
                         rejected_items = rework_df[rework_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
-                        
                         if not rejected_items.empty:
                             ledger_data = []
                             total_delay_days = 0
                             el_col = elment_col_360 if elment_col_360 else None
-                            
                             for _, rej_row in rejected_items.iterrows():
                                 serial = rej_row.get('serial', 'N/A')
                                 rej_date = rej_row['Date( SUB)']
                                 layer = str(rej_row.get('layer', 'Unknown'))
                                 test_type = str(rej_row.get('Test Type', 'Unknown'))
-                                
                                 filter_mask = (
-                                    (rework_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])) & 
+                                    (rework_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])) &
                                     (rework_df['Date( SUB)'] >= rej_date) &
                                     (rework_df['layer'].astype(str) == layer) &
                                     (rework_df['Test Type'].astype(str) == test_type)
                                 )
-                                
                                 if el_col:
                                     element_val = str(rej_row.get(el_col, 'Unknown'))
                                     filter_mask = filter_mask & (rework_df[el_col].astype(str) == element_val)
                                 else:
                                     element_val = "N/A"
-
                                 future_accepts = rework_df[filter_mask]
-                                
                                 if not future_accepts.empty:
                                     acc_date = future_accepts['Date( SUB)'].min()
                                     delay_days = (acc_date - rej_date).days
@@ -2294,7 +2112,6 @@ def render_dashboard():
                                     acc_date = pd.NaT
                                     delay_days = 0
                                     status_text = "Pending 🚨"
-                                    
                                 ledger_data.append({
                                     "Rejected Serial": serial,
                                     "Element": element_val,
@@ -2305,9 +2122,7 @@ def render_dashboard():
                                     "Rework Delay (Days)": delay_days,
                                     "Status": status_text
                                 })
-                            
                             ledger_df = pd.DataFrame(ledger_data).sort_values(by=["Status", "Rework Delay (Days)"], ascending=[False, False])
-                            
                             st.markdown(f"""
                             <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
@@ -2317,13 +2132,12 @@ def render_dashboard():
                                 <div style="font-size: 32px; font-weight: bold; color: #e74c3c;">{total_delay_days} Days Lost</div>
                             </div>
                             """, unsafe_allow_html=True)
-                            
                             st.dataframe(ledger_df, use_container_width=True)
                         else:
                             st.success(f"✅ No rejected submittals found for {selected_comp}. Zero rework leakage!")
                     else:
                         st.info("Requires 'sample status', 'layer', and 'Date( SUB)' columns to calculate rework delays.")
-
+                    
                     if battalion_col_360 and elment_col_360 and 'Date ( test)' in comp_df_full.columns:
                         st.markdown("#### ⏱️ Inter-Battalion Element Timeline Analysis")
                         st.caption("Evaluates contractor speed and start/end dates for each element across different battalions.")
@@ -2341,12 +2155,11 @@ def render_dashboard():
                             st.dataframe(timeline, use_container_width=True)
                         else:
                             st.info("No valid dates found for timeline analysis.")
-
+                
                 with tab_stockpile:
                     if battalion_col_stock:
                         avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
                         selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats, key=f"bat_stock_{selected_comp}")
-                        
                         if selected_bat != "All Battalions":
                             comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
                             b_key = fmt_b(selected_bat)
@@ -2361,9 +2174,8 @@ def render_dashboard():
                     else:
                         comp_bat_df = comp_df_full
                         req_qty = target_dict.get(selected_comp.strip(), np.nan)
-
-                    stock_df = comp_bat_df[comp_bat_df['Loc_Category'] == 'Stockpile']
                     
+                    stock_df = comp_bat_df[comp_bat_df['Loc_Category'] == 'Stockpile']
                     if num_tests_col:
                         stock_count = int(pd.to_numeric(stock_df[num_tests_col], errors='coerce').fillna(0).sum())
                         bottom_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'][num_tests_col], errors='coerce').fillna(0).sum())
@@ -2391,20 +2203,19 @@ def render_dashboard():
                         req_qty_int = int(req_qty)
                         diff = stock_count - req_qty_int
                         progress_pct = min(100, (stock_count / req_qty_int) * 100) if req_qty_int > 0 else 100
-                        
                         if progress_pct >= 90:
-                            prog_color = "#2ecc71" 
+                            prog_color = "#2ecc71"
                             status_color = "#2ecc71"
                             status_icon = "✅"
                         elif progress_pct >= 70:
-                            prog_color = "#f1c40f" 
+                            prog_color = "#f1c40f"
                             status_color = "#f1c40f"
                             status_icon = "⚠️"
                         else:
-                            prog_color = "#e74c3c" 
+                            prog_color = "#e74c3c"
                             status_color = "#e74c3c"
                             status_icon = "🚨"
-
+                        
                         if diff >= 0:
                             status_msg = f"<span style='color: #2ecc71;'>{status_icon} Target Exceeded (+{diff} Tests)</span>"
                             prog_color = "#2ecc71"
@@ -2431,24 +2242,23 @@ def render_dashboard():
                             <p style="color: {ui['text_muted']}; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
                         </div>
                         """, unsafe_allow_html=True)
-
+                    
                     if 'Date ( test)' in comp_bat_df.columns:
                         time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
                         time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
                         fill_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Fill'].groupby('Month').size()
                         stock_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Stockpile'].groupby('Month').size()
-
+                        
                         if not fill_by_month.empty:
                             peak_fill_month = fill_by_month.idxmax()
                             peak_fill_val = fill_by_month.max()
                             stock_in_peak = stock_by_month.get(peak_fill_month, 0)
-                            
                             bat_key = selected_bat if battalion_col_stock else "all"
                             scan_key = f"scan_{selected_comp}_{bat_key}"
                             
                             if scan_key not in st.session_state:
                                 st.session_state[scan_key] = False
-
+                            
                             if not st.session_state[scan_key]:
                                 st.markdown("<br>", unsafe_allow_html=True)
                                 if st.button("🧠 Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
@@ -2470,15 +2280,13 @@ def render_dashboard():
                             
                             if st.session_state[scan_key]:
                                 base_confidence = 75.0
-                                confidence_bonus = min(24.5, peak_fill_val * 0.6) 
+                                confidence_bonus = min(24.5, peak_fill_val * 0.6)
                                 ai_confidence = round(base_confidence + confidence_bonus, 1)
-
                                 ai_ratio = stock_in_peak / peak_fill_val if peak_fill_val > 0 else 1
-                                
                                 has_target_qty = pd.notna(req_qty) and req_qty > 0
                                 
                                 if ai_ratio < 0.05:
-                                    status_level, status_color, status_bg, status_icon = "SEVERE DEFICIT", "#e74c3c", "rgba(231, 76, 60, 0.1)", "🚨"
+                                    status_level, status_color, status_bg, status_icon = "SEVERE DEFICIT", "#e74c3c", "rgba(231, 76, 60, 0.1)", ""
                                     quality_insight = f"Significant discrepancy detected. Fill operations ({peak_fill_val} tests) lack sufficient corresponding stockpile verifications, creating a gap in material quality traceability."
                                     if has_target_qty:
                                         samples_needed = max(1, int(peak_fill_val * 0.1))
@@ -2493,7 +2301,7 @@ def render_dashboard():
                                     status_level, status_color, status_bg, status_icon = "OPTIMAL COVERAGE", "#2ecc71", "rgba(46, 204, 113, 0.1)", "✅"
                                     quality_insight = f"Stockpile testing frequency is well-aligned with the current fill execution volume."
                                     directive = f"MAINTAIN: Continue current testing and approval workflow."
-
+                                
                                 st.markdown(f"""
                                 <style>
                                     @keyframes scanline {{ 0% {{ transform: translateY(-10px); opacity: 0; }} 50% {{ opacity: 1; }} 100% {{ transform: translateY(0); opacity: 1; }} }}
@@ -2504,7 +2312,7 @@ def render_dashboard():
                                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
                                         <h3 style="color: {status_color}; margin: 0; display: flex; align-items: center; font-size: 20px;"><span style="font-size: 24px; margin-right: 10px;">🤖</span> Generative AI Quality Auditor</h3>
                                         <div style="display: flex; gap: 10px;">
-                                            <span class="ai-badge">⚡ Data Confidence: {ai_confidence}%</span>
+                                            <span class="ai-badge"> Data Confidence: {ai_confidence}%</span>
                                             <span class="ai-badge" style="color: {status_color}; border-color: {status_color}; font-weight: bold;">{status_icon} Status: {status_level}</span>
                                         </div>
                                     </div>
@@ -2528,7 +2336,7 @@ def render_dashboard():
                                 if col_reset.button("🔄 Reset AI Auditor", key=f"reset_{scan_key}"):
                                     st.session_state[scan_key] = False
                                     st.rerun()
-
+                    
                     ch_col1, ch_col2 = st.columns(2)
                     with ch_col1:
                         if 'Classification' in stock_df.columns and not stock_df.empty:
@@ -2540,7 +2348,6 @@ def render_dashboard():
                             st.plotly_chart(fig_class, use_container_width=True, key=f"class_{selected_comp}")
                         else:
                             st.info(f"No Stockpile classification data logged.")
-                            
                     with ch_col2:
                         if 'sample status' in stock_df.columns and not stock_df.empty:
                             stock_df['status_upper'] = stock_df['sample status'].str.upper()
@@ -2550,7 +2357,7 @@ def render_dashboard():
                             st.plotly_chart(fig_stock_status, use_container_width=True, key=f"stock_status_{selected_comp}")
                         else:
                             st.info(f"No Stockpile status data logged.")
-
+                    
                     ch_col3, ch_col4 = st.columns(2)
                     with ch_col3:
                         if 'Date ( test)' in stock_df.columns and not stock_df.empty:
@@ -2563,7 +2370,6 @@ def render_dashboard():
                             st.plotly_chart(fig_timeline, use_container_width=True, key=f"stock_time_{selected_comp}")
                         else:
                             st.info("No Date data available to show Stockpile timeline.")
-
                     with ch_col4:
                         if 'sample status' in comp_bat_df.columns and not comp_bat_df.empty:
                             comp_bat_df['status_upper'] = comp_bat_df['sample status'].str.upper()
@@ -2573,172 +2379,413 @@ def render_dashboard():
                             st.plotly_chart(fig_status, use_container_width=True, key=f"stock_all_{selected_comp}")
                         else:
                             st.info(f"No overall status data logged.")
-
-                with tab_execution:
-                    st.markdown(f"### 🏗️ Executive Progress & Compaction: `{selected_comp}`")
+                
+                # ==========================================
+                #  NEW TAB: Quantities Rate & Execution Analytics
+                # ==========================================
+                with tab_quantities:
+                    st.markdown(f"### 📊 Quantities Rate & Execution Analytics")
+                    st.caption("Full execution analysis — quantities, targets, elements coverage, and worst performer.")
                     
-                    company_col_qty = next((c for c in df.columns if 'COMPANY' in c.upper() and c != 'Company Name'), 'Company Name')
-                    qty_match_df = df[df[company_col_qty].astype(str).str.strip().str.lower() == selected_comp.strip().lower()]
-                    if qty_match_df.empty: qty_match_df = comp_df_full
-                        
-                    tot_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in str(c).strip().upper()), None)
-                    exec_qty_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in str(c).strip().upper()), None)
+                    # ── Column Detection ──────────────────────────────────
+                    comp_name2_col   = next((c for c in df.columns if 'CONTRACTOR' in c.upper()), None)
+                    comp_main_col    = next((c for c in df.columns if 'COMPANY NAME' in c.upper() and 'CONTRACTOR' not in c.upper()), 'Company Name')
+                    exec_qty_m3_col  = next((c for c in df.columns if 'EXECUTED QUANTITY' in c.upper() and 'M' in c.upper()), None)
+                    total_qty_col    = next((c for c in df.columns if 'TOTAL QUANTITY' in c.upper()), None)
+                    target_rate_col  = next((c for c in df.columns if 'TARGET DAILY RATE' in c.upper()), None)
+                    date_daily_col   = next((c for c in df.columns if 'DATE' in c.upper() and 'DAILY' in c.upper()), None)
+                    elem_all_col     = next((c for c in df.columns if 'ELEMENT (ALL)' in c.upper() or 'ELEMENT(ALL)' in c.upper()), None)
+                    elment_main_col  = next((c for c in df.columns if 'ELMENT' in c.upper() and 'ALL' not in c.upper()), None)
+                    sector_col       = next((c for c in df.columns if 'SECTOR' in c.upper()), None)
+                    num_tests_col_q  = next((c for c in df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
                     
-                    tot_qty = pd.to_numeric(qty_match_df[tot_qty_col], errors='coerce').max() if tot_qty_col else 0
-                    exe_qty = pd.to_numeric(qty_match_df[exec_qty_col], errors='coerce').max() if exec_qty_col else 0
-                    prog_pct = (exe_qty / tot_qty * 100) if pd.notna(tot_qty) and tot_qty > 0 else 0
+                    # ── Numeric Conversion ─────────────────────────────────
+                    if exec_qty_m3_col:
+                        df[exec_qty_m3_col] = pd.to_numeric(df[exec_qty_m3_col], errors='coerce').fillna(0)
+                    if total_qty_col:
+                        df[total_qty_col] = pd.to_numeric(df[total_qty_col], errors='coerce').fillna(0)
+                    if target_rate_col:
+                        df[target_rate_col] = pd.to_numeric(df[target_rate_col], errors='coerce').fillna(0)
                     
-                    test_col = 'Test Type' if 'Test Type' in comp_df_full.columns else None
-                    compaction_df = pd.DataFrame()
-                    if test_col:
-                        compaction_df = comp_df_full[comp_df_full[test_col].astype(str).str.contains('DPL|PLATE', case=False, na=False)].copy()
-                        
-                    num_tests_col_exec = next((c for c in comp_df_full.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
-                    
-                    dpl_df = compaction_df[compaction_df[test_col].astype(str).str.contains('DPL', case=False, na=False)] if test_col else pd.DataFrame()
-                    plate_df = compaction_df[compaction_df[test_col].astype(str).str.contains('PLATE', case=False, na=False)] if test_col else pd.DataFrame()
-                    
-                    dpl_pts = int(pd.to_numeric(dpl_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not dpl_df.empty else len(dpl_df)
-                    plate_pts = int(pd.to_numeric(plate_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not plate_df.empty else len(plate_df)
-                    total_test_points = dpl_pts + plate_pts
-                    
-                    avg_dpl = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in dpl_df.columns else np.nan
-                        
-                    c1, c2, c3, c4 = st.columns(4)
-                    create_card(c1, "Total Target Qty", f"{tot_qty:,.0f}" if pd.notna(tot_qty) and tot_qty>0 else "N/A")
-                    create_card(c2, "Executed Qty", f"{exe_qty:,.0f}" if pd.notna(exe_qty) and exe_qty>0 else "0")
-                    pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
-                    create_card(c3, "Total Compaction Points", f"{total_test_points:,}", delta_html=pts_html)
-                    create_card(c4, "Average DPL Value", f"{avg_dpl:.2f}" if pd.notna(avg_dpl) else "N/A")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                    
-                    r2_c1, r2_c2 = st.columns(2)
-                    
-                    with r2_c1:
-                        st.markdown("#### 🚀 Execution Progress vs Target")
-                        if pd.notna(tot_qty) and tot_qty > 0:
-                            fig_exec_kpi = go.Figure(go.Indicator(
-                                mode = "gauge+number+delta",
-                                value = exe_qty,
-                                title = {'text': "Completed Volume", 'font': {'size': 16, 'color': "white" if is_dark else "#2C3E50"}},
-                                number = {'font': {'size': 35, 'color': "white" if is_dark else "#2C3E50"}},
-                                delta = {'reference': tot_qty, 'increasing': {'color': "#2ecc71"}, 'decreasing': {'color': "#e74c3c"}},
-                                gauge = {
-                                    'axis': {'range': [None, tot_qty], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
-                                    'bar': {'color': "#00d2ff"},
-                                    'bgcolor': "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)",
-                                    'steps': [
-                                        {'range': [0, tot_qty*0.5], 'color': "rgba(231,76,60,0.3)"},
-                                        {'range': [tot_qty*0.5, tot_qty*0.8], 'color': "rgba(241,196,15,0.3)"},
-                                        {'range': [tot_qty*0.8, tot_qty], 'color': "rgba(46,204,113,0.3)"}
-                                    ],
-                                    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': tot_qty}
-                                }
-                            ))
-                            fig_exec_kpi.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=320, margin=dict(l=20, r=20, t=50, b=20), font={'family': 'Montserrat'})
-                            st.plotly_chart(fig_exec_kpi, use_container_width=True, key=f"exec_kpi_gauge_{selected_comp}")
-                        else:
-                            st.info("No Target Quantity defined to show progress.")
-                            
-                    with r2_c2:
-                        st.markdown("#### ⚖️ Compaction Quality Metrics (Pass Rate)")
-                        if 'sample status' in compaction_df.columns and not compaction_df.empty:
-                            compaction_df['status_upper'] = compaction_df['sample status'].str.upper()
-                            fig_comp_qual = px.pie(compaction_df, names='status_upper', hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
-                            fig_comp_qual.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Yield: %{percent}')
-                            fig_comp_qual = style_3d_glassy(fig_comp_qual, chart_type="pie")
-                            fig_comp_qual.update_layout(height=320, margin=dict(l=20, r=20, t=20, b=20))
-                            st.plotly_chart(fig_comp_qual, use_container_width=True, key=f"comp_qual_pie_{selected_comp}")
-                        else:
-                            st.info("No Quality/Status data found for Compaction.")
-                            
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                    
-                    st.markdown("#### 📈 Monthly Compaction Trend Analysis")
-                    if not compaction_df.empty and 'Date ( test)' in compaction_df.columns:
-                        compaction_df['Month'] = compaction_df['Date ( test)'].dt.strftime('%b %Y')
-                        compaction_df['Month_Sort'] = compaction_df['Date ( test)'].dt.to_period('M')
-                        monthly_comp = compaction_df.groupby(['Month_Sort', 'Month', test_col]).size().reset_index(name='Count').sort_values('Month_Sort')
-                        
-                        fig_comp_trend = px.bar(monthly_comp, x='Month', y='Count', color=test_col, barmode='group', color_discrete_sequence=NEON_COLORS)
-                        fig_comp_trend.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Tests:</b> %{y}')
-                        fig_comp_trend = style_3d_glassy(fig_comp_trend, chart_type="bar")
-                        fig_comp_trend.update_layout(height=350)
-                        st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_bar_{selected_comp}")
+                    # ─ Sector Filter ──────────────────────────────────────
+                    if sector_col:
+                        sectors = ['All Sectors'] + sorted(df[sector_col].dropna().astype(str).unique().tolist())
+                        sel_sector = st.selectbox("🗺️ Filter by Sector:", sectors, key="qty_sector_sel")
+                        df_qty = df[df[sector_col].astype(str) == sel_sector].copy() if sel_sector != 'All Sectors' else df.copy()
                     else:
-                        st.info("No Date data found for Compaction Trend.")
-                        
+                        df_qty = df.copy()
+                        sel_sector = 'All Sectors'
+                    
+                    # ── Contractor Filter ──────────────────────────────────
+                    contractors_list = ['All Contractors']
+                    if comp_name2_col:
+                        contractors_list += sorted(df_qty[comp_name2_col].dropna().astype(str).str.strip().unique().tolist())
+                    sel_contractor = st.selectbox("🏢 Filter by Contractor:", contractors_list, key="qty_contractor_sel")
+                    
+                    if sel_contractor != 'All Contractors' and comp_name2_col:
+                        df_qty = df_qty[df_qty[comp_name2_col].astype(str).str.strip() == sel_contractor]
+                    
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                    st.markdown("#### 🧠 Executive AI Insights & Alerts")
                     
-                    pred_date_str = "Insufficient Data"
-                    daily_rate = 0
-                    if 'Date ( test)' in qty_match_df.columns and pd.notna(tot_qty) and tot_qty > 0:
-                        dates = qty_match_df['Date ( test)'].dropna()
-                        if len(dates) >= 2 and exe_qty > 0:
-                            min_date = dates.min()
-                            max_date = dates.max()
-                            days_worked = (max_date - min_date).days
-                            if days_worked > 0:
-                                daily_rate = exe_qty / days_worked
-                                if exe_qty >= tot_qty:
-                                    pred_date_str = "Target Achieved ✅"
+                    # ══════════════════════════════════════════════════════
+                    # 1. CARD: Total Project Scope (Company Name + Total Qty)
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 📦 KPI Cards")
+                    c1, c2, c3, c4 = st.columns(4)
+                    
+                    # Card 1 — Total Project Scope from Company Name + Total Quantity
+                    total_scope = 0
+                    if comp_main_col in df_qty.columns and total_qty_col:
+                        if sel_contractor != 'All Contractors':
+                            scope_df = df_qty[df_qty[comp_main_col].astype(str).str.strip() == sel_contractor]
+                        else:
+                            scope_df = df_qty
+                        if elment_main_col and elment_main_col in scope_df.columns:
+                            total_scope = scope_df.groupby(elment_main_col)[total_qty_col].max().sum()
+                        else:
+                            total_scope = scope_df[total_qty_col].max()
+                    
+                    create_card(c1, "🏗️ Total Project Scope (m³)",
+                                f"{total_scope:,.1f}" if total_scope > 0 else "N/A",
+                                delta_html="<span style='color:#00d2ff;font-size:11px'>From Company + Total Quantity</span>")
+                    
+                    # Card 2 — Executed Qty from Company Name + Executed Quantity
+                    company_exec = 0
+                    if comp_main_col in df_qty.columns and exec_qty_m3_col:
+                        if sel_contractor != 'All Contractors':
+                            ce_df = df_qty[df_qty[comp_main_col].astype(str).str.strip() == sel_contractor]
+                        else:
+                            ce_df = df_qty
+                        company_exec = ce_df[exec_qty_m3_col].sum()
+                    
+                    create_card(c2, "✅ Executed Qty — Company (m³)",
+                                f"{company_exec:,.1f}",
+                                delta_html="<span style='color:#2ecc71;font-size:11px'>From Company Name + Executed Qty</span>")
+                    
+                    # Card 3 — Executed Qty from Contractor + Executed Quantity (m³) SUM
+                    contractor_exec = 0
+                    if comp_name2_col and exec_qty_m3_col:
+                        if sel_contractor != 'All Contractors':
+                            ct_df = df_qty[df_qty[comp_name2_col].astype(str).str.strip() == sel_contractor]
+                        else:
+                            ct_df = df_qty
+                        contractor_exec = ct_df[exec_qty_m3_col].sum()
+                    
+                    create_card(c3, " Executed Qty — Contractor (m³)",
+                                f"{contractor_exec:,.1f}",
+                                delta_html="<span style='color:#ffaa00;font-size:11px'>From Contractor + Executed Qty (m³)</span>")
+                    
+                    # Card 4 — Scope Completion %
+                    completion_pct = (contractor_exec / total_scope * 100) if total_scope > 0 else 0
+                    completion_color = "#2ecc71" if completion_pct >= 80 else ("#f1c40f" if completion_pct >= 50 else "#e74c3c")
+                    create_card(c4, "📈 Scope Completion %",
+                                f"{completion_pct:.1f}%",
+                                delta_html=f"<span style='color:{completion_color};font-size:11px'>{'On Track ✅' if completion_pct>=80 else 'Needs Attention ⚠️'}</span>",
+                                progress=min(100, completion_pct))
+                    
+                    # ══════════════════════════════════════════════════════
+                    # 4. CARD: Executed Qty per Element (Element All + Contractor + Exec Qty)
+                    # ══════════════════════════════════════════════════════
+                    if elem_all_col and comp_name2_col and exec_qty_m3_col:
+                        st.markdown("#### 🔍 Executed Quantity per Element")
+                        elem_group = df_qty.groupby([comp_name2_col, elem_all_col])[exec_qty_m3_col].sum().reset_index()
+                        elem_group.columns = ['Contractor', 'Element (All)', 'Executed (m³)']
+                        elem_group = elem_group[elem_group['Executed (m³)'] > 0].sort_values('Executed (m³)', ascending=False)
+                        
+                        if not elem_group.empty:
+                            # KPI cards for top elements
+                            top_elems = elem_group.head(4)
+                            elem_cols = st.columns(min(len(top_elems), 4))
+                            for i, (_, row) in enumerate(top_elems.iterrows()):
+                                create_card(elem_cols[i],
+                                            f"📍 {row['Element (All)']}",
+                                            f"{row['Executed (m³)']:,.1f} m³",
+                                            delta_html=f"<span style='color:#8da3b9;font-size:10px'>{row['Contractor']}</span>")
+                            
+                            # Full table
+                            with st.expander(" View All Elements Breakdown"):
+                                st.dataframe(elem_group, use_container_width=True)
+                    
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    
+                    # ═════════════════════════════════════════════════════
+                    # 5. CHART: Target Daily Rate vs Executed Qty per Contractor
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🚀 Daily Execution vs Target Rate — Per Contractor")
+                    if date_daily_col and target_rate_col and exec_qty_m3_col and comp_name2_col:
+                        df_daily = df_qty.copy()
+                        df_daily[date_daily_col] = pd.to_datetime(df_daily[date_daily_col], errors='coerce')
+                        df_daily = df_daily.dropna(subset=[date_daily_col])
+                        
+                        daily_agg = df_daily.groupby([date_daily_col, comp_name2_col]).agg(
+                            Executed=(exec_qty_m3_col, 'sum'),
+                            Target=(target_rate_col, 'max')
+                        ).reset_index()
+                        daily_agg.columns = ['Date', 'Contractor', 'Executed (m³)', 'Target Rate']
+                        daily_agg['Status'] = daily_agg.apply(
+                            lambda r: '✅ Met' if r['Executed (m³)'] >= r['Target Rate'] and r['Target Rate'] > 0
+                                      else ('⚠️ Below Target' if r['Target Rate'] > 0 else '➖ No Target'),
+                            axis=1
+                        )
+                        
+                        if not daily_agg.empty:
+                            ch1, ch2 = st.columns([0.65, 0.35])
+                            with ch1:
+                                fig_daily = go.Figure()
+                                fig_daily.add_trace(go.Scatter(
+                                    x=daily_agg['Date'], y=daily_agg['Target Rate'],
+                                    name='Target Daily Rate', mode='lines+markers',
+                                    line=dict(color='#e74c3c', width=3, shape='spline'),
+                                    marker=dict(size=7, color='white', line=dict(color='#e74c3c', width=2)),
+                                    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Target: %{y:,.1f}'
+                                ))
+                                for ctractor in daily_agg['Contractor'].unique():
+                                    ct_df = daily_agg[daily_agg['Contractor'] == ctractor]
+                                    fig_daily.add_trace(go.Bar(
+                                        x=ct_df['Date'], y=ct_df['Executed (m³)'],
+                                        name=ctractor, opacity=0.8,
+                                        hovertemplate=f'<b>{ctractor}</b><br>Date: %{{x|%Y-%m-%d}}<br>Executed: %{{y:,.1f}}'
+                                    ))
+                                fig_daily.update_layout(
+                                    height=400, barmode='group', hovermode='x unified',
+                                    margin=dict(l=0, r=0, t=30, b=0),
+                                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                                )
+                                try: fig_daily = style_3d_glassy(fig_daily, "combo")
+                                except: pass
+                                st.plotly_chart(fig_daily, use_container_width=True, key="qty_daily_chart")
+                            
+                            with ch2:
+                                # Performance summary per contractor
+                                st.markdown("**Performance Summary**")
+                                perf_summary = daily_agg.groupby('Contractor').apply(
+                                    lambda x: pd.Series({
+                                        'Days Worked': len(x),
+                                        'Days Met Target': (x['Executed (m³)'] >= x['Target Rate']).sum(),
+                                        'Total Executed (m³)': x['Executed (m³)'].sum(),
+                                        'Avg vs Target (%)': (
+                                            (x['Executed (m³)'] / x['Target Rate'].replace(0, float('nan'))).mean() * 100
+                                        ) if x['Target Rate'].sum() > 0 else 0
+                                    })
+                                ).reset_index()
+                                perf_summary['Hit Rate %'] = (perf_summary['Days Met Target'] / perf_summary['Days Worked'] * 100).round(1)
+                                perf_summary['Avg vs Target (%)'] = perf_summary['Avg vs Target (%)'].round(1)
+                                st.dataframe(
+                                    perf_summary[['Contractor', 'Days Worked', 'Days Met Target', 'Hit Rate %', 'Total Executed (m³)']],
+                                    use_container_width=True
+                                )
+                        else:
+                            st.info("Missing: Date (Daily), Target Daily Rate, Executed Quantity, or Contractor columns.")
+                    
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    
+                    # ══════════════════════════════════════════════════════
+                    # 6. KPI SUMMARY — All metrics with color-coded status
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🎯 KPI Summary Dashboard")
+                    kpi_data = []
+                    if comp_name2_col and exec_qty_m3_col and target_rate_col:
+                        for ctractor in df_qty[comp_name2_col].dropna().unique():
+                            ct = df_qty[df_qty[comp_name2_col].astype(str).str.strip() == str(ctractor).strip()]
+                            exec_sum  = ct[exec_qty_m3_col].sum()
+                            tgt_sum   = ct[target_rate_col].sum()
+                            hit_rate  = len(ct[ct[exec_qty_m3_col] >= ct[target_rate_col]]) / len(ct) * 100 if len(ct) > 0 else 0
+                            scope_val = 0
+                            if total_qty_col:
+                                if elment_main_col and elment_main_col in ct.columns:
+                                    scope_val = ct.groupby(elment_main_col)[total_qty_col].max().sum()
                                 else:
-                                    rem_qty = tot_qty - exe_qty
-                                    rem_days = rem_qty / daily_rate
-                                    pred_date = max_date + timedelta(days=rem_days)
-                                    pred_date_str = pred_date.strftime('%B %Y')
+                                    scope_val = ct[total_qty_col].max()
+                            completion = (exec_sum / scope_val * 100) if scope_val > 0 else 0
+                            kpi_data.append({
+                                'Contractor': ctractor,
+                                'Total Scope (m³)': round(scope_val, 1),
+                                'Executed (m³)': round(exec_sum, 1),
+                                'Completion %': round(completion, 1),
+                                'Target Hit Rate %': round(hit_rate, 1),
+                                'Status': ' Good' if hit_rate >= 70 else ('🟡 Fair' if hit_rate >= 40 else '🔴 Poor')
+                            })
                     
-                    rej_rate = 0
-                    top_fail_str = "None"
-                    if 'sample status' in compaction_df.columns and not compaction_df.empty:
-                        rej_df = compaction_df[compaction_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
-                        rej_rate = (len(rej_df) / len(compaction_df)) * 100
-                        if not rej_df.empty:
-                            if test_col in rej_df.columns:
-                                top_fail_str = rej_df[test_col].value_counts().idxmax()
-                    
-                    insight_c1, insight_c2, insight_c3 = st.columns(3)
-                    
-                    with insight_c1:
-                        st.markdown(f"""
-                        <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 8px; height: 100%;">
-                            <h4 style="color: #00d2ff; margin-top: 0; font-size: 16px;">📊 Performance vs Target</h4>
-                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                • <b>Completion:</b> {prog_pct:.1f}% of total target.<br>
-                                • <b>Daily Velocity:</b> ~{int(daily_rate):,} units/day.<br>
-                                • <b>Status:</b> {"On Track" if prog_pct > 50 else "Requires Acceleration"}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    if kpi_data:
+                        kpi_df = pd.DataFrame(kpi_data).sort_values('Completion %', ascending=False)
+                        st.dataframe(kpi_df, use_container_width=True)
                         
-                    with insight_c2:
-                        qual_color = "#e74c3c" if rej_rate > 15 else "#2ecc71"
-                        st.markdown(f"""
-                        <div style="background: rgba(231, 76, 60, 0.05); border-left: 4px solid {qual_color}; padding: 20px; border-radius: 8px; height: 100%;">
-                            <h4 style="color: {qual_color}; margin-top: 0; font-size: 16px;">⚠️ Quality Issues</h4>
-                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                • <b>Rejection Rate:</b> {rej_rate:.1f}% in compaction.<br>
-                                • <b>Most Failed Test:</b> {top_fail_str}.<br>
-                                • <b>Action:</b> {"Urgent audit needed for equipment." if rej_rate > 15 else "Quality is within acceptable limits."}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # KPI bar chart
+                        fig_kpi = px.bar(kpi_df, x='Contractor', y=['Completion %', 'Target Hit Rate %'],
+                                         barmode='group', color_discrete_sequence=['#00d2ff', '#ffaa00'],
+                                         title="Completion % vs Target Hit Rate % per Contractor",
+                                         text_auto=True)
+                        try: fig_kpi = style_3d_glassy(fig_kpi, "bar")
+                        except: pass
+                        st.plotly_chart(fig_kpi, use_container_width=True, key="kpi_summary_chart")
+                    
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    
+                    # ══════════════════════════════════════════════════════
+                    # 7. ELEMENT COVERAGE AUDIT
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🕵️ Element Coverage Audit — Missing Quantities Detector")
+                    st.caption("Cross-checks Element (All) vs ELMENT column to find elements missing quantities.")
+                    
+                    if elem_all_col and comp_name2_col and comp_main_col in df.columns and elment_main_col:
+                        # Elements the contractor should cover (from Element All + Contractor)
+                        expected = df_qty[[comp_name2_col, elem_all_col]].dropna()
+                        expected = expected[expected[elem_all_col].astype(str).str.strip() != '']
+                        expected_set = set(zip(
+                            expected[comp_name2_col].astype(str).str.strip(),
+                            expected[elem_all_col].astype(str).str.strip()
+                        ))
                         
-                    with insight_c3:
-                        st.markdown(f"""
-                        <div style="background: rgba(241, 196, 15, 0.05); border-left: 4px solid #f1c40f; padding: 20px; border-radius: 8px; height: 100%;">
-                            <h4 style="color: #f1c40f; margin-top: 0; font-size: 16px;">🔮 Predictive Completion</h4>
-                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                • <b>Forecasted Finish:</b> <b style="color:#ffaa00; font-size:16px;">{pred_date_str}</b><br>
-                                • <b>Algorithm:</b> Based on historical velocity of {int(daily_rate):,} avg volume per active day.<br>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
+                        # Elements that actually received quantities (from Company Name + ELMENT)
+                        received = df_qty[[comp_main_col, elment_main_col, exec_qty_m3_col]].dropna(subset=[elment_main_col]) if exec_qty_m3_col else df_qty[[comp_main_col, elment_main_col]].dropna()
+                        received_qty = received.groupby([comp_main_col, elment_main_col])[exec_qty_m3_col].sum().reset_index() if exec_qty_m3_col else pd.DataFrame()
+                        
+                        # Find missing
+                        missing_elements = []
+                        covered_elements = []
+                        for contractor, element in expected_set:
+                            # Match contractor in Company Name col
+                            match = received_qty[
+                                (received_qty[comp_main_col].astype(str).str.strip() == contractor) &
+                                (received_qty[elment_main_col].astype(str).str.strip() == element)
+                            ] if not received_qty.empty else pd.DataFrame()
+                            
+                            if match.empty or (exec_qty_m3_col and match[exec_qty_m3_col].sum() == 0):
+                                missing_elements.append({'Contractor': contractor, 'Element': element, 'Status': '❌ No Quantity'})
+                            else:
+                                qty = match[exec_qty_m3_col].sum() if exec_qty_m3_col else 0
+                                covered_elements.append({'Contractor': contractor, 'Element': element, 'Executed (m³)': round(qty, 1), 'Status': '✅ Has Quantity'})
+                        
+                        col_miss, col_cov = st.columns(2)
+                        
+                        with col_miss:
+                            if missing_elements:
+                                miss_df = pd.DataFrame(missing_elements).sort_values(['Contractor', 'Element'])
+                                st.markdown(f"""
+                                <div style="background:rgba(231,76,60,0.1);border-left:4px solid #e74c3c;padding:15px;border-radius:8px;margin-bottom:10px;">
+                                    <b style="color:#e74c3c;">🚨 {len(missing_elements)} Element(s) Missing Quantities</b><br>
+                                    <span style="font-size:12px;color:#d1d5da;">Request quantities from the Technical Office for these elements:</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                st.dataframe(miss_df, use_container_width=True)
+                            else:
+                                st.success("✅ All elements have quantities assigned!")
+                        
+                        with col_cov:
+                            if covered_elements:
+                                cov_df = pd.DataFrame(covered_elements).sort_values('Executed (m³)', ascending=False)
+                                st.markdown(f"""
+                                <div style="background:rgba(46,204,113,0.1);border-left:4px solid #2ecc71;padding:15px;border-radius:8px;margin-bottom:10px;">
+                                    <b style="color:#2ecc71;">✅ {len(covered_elements)} Element(s) Covered</b><br>
+                                    <span style="font-size:12px;color:#d1d5da;">These elements have quantities from the Technical Office.</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                st.dataframe(cov_df, use_container_width=True)
+                    else:
+                        st.info("Requires columns: Element (All), Contractor, Company Name, and ELMENT.")
+                    
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    
+                    # ══════════════════════════════════════════════════════
+                    # 8. WORST PERFORMER per Sector
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🏆 Worst Performer Analysis — By Sector")
+                    st.caption("Identifies the contractor with the lowest execution rate vs daily target per sector.")
+                    
+                    if comp_name2_col and target_rate_col and exec_qty_m3_col and sector_col:
+                        worst_data = []
+                        for sector_name in df[sector_col].dropna().unique():
+                            sec_df = df[df[sector_col].astype(str) == str(sector_name)].copy()
+                            sec_df = sec_df[sec_df[target_rate_col] > 0]
+                            
+                            if sec_df.empty:
+                                continue
+                            
+                            # Performance ratio per day per contractor
+                            sec_df['performance_ratio'] = sec_df[exec_qty_m3_col] / sec_df[target_rate_col].replace(0, float('nan'))
+                            
+                            perf = sec_df.groupby(comp_name2_col).agg(
+                                Avg_Performance=('performance_ratio', 'mean'),
+                                Total_Executed=(exec_qty_m3_col, 'sum'),
+                                Days_Below=(exec_qty_m3_col, lambda x: (x < sec_df.loc[x.index, target_rate_col]).sum())
+                            ).reset_index()
+                            perf.columns = ['Contractor', 'Avg Performance Ratio', 'Total Executed (m³)', 'Days Below Target']
+                            perf['Avg Performance %'] = (perf['Avg Performance Ratio'] * 100).round(1)
+                            perf = perf.sort_values('Avg Performance %')
+                            
+                            if not perf.empty:
+                                worst = perf.iloc[0]
+                                worst_data.append({
+                                    'Sector': sector_name,
+                                    'Worst Contractor': worst['Contractor'],
+                                    'Avg Performance %': worst['Avg Performance %'],
+                                    'Total Executed (m³)': round(worst['Total Executed (m³)'], 1),
+                                    'Days Below Target': int(worst['Days Below Target'])
+                                })
+                                
+                                # Sector leaderboard
+                                st.markdown(f"**{sector_name}**")
+                                worst_col, best_col = st.columns(2)
+                                
+                                worst_contractor = perf.iloc[0]
+                                best_contractor  = perf.iloc[-1]
+                                
+                                worst_col.markdown(f"""
+                                <div style="background:rgba(231,76,60,0.1);border-left:5px solid #e74c3c;border-radius:12px;padding:16px;margin-bottom:12px;">
+                                    <div style="color:#e74c3c;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:6px;"> Worst Performer</div>
+                                    <div style="color:#ffffff;font-size:20px;font-weight:700;">{worst_contractor['Contractor']}</div>
+                                    <div style="color:#8da3b9;font-size:13px;margin-top:6px;">
+                                        Avg: <b style="color:#e74c3c">{worst_contractor['Avg Performance %']:.1f}%</b> of target<br>
+                                        Days below target: <b style="color:#e74c3c">{int(worst_contractor['Days Below Target'])}</b>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                best_col.markdown(f"""
+                                <div style="background:rgba(46,204,113,0.1);border-left:5px solid #2ecc71;border-radius:12px;padding:16px;margin-bottom:12px;">
+                                    <div style="color:#2ecc71;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:6px;">🟢 Best Performer</div>
+                                    <div style="color:#ffffff;font-size:20px;font-weight:700;">{best_contractor['Contractor']}</div>
+                                    <div style="color:#8da3b9;font-size:13px;margin-top:6px;">
+                                        Avg: <b style="color:#2ecc71">{best_contractor['Avg Performance %']:.1f}%</b> of target<br>
+                                        Days below target: <b style="color:#2ecc71">{int(best_contractor['Days Below Target'])}</b>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Full sector ranking chart
+                                fig_worst = px.bar(
+                                    perf.sort_values('Avg Performance %'),
+                                    x='Contractor', y='Avg Performance %',
+                                    color='Avg Performance %',
+                                    color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'],
+                                    range_color=[0, 150],
+                                    title=f"{sector_name} — Contractor Performance vs Target (%)",
+                                    text_auto=True
+                                )
+                                fig_worst.add_hline(y=100, line_dash="dash", line_color="#ffaa00",
+                                                    annotation_text="100% Target", annotation_position="top right")
+                                try: fig_worst = style_3d_glassy(fig_worst, "bar")
+                                except: pass
+                                st.plotly_chart(fig_worst, use_container_width=True, key=f"worst_{sector_name}")
+                    
+                    elif comp_name2_col and target_rate_col and exec_qty_m3_col:
+                        # No sector column — show overall worst
+                        st.info("No 'Sector' column detected. Showing overall worst performer.")
+                        df_w = df.copy()
+                        df_w = df_w[df_w[target_rate_col] > 0]
+                        df_w['perf_ratio'] = df_w[exec_qty_m3_col] / df_w[target_rate_col].replace(0, float('nan'))
+                        overall_perf = df_w.groupby(comp_name2_col)['perf_ratio'].mean().reset_index()
+                        overall_perf.columns = ['Contractor', 'Avg Performance %']
+                        overall_perf['Avg Performance %'] = (overall_perf['Avg Performance %'] * 100).round(1)
+                        overall_perf = overall_perf.sort_values('Avg Performance %')
+                        if not overall_perf.empty:
+                            worst_overall = overall_perf.iloc[0]
+                            st.error(f"🔴 Overall Worst Performer: **{worst_overall['Contractor']}** — {worst_overall['Avg Performance %']:.1f}% of target")
+                            st.dataframe(overall_perf, use_container_width=True)
+                    else:
+                        st.info("Requires: Contractor, Target Daily Rate, Executed Quantity (m³), and Sector columns.")
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
         bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
         zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
@@ -2756,25 +2803,22 @@ def render_dashboard():
                         selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
                         if selected_zone:
                             bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
-                            st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
-                    else:
-                        bh_df = bh_df_raw
-                        st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
-                    
+                            st.markdown(f"####  Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
+                        else:
+                            bh_df = bh_df_raw
+                            st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
                     if bh_df is not None:
                         if 'layer' in bh_df.columns:
                             bh_df['Layer_Num'] = bh_df['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
                             bh_df = bh_df.sort_values(['Layer_Num', 'Date ( test)'])
-                        
-                        bh_total_submittals = len(bh_df) 
+                        bh_total_submittals = len(bh_df)
                         num_tests_col_bh = next((c for c in bh_df.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
-                        bh_total_tests = int(pd.to_numeric(bh_df[num_tests_col_bh], errors='coerce').fillna(0).sum()) if num_tests_col_bh else bh_total_submittals 
+                        bh_total_tests = int(pd.to_numeric(bh_df[num_tests_col_bh], errors='coerce').fillna(0).sum()) if num_tests_col_bh else bh_total_submittals
                         bh_accepted = len(bh_df[bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bh_df.columns else 0
                         bh_pass_rate = (bh_accepted / bh_total_submittals * 100) if bh_total_submittals > 0 else 0
                         bh_avg_dpl = pd.to_numeric(bh_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in bh_df.columns else 0
                         start_date = bh_df['Date ( test)'].min().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].min()) else "N/A"
                         end_date = bh_df['Date ( test)'].max().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].max()) else "N/A"
-                        
                         c1, c2, c3, c4 = st.columns(4)
                         create_card(c1, "Total Submittals", bh_total_submittals)
                         create_card(c2, "Total Tests", bh_total_tests)
@@ -2785,7 +2829,7 @@ def render_dashboard():
                         create_card(c6, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
                         create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
                         create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
-
+                        
                         if 'Company Name' in bh_df.columns:
                             if 'Date ( test)' in bh_df.columns:
                                 comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
@@ -2795,12 +2839,12 @@ def render_dashboard():
                                 companies_worked = bh_df['Company Name'].dropna().unique()
                                 companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
                             st.markdown(f"""
-                                <div class="custom-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
-                                    <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element</div>
-                                    <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500; color:{ui['text_main']};">{companies_str}</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
+                            <div class="custom-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
+                                <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element</div>
+                                <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500; color:{ui['text_main']};">{companies_str}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
                         if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
                             rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
                             accepted_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
@@ -2809,19 +2853,19 @@ def render_dashboard():
                             if unresolved_alerts:
                                 st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
                                 alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
-                                for idx, alert in enumerate(unresolved_alerts[:8]): 
+                                for idx, alert in enumerate(unresolved_alerts[:8]):
                                     l, t_type, ser = alert
                                     alert_cols[idx % 4].markdown(f"""
-                                        <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
-                                            <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
-                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                                <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
-                                                <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
-                                            </div>
+                                    <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
+                                        <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
+                                        <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                            <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
+                                            <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
                                         </div>
-                                        """, unsafe_allow_html=True)
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                        
                         st.divider()
-
                         if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
                             st.markdown("#### 🧠 AI Engineering Sequence Inspector (Compaction Only)")
                             seq_df = bh_df.dropna(subset=['Date ( test)']).copy()
@@ -2863,7 +2907,7 @@ def render_dashboard():
                                         </div>
                                         """, unsafe_allow_html=True)
                                     if logic_errors:
-                                        errors_html = "<br>".join([f"🚨 {err}" for err in logic_errors])
+                                        errors_html = "<br>".join([f" {err}" for err in logic_errors])
                                         st.markdown(f"""
                                         <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                                             <h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5>
@@ -2872,8 +2916,8 @@ def render_dashboard():
                                         """, unsafe_allow_html=True)
                             else:
                                 st.info("No compaction tests (SANDCONE or DPL) found to evaluate sequence.")
+                        
                         st.divider()
-
                         if 'Sampling Location' in bh_df.columns:
                             st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
                             boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
@@ -2888,8 +2932,8 @@ def render_dashboard():
                                     st.plotly_chart(fig_sc, use_container_width=True, key=f"sc_{selected_bh}")
                             else:
                                 st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
+                        
                         st.divider()
-
                         if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
                             layer_col = bh_df['layer'] if 'layer' in bh_df.columns else pd.Series([''] * len(bh_df), index=bh_df.index)
                             samp_loc = bh_df['Sampling Location'] if 'Sampling Location' in bh_df.columns else pd.Series(['General Location'] * len(bh_df), index=bh_df.index)
@@ -2899,8 +2943,8 @@ def render_dashboard():
                             fig_matrix.update_traces(textinfo="label+value")
                             fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
                             st.plotly_chart(fig_matrix, use_container_width=True, key=f"mat_{selected_bh}")
+                        
                         st.divider()
-
                         b_col1, b_col2 = st.columns(2)
                         with b_col1:
                             if 'sample status' in bh_df.columns:
@@ -2917,7 +2961,7 @@ def render_dashboard():
                                 fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
                                 fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
                                 st.plotly_chart(fig_eb, use_container_width=True, key=f"eb_{selected_bh}")
-
+                        
                         if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
                             trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
                             if not trend_df.empty:
@@ -2929,17 +2973,15 @@ def render_dashboard():
                             st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
         else:
             st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
-
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         with st.expander("📂 View Complete Operational Records (Raw Data)"):
             st.dataframe(filtered_df, use_container_width=True)
-
-        # Back to Home Button
+        
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
             st.session_state["current_page"] = "home"
             st.rerun()
-
     else:
         st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
 
@@ -2947,17 +2989,14 @@ def render_dashboard():
 # 14. Main Application Execution
 # ==========================================
 def main():
-    inject_custom_css()  
+    inject_custom_css()
     init_auth_system()
-    
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
-
     if not st.session_state["authenticated"]:
         render_login_screen()
     else:
         current_page = st.session_state.get("current_page", "home")
-        
         if current_page == "home":
             render_home_page()
         elif current_page == "dashboard":
@@ -2966,11 +3005,10 @@ def main():
             if "analytics_df" not in st.session_state:
                 st.markdown("### 📥 Welcome to Advanced Analytics Hub")
                 st.info("You can upload your dataset directly here to begin analysis.")
-                hub_init_upload = st.file_uploader("Upload Dataset (CSV) 📂", type=["csv"], key="hub_init_uploader")
+                hub_init_upload = st.file_uploader("Upload Dataset (CSV) ", type=["csv"], key="hub_init_uploader")
                 if hub_init_upload is not None:
                     st.session_state["analytics_df"] = pd.read_csv(hub_init_upload)
                     st.rerun()
-            
             if "analytics_df" in st.session_state:
                 render_analytics_hub(st.session_state["analytics_df"])
             else:
