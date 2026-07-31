@@ -1651,6 +1651,71 @@ def render_dashboard():
         create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog)
         d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
         create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
+        # ==========================================
+        # 🧪 Detailed Test Counts by Type (KPI Cards)
+        # ==========================================
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        st.markdown("### 🧪 Detailed Test Counts by Type")
+        
+        dpl_count = 0
+        plate_count = 0
+        soil_count = 0
+        
+        if 'Test Type' in filtered_df.columns:
+            if num_tests_col:
+                dpl_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)][num_tests_col], errors='coerce').sum()
+                plate_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('PLATE', na=False)][num_tests_col], errors='coerce').sum()
+                soil_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|SAND|CONE|PROCTOR', na=False)][num_tests_col], errors='coerce').sum()
+            else:
+                dpl_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)])
+                plate_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('PLATE', na=False)])
+                soil_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|SAND|CONE|PROCTOR', na=False)])
+
+        tc1, tc2, tc3 = st.columns(3)
+        tc1.markdown(f'<div style="background-color:#0e1117; border:1px solid #1f2937; border-left:4px solid #f59e0b; padding:15px; border-radius:8px; text-align:center;"><div style="color:#9ca3af; font-size:14px; font-weight:bold; text-transform:uppercase;">DPL</div><div style="color:#ffffff; font-size:28px; font-weight:bold;">{int(dpl_count):,}</div></div>', unsafe_allow_html=True)
+        tc2.markdown(f'<div style="background-color:#0e1117; border:1px solid #1f2937; border-left:4px solid #f59e0b; padding:15px; border-radius:8px; text-align:center;"><div style="color:#9ca3af; font-size:14px; font-weight:bold; text-transform:uppercase;">PLATE LOAD</div><div style="color:#ffffff; font-size:28px; font-weight:bold;">{int(plate_count):,}</div></div>', unsafe_allow_html=True)
+        tc3.markdown(f'<div style="background-color:#0e1117; border:1px solid #1f2937; border-left:4px solid #f59e0b; padding:15px; border-radius:8px; text-align:center;"><div style="color:#9ca3af; font-size:14px; font-weight:bold; text-transform:uppercase;">SOIL</div><div style="color:#ffffff; font-size:28px; font-weight:bold;">{int(soil_count):,}</div></div>', unsafe_allow_html=True)
+
+        # ==========================================
+        # 🏢 Overall Office Workload Analysis
+        # ==========================================
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🏢 Overall Office Workload Analysis</div>', unsafe_allow_html=True)
+        if 'Done BY' in filtered_df.columns and 'Test Type' in filtered_df.columns:
+            if num_tests_col:
+                office_work_df = filtered_df.groupby(['Done BY', 'Test Type'])[num_tests_col].sum().reset_index()
+                office_work_df.rename(columns={num_tests_col: 'Number of Tests'}, inplace=True)
+            else:
+                office_work_df = filtered_df.groupby(['Done BY', 'Test Type']).size().reset_index(name='Number of Tests')
+                
+            fig_office = px.bar(office_work_df, x='Done BY', y='Number of Tests', color='Test Type', barmode='group', title="Test Distribution per Office (Done BY)", color_discrete_sequence=NEON_COLORS, text_auto=True)
+            try:
+                fig_office = style_3d_glassy(fig_office, chart_type="bar")
+            except: pass
+            st.plotly_chart(fig_office, use_container_width=True, key="overall_office_work_chart")
+        else:
+            st.info("Requires 'Done BY' and 'Test Type' columns for Office Workload Analysis.")
+
+        # ==========================================
+        # 🪨 Overall Soil Classifications
+        # ==========================================
+        st.markdown('<div class="bi-title">🪨 Overall Soil Classifications</div>', unsafe_allow_html=True)
+        if 'Classification' in filtered_df.columns:
+            if num_tests_col:
+                class_work_df = filtered_df.groupby('Classification')[num_tests_col].sum().reset_index()
+                class_work_df.rename(columns={num_tests_col: 'Number of Tests'}, inplace=True)
+            else:
+                class_work_df = filtered_df.groupby('Classification').size().reset_index(name='Number of Tests')
+                
+            class_work_df = class_work_df.sort_values('Number of Tests', ascending=False)
+            fig_class_ov = px.pie(class_work_df, names='Classification', values='Number of Tests', title="Distribution of Soil Classifications (Overall)", hole=0.4, color_discrete_sequence=NEON_COLORS)
+            fig_class_ov.update_traces(textinfo='label+percent', hovertemplate='<b>Classification:</b> %{label}<br>Tests: %{value}<br>Percentage: %{percent}')
+            try:
+                fig_class_ov = style_3d_glassy(fig_class_ov, chart_type="pie")
+            except: pass
+            st.plotly_chart(fig_class_ov, use_container_width=True, key="overall_classification_chart")
+        else:
+            st.info("Requires 'Classification' column for Overall Soil Classifications Analysis.")
 
         st.markdown('<div class="bi-title" style="margin-top: 20px;">⚖️ 360° Accountability Board (Eye in the Sky)</div>', unsafe_allow_html=True)
         acc_c1, acc_c2 = st.columns(2)
