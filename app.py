@@ -3515,13 +3515,21 @@ def render_dashboard():
                     )
 
                     if contractor_col and comp_name_col and test_type_col and num_tests_col:
-                        df_tests = df.copy()
+                        # 1. بناخد نسخة من الداتا المتفلترة والمتنضفة
+                        df_tests = df_sel.copy()
+                        
+                        # 2. خطوة أمان إضافية: تنظيف عمود عدد الاختبارات من الفواصل عشان الجمع ميطلعش صفر
+                        if df_tests[num_tests_col].dtype == 'object':
+                            df_tests[num_tests_col] = df_tests[num_tests_col].astype(str).str.replace(',', '', regex=False)
+                        df_tests[num_tests_col] = pd.to_numeric(df_tests[num_tests_col], errors='coerce').fillna(0)
 
+                        # 3. فلترة أنواع الاختبارات
                         mask_dpl  = df_tests[test_type_col].astype(str).str.upper().str.contains('DPL')
                         mask_pl   = df_tests[test_type_col].astype(str).str.upper().str.contains('PLATE')
                         df_dpl    = df_tests[mask_dpl]
                         df_pl     = df_tests[mask_pl]
 
+                        # 4. عمل قاموس البحث (XLOOKUP) من الداتا الخام
                         companies_for_lookup = (
                             df[[contractor_col, comp_name_col]]
                             .dropna()
