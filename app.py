@@ -3296,26 +3296,39 @@ def render_dashboard():
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
                     # ══════════════════════════════════════════════════════
-                    # 5. KPI SUMMARY
+                    # 5. KPI SUMMARY (XLOOKUP / VLOOKUP Logic)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🎯 KPI Summary")
 
                     if contractor_col and exec_qty_m3_col and target_col:
                         kpi_rows = []
+                        
                         for ct in df[contractor_col].dropna().astype(str).str.strip().unique():
                             if ct.lower() in ['nan', 'none', '']: continue
+                            
+                            # 1. الداتا اليومية للمقاول (لحساب المنفذ والتارجت)
                             ct_df = df[df[contractor_col].astype(str).str.strip() == ct]
 
+                            # 2. XLOOKUP / VLOOKUP Logic
+                            # بياخد اسم المقاول (ct) ويبحث عنه في عمود (Company)
                             scope = 0
-                            if company_col and total_qty_col and company_col in ct_df.columns:
-                                c_df = ct_df[ct_df[company_col].astype(str).str.strip() == ct]
-                                if elem_all_col and elem_all_col in c_df.columns:
-                                    scope = c_df.groupby(elem_all_col)[total_qty_col].max().sum()
-                                else:
-                                    scope = c_df[total_qty_col].sum()
+                            if company_col and total_qty_col and company_col in df.columns:
+                                # الفلترة دي بتعادل XLOOKUP بالظبط
+                                matched_company_df = df[df[company_col].astype(str).str.strip() == ct]
+                                
+                                if not matched_company_df.empty:
+                                    # لو المقاول ده شغال في كذا Element، بناخد الكمية بتاعت كل عنصر ونجمعهم
+                                    if elem_all_col and elem_all_col in matched_company_df.columns:
+                                        scope = matched_company_df.groupby(elem_all_col)[total_qty_col].max().sum()
+                                    else:
+                                        # لو مفيش Elements، بتشتغل كـ VLOOKUP عادي بتجيب أعلى/أول قيمة
+                                        scope = matched_company_df[total_qty_col].max()
 
+                            # 3. حساب نسبة الإنجاز (العمود الأزرق)
                             exec_sum   = ct_df[exec_qty_m3_col].sum()
                             compl      = round((exec_sum / scope * 100), 1) if scope > 0 else 0
+                            
+                            # 4. حساب أداء التارجت (العمود البرتقالي)
                             valid      = ct_df[ct_df[target_col] > 0]
                             days_w     = len(valid)
                             days_met   = int((valid[exec_qty_m3_col] >= valid[target_col]).sum()) if days_w else 0
@@ -3348,8 +3361,6 @@ def render_dashboard():
                             try: fig_kpi = style_3d_glassy(fig_kpi, "bar")
                             except: pass
                             st.plotly_chart(fig_kpi, use_container_width=True, key="qty_kpi_chart")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
                     # ══════════════════════════════════════════════════════
                     # 6. WORST CONTRACTOR ANALYSIS
