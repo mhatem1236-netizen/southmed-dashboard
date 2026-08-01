@@ -3506,41 +3506,41 @@ def render_dashboard():
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
                     # ══════════════════════════════════════════════════════
-                    # 7. DPL & PLATE LOAD TESTS (XLOOKUP Fix & Avg DPL)
+                    # 7. DPL & PLATE LOAD TESTS (True XLOOKUP & Avg DPL)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🧪 DPL & PLATE LOAD Tests per Contractor")
                     st.caption("Matches Contractor name directly with Company Name to aggregate tests and calculate Average DPL.")
 
                     if contractor_col and comp_name_col and test_type_col and num_tests_col:
-                        # 1. القراءة من الداتا المتنضفة
-                        df_tests = df_sel.copy()
+                        # ⚠️ السر هنا: بنقرأ من الداتا الأصلية (df) مش المتفلترة عشان منخسرش الصفوف اللي عمود المقاول فيها فاضي
+                        df_tests = df.copy()
                         
-                        # 2. تنظيف الفواصل من عدد الاختبارات
+                        # تنظيف الفواصل من عدد الاختبارات
                         if df_tests[num_tests_col].dtype == 'object':
                             df_tests[num_tests_col] = df_tests[num_tests_col].astype(str).str.replace(',', '', regex=False)
                         df_tests[num_tests_col] = pd.to_numeric(df_tests[num_tests_col], errors='coerce').fillna(0)
                         
-                        # تنظيف عمود المتوسط لو موجود عشان الحسابات
+                        # تنظيف عمود المتوسط لو موجود
                         if 'AVERAGE VALUE' in df_tests.columns:
                             df_tests['AVERAGE VALUE'] = pd.to_numeric(df_tests['AVERAGE VALUE'], errors='coerce')
 
-                        # 3. فصل الداتا لـ DPL و Plate Load
                         mask_dpl  = df_tests[test_type_col].astype(str).str.upper().str.contains('DPL')
                         mask_pl   = df_tests[test_type_col].astype(str).str.upper().str.contains('PLATE')
                         df_dpl    = df_tests[mask_dpl]
                         df_pl     = df_tests[mask_pl]
 
+                        # لو إنت مختار مقاول معين من الفلتر اللي فوق، هنعرضه هو بس، لو لأ هنعرض الكل
+                        if sel_contractor != 'All Contractors':
+                            contractors_to_show = [sel_contractor]
+                        else:
+                            contractors_to_show = df[contractor_col].dropna().astype(str).str.strip().unique()
+
                         test_rows = []
                         
-                        # 4. البحث المباشر (Direct XLOOKUP Logic)
-                        # بنجيب كل أسماء المقاولين من الداتا الأساسية
-                        unique_contractors = df_sel[contractor_col].dropna().astype(str).str.strip().unique()
-                        
-                        for ct in unique_contractors:
+                        for ct in contractors_to_show:
                             if ct.lower() in ['nan', 'none', '']: continue
                             
-                            # بندور على اسم المقاول ده في عمود (Company Name) أو (Contractor) بالظبط
-                            # ده بيمنع أي تداخل أو قراءة شركة مكان شركة
+                            # الـ XLOOKUP الفعلي: بندور في الداتا الكاملة على أي صف فيه اسم الشركة في عمود Contractor أو Company Name
                             ct_dpl = df_dpl[(df_dpl[comp_name_col].astype(str).str.strip().str.lower() == ct.lower()) | 
                                             (df_dpl[contractor_col].astype(str).str.strip().str.lower() == ct.lower())]
                                             
@@ -3550,7 +3550,6 @@ def render_dashboard():
                             dpl_total = ct_dpl[num_tests_col].sum()
                             pl_total  = ct_pl[num_tests_col].sum()
                             
-                            # حساب متوسط الـ DPL للشركة دي بس
                             avg_dpl = ct_dpl['AVERAGE VALUE'].mean() if 'AVERAGE VALUE' in ct_dpl.columns else np.nan
 
                             if dpl_total > 0 or pl_total > 0:
@@ -3565,13 +3564,10 @@ def render_dashboard():
                         if test_rows:
                             test_df = pd.DataFrame(test_rows).sort_values('Total Tests', ascending=False)
                             
-                            # 5. رسم الكروت وإضافة المتوسط
                             top4_t = test_df.head(4)
                             t_cols = st.columns(min(len(top4_t), 4))
                             for i, (_, row) in enumerate(top4_t.iterrows()):
-                                # إضافة سطر المتوسط لو الرقم موجود
                                 avg_text = f" | Avg DPL: <b style='color:#2ecc71;'>{row['Avg DPL']}</b>" if row['Avg DPL'] > 0 else ""
-                                
                                 create_card(
                                     t_cols[i],
                                     f"🧪 {row['Contractor']}",
@@ -3582,7 +3578,6 @@ def render_dashboard():
                                     )
                                 )
 
-                            # 6. رسم الشارت
                             fig_tests = px.bar(
                                 test_df,
                                 x='Contractor',
@@ -3594,20 +3589,14 @@ def render_dashboard():
                             )
                             try: fig_tests = style_3d_glassy(fig_tests, "bar")
                             except: pass
-                            st.plotly_chart(fig_tests, use_container_width=True, key="dpl_pl_chart")
+                            st.plotly_chart(fig_tests, use_container_width=True, key="dpl_pl_chart_fix")
 
                             with st.expander("📋 Full Table"):
                                 st.dataframe(test_df, use_container_width=True)
                         else:
-                            st.info("No DPL or PLATE LOAD data in the current filter.")
+                            st.info("No DPL or PLATE LOAD data found for this contractor.")
                     else:
-                        missing_t = []
-                        if not contractor_col:  missing_t.append("Contractor")
-                        if not comp_name_col:   missing_t.append("Company Name")
-                        if not test_type_col:   missing_t.append("Test Type")
-                        if not num_tests_col:   missing_t.append("Number of Tests")
-                        st.warning(f"⚠️ Missing columns: {', '.join(missing_t)}")
-
+                        st.warning("⚠️ Missing columns for tests analysis.")
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
         bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
         zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
