@@ -2889,207 +2889,737 @@ def render_dashboard():
 
                 st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
+# ==========================================
+# tab_quantities — FINAL VERSION
+# ضيف الكود ده جوه: with tab_quantities:
+# ==========================================
+
                 with tab_quantities:
-                    st.markdown(f"### 📊 Quantities Rate & Execution Analytics: `{selected_comp}`")
-                    st.caption("Custom-built per exact functional column mapping requirements.")
+                    st.markdown("### 📊 Quantities Rate & Execution Analytics")
 
-                    # --- Column Declarations (Strictly as Requested) ---
-                    col_company = 'Company'
-                    col_company_name = 'Company Name'
-                    col_contractor = 'Contractor'
-                    col_tot_qty = 'Total Quantity'
-                    col_exec_qty = 'Executed Quantity'
-                    col_exec_m3 = 'Executed Quantity (m3)'
-                    col_elem_all = 'Element (all)'
-                    col_element_actual = 'ELEMENT' if 'ELEMENT' in df.columns else ('ELMENT' if 'ELMENT' in df.columns else None)
-                    col_target = 'Target Daily Rate'
-                    col_date_daily = 'Date (Daily)'
-                    col_sector = 'Sector' if 'Sector' in df.columns else ('Sectoer' if 'Sectoer' in df.columns else None)
-                    col_num_tests = 'Number of Tests'
-                    col_test_type = 'Test Type'
+                    # ══════════════════════════════════════════════════════
+                    # COLUMN DETECTION — بالأسماء الحرفية من اللوج
+                    # ══════════════════════════════════════════════════════
+                    # عمود Company (مختلف عن Company Name)
+                    company_col     = next((c for c in df.columns if c.strip() == 'Company'), None)
+                    # عمود Company Name
+                    comp_name_col   = next((c for c in df.columns if c.strip() == 'Company Name'), None)
+                    # عمود Contractor
+                    contractor_col  = next((c for c in df.columns if c.strip() == 'Contractor'), None)
+                    # عمود Total Quantity
+                    total_qty_col   = next((c for c in df.columns if c.strip() == 'Total Quantity'), None)
+                    if not total_qty_col:
+                        total_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in c.upper()), None)
+                    # عمود Executed Quantity (من Company — بدون m3)
+                    exec_qty_col    = next((c for c in df.columns if c.strip() == 'Executed Quantity'), None)
+                    # عمود Executed Quantity (m3) — من Contractor
+                    exec_qty_m3_col = next((c for c in df.columns if c.strip() == 'Executed Quantity (m3)'), None)
+                    if not exec_qty_m3_col:
+                        exec_qty_m3_col = next((c for c in df.columns
+                                                if 'EXECUTED' in c.upper() and 'M3' in c.upper().replace('³','3').replace('(','').replace(')','').replace(' ','')), None)
+                    # عمود Element (all)
+                    elem_all_col    = next((c for c in df.columns if c.strip() in ['Element (all)', 'Element (All)', 'Element(all)']), None)
+                    if not elem_all_col:
+                        elem_all_col = next((c for c in df.columns if 'ELEMENT' in c.upper() and 'ALL' in c.upper()), None)
+                    # عمود ELMENT (من Company Name)
+                    elment_col      = next((c for c in df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT']), None)
+                    if not elment_col:
+                        elment_col  = next((c for c in df.columns if 'ELMEN' in c.upper() and 'ALL' not in c.upper()), None)
+                    # عمود Target Daily Rate
+                    target_col      = next((c for c in df.columns if 'TARGET DAILY RATE' in c.upper()), None)
+                    # عمود Date (Daily)
+                    date_daily_col  = next((c for c in df.columns if 'DATE' in c.upper() and 'DAILY' in c.upper()), None)
+                    if not date_daily_col:
+                        date_daily_col = next((c for c in df.columns if c.strip() == 'Date (Daily)'), None)
+                    # عمود Sector
+                    sector_col      = next((c for c in df.columns if c.strip() == 'Sectoer' or 'SECTOR' in c.upper()), None)
+                    # عمود Test Type
+                    test_type_col   = next((c for c in df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+                    # عمود Number of Tests
+                    num_tests_col   = next((c for c in df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
 
-                    temp_df = df.copy()
-                    
-                    # ---------------------------------------------------------
-                    # 1 & 2: Total Quantity & Executed Quantity (Using 'Company')
-                    # ---------------------------------------------------------
-                    df_company = pd.DataFrame()
-                    if col_company in temp_df.columns:
-                        df_company = temp_df[temp_df[col_company].astype(str).str.strip().str.lower() == selected_comp.lower()]
-                    
-                    tot_qty_val = pd.to_numeric(df_company[col_tot_qty], errors='coerce').max() if (col_tot_qty in df_company.columns and not df_company.empty) else 0
-                    exec_qty_val = pd.to_numeric(df_company[col_exec_qty], errors='coerce').max() if (col_exec_qty in df_company.columns and not df_company.empty) else 0
+                    # Debug expander
+                    with st.expander("🔍 Column Detection", expanded=False):
+                        st.json({
+                            "Company":              company_col,
+                            "Company Name":         comp_name_col,
+                            "Contractor":           contractor_col,
+                            "Total Quantity":       total_qty_col,
+                            "Executed Quantity":    exec_qty_col,
+                            "Executed Qty (m3)":    exec_qty_m3_col,
+                            "Element (all)":        elem_all_col,
+                            "ELMENT":               elment_col,
+                            "Target Daily Rate":    target_col,
+                            "Date (Daily)":         date_daily_col,
+                            "Sector":               sector_col,
+                            "Test Type":            test_type_col,
+                            "Number of Tests":      num_tests_col,
+                        })
 
-                    # ---------------------------------------------------------
-                    # 3: Daily Executed Quantity (Using 'Contractor')
-                    # ---------------------------------------------------------
-                    df_contractor = pd.DataFrame()
-                    if col_contractor in temp_df.columns:
-                        df_contractor = temp_df[temp_df[col_contractor].astype(str).str.strip().str.lower() == selected_comp.lower()]
+                    # Numeric conversion
+                    for col in [total_qty_col, exec_qty_col, exec_qty_m3_col, target_col]:
+                        if col and col in df.columns:
+                            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                    if num_tests_col and num_tests_col in df.columns:
+                        df[num_tests_col] = pd.to_numeric(df[num_tests_col], errors='coerce').fillna(0)
 
-                    daily_exec_m3_val = pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').sum() if (col_exec_m3 in df_contractor.columns and not df_contractor.empty) else 0
+                    # ── Contractor selector ────────────────────────────────
+                    contractors_all = ['All Contractors']
+                    if contractor_col and contractor_col in df.columns:
+                        contractors_all += sorted(
+                            df[contractor_col].dropna().astype(str).str.strip()
+                            .unique().tolist()
+                        )
+                    sel_contractor = st.selectbox(
+                        "🏢 Select Contractor:", contractors_all, key="qty_contractor_sel"
+                    )
 
-                    # ---------------------------------------------------------
-                    # 6 & 7: Missing Elements & KPIs Calculation
-                    # ---------------------------------------------------------
-                    exec_pct = (daily_exec_m3_val / tot_qty_val * 100) if tot_qty_val > 0 else 0
-                    rem_qty = max(0, tot_qty_val - daily_exec_m3_val) if tot_qty_val > 0 else 0
-                    
-                    planned_elems = set()
-                    executed_elems = set()
-                    missing_elems = set()
-                    if col_element_actual and col_company_name in temp_df.columns and col_elem_all in temp_df.columns and col_contractor in temp_df.columns:
-                        df_planned = temp_df[temp_df[col_company_name].astype(str).str.strip().str.lower() == selected_comp.lower()]
-                        planned_elems = set(df_planned[col_element_actual].dropna().astype(str).str.strip())
-                        executed_elems = set(df_contractor[pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').fillna(0) > 0][col_elem_all].dropna().astype(str).str.strip()) if col_exec_m3 in df_contractor.columns else set()
-                        missing_elems = planned_elems - executed_elems
+                    # Filtered df by contractor
+                    if sel_contractor != 'All Contractors' and contractor_col:
+                        df_sel = df[df[contractor_col].astype(str).str.strip() == sel_contractor].copy()
+                    else:
+                        df_sel = df.copy()
 
-                    st.markdown("#### 📦 Overall Quantity KPIs")
-                    k1, k2, k3, k4 = st.columns(4)
-                    create_card(k1, "Total Qty", f"{tot_qty_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Company'</span>")
-                    create_card(k2, "Executed Qty", f"{exec_qty_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Company'</span>")
-                    create_card(k3, "Daily Executed (m3)", f"{daily_exec_m3_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Contractor'</span>")
-                    create_card(k4, "Execution %", f"{exec_pct:.1f}%", progress=min(100, exec_pct))
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
+                    # ══════════════════════════════════════════════════════
+                    # 1. CARD: الكمية الإجمالية للشركة
+                    # LOOKUP: Company → Total Quantity
+                    # ══════════════════════════════════════════════════════
+                    # ══════════════════════════════════════════════════════
+                    # 2. CARD: الكمية المنفذة
+                    # LOOKUP: Company → Executed Quantity
+                    # ══════════════════════════════════════════════════════
+                    # ══════════════════════════════════════════════════════
+                    # 3. CARD: الكمية المنفذة الإجمالية عن طريق الكمية اليومية
+                    # SUMIF: Contractor + Executed Quantity (m3)
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 📦 الكروت الرئيسية")
+
+                    # حساب القيم
+                    # Card 1 — LOOKUP: Company → Total Quantity
+                    total_scope = 0
+                    if company_col and total_qty_col and company_col in df.columns:
+                        if sel_contractor != 'All Contractors':
+                            lookup_df = df[df[company_col].astype(str).str.strip() == sel_contractor]
+                        else:
+                            lookup_df = df
+                        # خد أعلى قيمة لكل element (التراكمية) ثم اجمعهم
+                        if elem_all_col and elem_all_col in lookup_df.columns:
+                            total_scope = lookup_df.groupby(elem_all_col)[total_qty_col].max().sum()
+                        else:
+                            total_scope = lookup_df[total_qty_col].sum()
+
+                    # Card 2 — LOOKUP: Company → Executed Quantity
+                    exec_from_company = 0
+                    if company_col and exec_qty_col and company_col in df.columns:
+                        if sel_contractor != 'All Contractors':
+                            lookup_df2 = df[df[company_col].astype(str).str.strip() == sel_contractor]
+                        else:
+                            lookup_df2 = df
+                        exec_from_company = lookup_df2[exec_qty_col].sum()
+
+                    # Card 3 — SUMIF: Contractor + Executed Quantity (m3)
+                    exec_daily_sum = 0
+                    if contractor_col and exec_qty_m3_col and contractor_col in df.columns:
+                        exec_daily_sum = df_sel[exec_qty_m3_col].sum()
+
+                    # Completion %
+                    completion_pct = (exec_daily_sum / total_scope * 100) if total_scope > 0 else 0
+                    comp_color = "#2ecc71" if completion_pct >= 80 else ("#f1c40f" if completion_pct >= 50 else "#e74c3c")
+
+                    # عرض الكروت
                     c1, c2, c3, c4 = st.columns(4)
-                    create_card(c1, "Remaining Quantity", f"{rem_qty:,.1f}")
-                    create_card(c2, "Planned Elements", len(planned_elems))
-                    create_card(c3, "Missing Elements", len(missing_elems))
-                    create_card(c4, "Completed Elements", len(executed_elems))
+
+                    create_card(
+                        c1, "🏗️ إجمالي كمية المشروع (m³)",
+                        f"{total_scope:,.1f}" if total_scope > 0 else "N/A",
+                        delta_html="<span style='color:#00d2ff;font-size:11px'>Company ← Total Quantity</span>"
+                    )
+                    create_card(
+                        c2, "📦 الكمية المنفذة (Company)",
+                        f"{exec_from_company:,.1f}",
+                        delta_html="<span style='color:#2ecc71;font-size:11px'>Company ← Executed Quantity</span>"
+                    )
+                    create_card(
+                        c3, "🚧 الكمية اليومية الإجمالية (m³)",
+                        f"{exec_daily_sum:,.1f}",
+                        delta_html="<span style='color:#ffaa00;font-size:11px'>SUMIF: Contractor ← Executed Qty (m3)</span>"
+                    )
+                    create_card(
+                        c4, "📈 نسبة الإنجاز %",
+                        f"{completion_pct:.1f}%",
+                        delta_html=f"<span style='color:{comp_color};font-size:11px'>{'✅ On Track' if completion_pct >= 80 else '⚠️ Needs Attention'}</span>",
+                        progress=min(100, completion_pct)
+                    )
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-                    # ---------------------------------------------------------
-                    # 4: Element Quantity Cards
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🏗️ Execution per Element")
-                    if col_elem_all in df_contractor.columns and col_exec_m3 in df_contractor.columns:
-                        df_contractor[col_exec_m3] = pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').fillna(0)
-                        elem_df = df_contractor.groupby(col_elem_all)[col_exec_m3].sum().reset_index()
-                        elem_df = elem_df[elem_df[col_exec_m3] > 0].sort_values(col_exec_m3, ascending=False)
-                        
-                        if not elem_df.empty:
-                            elem_cols = st.columns(min(len(elem_df), 4))
-                            for i, (_, r) in enumerate(elem_df.head(8).iterrows()):
-                                create_card(elem_cols[i % 4], f"Element: {r[col_elem_all]}", f"{r[col_exec_m3]:,.1f} m³", delta_html=f"<span style='font-size:10px;color:#8da3b9;'>{selected_comp}</span>")
-                            with st.expander("📋 View All Elements Breakdown"):
-                                st.dataframe(elem_df.rename(columns={col_elem_all: 'Element', col_exec_m3: 'Total Executed (m3)'}), use_container_width=True)
+                    # ══════════════════════════════════════════════════════
+                    # كروت كل Element — SUMIF على 3 أعمدة
+                    # Contractor + Element (all) + Executed Quantity (m3)
+                    # ══════════════════════════════════════════════════════
+                    if elem_all_col and contractor_col and exec_qty_m3_col:
+                        st.markdown("#### 🔍 الكمية المنفذة لكل Element")
+
+                        elem_sumif = (
+                            df_sel
+                            .groupby([contractor_col, elem_all_col])[exec_qty_m3_col]
+                            .sum()
+                            .reset_index()
+                        )
+                        elem_sumif.columns = ['Contractor', 'Element', 'Executed (m³)']
+                        elem_sumif = (
+                            elem_sumif[elem_sumif['Executed (m³)'] > 0]
+                            .sort_values('Executed (m³)', ascending=False)
+                        )
+
+                        if not elem_sumif.empty:
+                            # كروت للأعلى 4
+                            top4 = elem_sumif.head(4)
+                            e_cols = st.columns(min(len(top4), 4))
+                            for i, (_, row) in enumerate(top4.iterrows()):
+                                create_card(
+                                    e_cols[i],
+                                    f"📍 {row['Element']}",
+                                    f"{row['Executed (m³)']:,.1f} m³",
+                                    delta_html=f"<span style='color:#8da3b9;font-size:10px'>{row['Contractor']}</span>"
+                                )
+                            with st.expander("📋 كل العناصر"):
+                                st.dataframe(elem_sumif, use_container_width=True)
                         else:
-                            st.info("No elements execution data found for this contractor.")
+                            st.info("لا توجد بيانات للعناصر.")
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-                    # ---------------------------------------------------------
-                    # 5: Daily Performance Chart
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🚀 Daily Performance Chart")
-                    if col_date_daily in df_contractor.columns and col_target in df_contractor.columns and col_exec_m3 in df_contractor.columns:
-                        daily_df = df_contractor.copy()
-                        daily_df[col_date_daily] = pd.to_datetime(daily_df[col_date_daily], errors='coerce')
-                        daily_df = daily_df.dropna(subset=[col_date_daily])
-                        
-                        if not daily_df.empty:
-                            daily_df[col_target] = pd.to_numeric(daily_df[col_target], errors='coerce').fillna(0)
-                            daily_agg = daily_df.groupby(col_date_daily).agg({
-                                col_exec_m3: 'sum',
-                                col_target: 'max'
-                            }).reset_index().sort_values(col_date_daily)
-                            
-                            fig_daily = go.Figure()
-                            fig_daily.add_trace(go.Scatter(x=daily_agg[col_date_daily], y=daily_agg[col_target], name="Target Daily Rate", line=dict(color='#e74c3c', width=3, shape='spline')))
-                            fig_daily.add_trace(go.Bar(x=daily_agg[col_date_daily], y=daily_agg[col_exec_m3], name="Executed Quantity (m3)", marker_color='#00d2ff'))
-                            fig_daily.update_layout(barmode='group', hovermode='x unified', title="Actual vs Target Daily Execution")
-                            try: fig_daily = style_3d_glassy(fig_daily, "combo")
-                            except: pass
-                            st.plotly_chart(fig_daily, use_container_width=True)
-                    else:
-                        st.info("Required columns for Daily Performance Chart not found.")
+                    # ══════════════════════════════════════════════════════
+                    # 4. CHART: Target Daily Rate vs Executed Qty (m3)
+                    # Contractor + Date (Daily) + Target Daily Rate + Executed Qty (m3)
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🚀 المعدل اليومي المنفذ مقارنة بالمستهدف")
 
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    if date_daily_col and target_col and exec_qty_m3_col and contractor_col:
+                        df_chart = df_sel.copy()
+                        df_chart[date_daily_col] = pd.to_datetime(
+                            df_chart[date_daily_col], errors='coerce'
+                        )
+                        df_chart = df_chart.dropna(subset=[date_daily_col])
 
-                    # ---------------------------------------------------------
-                    # 6: Missing Elements Warning (Table)
-                    # ---------------------------------------------------------
-                    st.markdown("#### ⚠️ Missing Elements Warning")
-                    if missing_elems:
-                        st.error(f"🚨 ALERT: Found {len(missing_elems)} Planned Elements with NO execution records!")
-                        miss_df = pd.DataFrame({"Missing Planned Element": list(missing_elems)})
-                        st.dataframe(miss_df, use_container_width=True)
-                    else:
-                        if len(planned_elems) > 0:
-                            st.success("✅ All planned elements have been matched with execution records.")
+                        # تجميع يومي
+                        daily = (
+                            df_chart
+                            .groupby([date_daily_col, contractor_col])
+                            .agg(
+                                Executed=(exec_qty_m3_col, 'sum'),
+                                Target=(target_col, 'max')
+                            )
+                            .reset_index()
+                        )
+                        daily.columns = ['Date', 'Contractor', 'Executed (m³)', 'Target']
+
+                        if not daily.empty:
+                            ch_left, ch_right = st.columns([0.68, 0.32])
+                            with ch_left:
+                                fig_d = go.Figure()
+                                # خط الـ Target
+                                fig_d.add_trace(go.Scatter(
+                                    x=daily['Date'], y=daily['Target'],
+                                    name='Target Daily Rate',
+                                    mode='lines+markers',
+                                    line=dict(color='#e74c3c', width=3, shape='spline'),
+                                    marker=dict(size=6, color='white',
+                                                line=dict(color='#e74c3c', width=2)),
+                                    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Target: %{y:,.1f} m³'
+                                ))
+                                # بارات الـ Executed
+                                for idx, ct in enumerate(daily['Contractor'].unique()):
+                                    ct_data = daily[daily['Contractor'] == ct]
+                                    fig_d.add_trace(go.Bar(
+                                        x=ct_data['Date'],
+                                        y=ct_data['Executed (m³)'],
+                                        name=ct,
+                                        marker_color=NEON_COLORS[idx % len(NEON_COLORS)],
+                                        opacity=0.85,
+                                        hovertemplate=(
+                                            f'<b>{ct}</b><br>'
+                                            'Date: %{x|%Y-%m-%d}<br>'
+                                            'Executed: %{y:,.1f} m³'
+                                        )
+                                    ))
+                                fig_d.update_layout(
+                                    height=400, barmode='group',
+                                    hovermode='x unified',
+                                    margin=dict(l=0, r=0, t=30, b=0),
+                                    legend=dict(
+                                        orientation="h", yanchor="bottom",
+                                        y=1.02, xanchor="right", x=1
+                                    )
+                                )
+                                try: fig_d = style_3d_glassy(fig_d, "bar")
+                                except: pass
+                                st.plotly_chart(fig_d, use_container_width=True, key="qty_daily_chart")
+
+                            with ch_right:
+                                st.markdown("**ملخص الأداء**")
+                                perf_rows = []
+                                for ct in daily['Contractor'].unique():
+                                    ct_d = daily[daily['Contractor'] == ct]
+                                    days       = len(ct_d)
+                                    met        = int((ct_d['Executed (m³)'] >= ct_d['Target']).sum())
+                                    hit_rate   = round(met / days * 100, 1) if days else 0
+                                    total_exec = ct_d['Executed (m³)'].sum()
+                                    perf_rows.append({
+                                        'Contractor':        ct,
+                                        'Days Worked':       days,
+                                        'Days Met Target':   met,
+                                        'Hit Rate %':        hit_rate,
+                                        'Total (m³)':        round(total_exec, 1)
+                                    })
+                                perf_df = pd.DataFrame(perf_rows).sort_values(
+                                    'Hit Rate %', ascending=False
+                                )
+                                st.dataframe(perf_df, use_container_width=True)
                         else:
-                            st.info("No planned elements detected to compare.")
+                            st.info("لا توجد بيانات يومية.")
+                    else:
+                        missing = [c for c, v in {
+                            'Date (Daily)': date_daily_col,
+                            'Target Daily Rate': target_col,
+                            'Executed Qty (m3)': exec_qty_m3_col,
+                            'Contractor': contractor_col
+                        }.items() if not v]
+                        st.warning(f"⚠️ أعمدة ناقصة: {', '.join(missing)}")
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-                    # ---------------------------------------------------------
-                    # 8: Worst Contractor Analysis
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🏆 Sector Analysis (Worst Performer)")
-                    if col_sector and col_sector in df_contractor.columns and col_contractor in temp_df.columns and col_exec_m3 in temp_df.columns:
-                        sector_val = df_contractor[col_sector].dropna().iloc[0] if not df_contractor[col_sector].dropna().empty else None
-                        
-                        if sector_val:
-                            sec_df = temp_df[temp_df[col_sector].astype(str).str.strip() == str(sector_val).strip()].copy()
-                            if col_date_daily in sec_df.columns:
-                                sec_df[col_exec_m3] = pd.to_numeric(sec_df[col_exec_m3], errors='coerce').fillna(0)
-                                
-                                # Aggregate daily sum per contractor
-                                daily_sec_agg = sec_df.groupby([col_contractor, col_date_daily])[col_exec_m3].sum().reset_index()
-                                
-                                # Calculate Mean and StdDev per contractor
-                                worst_df = daily_sec_agg.groupby(col_contractor)[col_exec_m3].agg(['mean', 'std', 'count']).reset_index()
-                                
-                                # Add duration if available
-                                if 'DURATION' in sec_df.columns:
-                                    sec_df['DURATION'] = pd.to_numeric(sec_df['DURATION'], errors='coerce').fillna(0)
-                                    dur_agg = sec_df.groupby(col_contractor)['DURATION'].mean().reset_index()
-                                    worst_df = pd.merge(worst_df, dur_agg, on=col_contractor, how='left')
+                    # ══════════════════════════════════════════════════════
+                    # 5. ELEMENT COVERAGE AUDIT
+                    # قاموس بحث: Element (all) + Contractor  vs  ELMENT + Company Name
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🕵️ فاحص الكميات — العناصر الناقصة")
+                    st.caption(
+                        "يربط Element (all) + Contractor مع ELMENT + Company Name "
+                        "ويكشف أي عنصر لم تصله كمية."
+                    )
+
+                    if elem_all_col and elment_col and contractor_col and comp_name_col:
+
+                        # ── المتوقع: كل (Contractor, Element all) فريد ──
+                        expected = (
+                            df_sel[[contractor_col, elem_all_col]]
+                            .dropna()
+                            .drop_duplicates()
+                        )
+                        expected[contractor_col] = expected[contractor_col].astype(str).str.strip()
+                        expected[elem_all_col]   = expected[elem_all_col].astype(str).str.strip()
+                        expected = expected[
+                            (expected[contractor_col] != '') &
+                            (expected[elem_all_col]   != '') &
+                            (~expected[contractor_col].str.lower().isin(['nan','none'])) &
+                            (~expected[elem_all_col].str.lower().isin(['nan','none']))
+                        ]
+
+                        # ── الفعلي: SUMIF على Company Name + ELMENT ──
+                        ref_df = df.copy()
+                        if exec_qty_col and exec_qty_col in ref_df.columns:
+                            ref_df[exec_qty_col] = pd.to_numeric(
+                                ref_df[exec_qty_col], errors='coerce'
+                            ).fillna(0)
+                            ref_agg = (
+                                ref_df
+                                .groupby([comp_name_col, elment_col])[exec_qty_col]
+                                .sum()
+                                .reset_index()
+                            )
+                            ref_agg.columns = ['Company Name', 'ELMENT', 'Executed Qty']
+                        else:
+                            ref_agg = (
+                                ref_df
+                                .groupby([comp_name_col, elment_col])
+                                .size()
+                                .reset_index(name='Executed Qty')
+                            )
+                            ref_agg.columns = ['Company Name', 'ELMENT', 'Executed Qty']
+
+                        ref_agg['Company Name'] = ref_agg['Company Name'].astype(str).str.strip()
+                        ref_agg['ELMENT']        = ref_agg['ELMENT'].astype(str).str.strip()
+
+                        # ── المقارنة: قاموس البحث ──
+                        missing_elems  = []
+                        covered_elems  = []
+
+                        for _, row in expected.iterrows():
+                            ct_name  = row[contractor_col]
+                            el_name  = row[elem_all_col]
+
+                            match = ref_agg[
+                                (ref_agg['Company Name'] == ct_name) &
+                                (ref_agg['ELMENT']        == el_name)
+                            ]
+                            qty = match['Executed Qty'].sum() if not match.empty else 0
+
+                            if qty == 0:
+                                missing_elems.append({
+                                    'Contractor':   ct_name,
+                                    'Element (all)': el_name,
+                                    'Status':       '❌ لم تصله كمية'
+                                })
+                            else:
+                                covered_elems.append({
+                                    'Contractor':   ct_name,
+                                    'Element (all)': el_name,
+                                    'Executed Qty': round(qty, 1),
+                                    'Status':       '✅ له كمية'
+                                })
+
+                        col_m, col_c = st.columns(2)
+
+                        with col_m:
+                            if missing_elems:
+                                miss_df = pd.DataFrame(missing_elems).sort_values(
+                                    ['Contractor', 'Element (all)']
+                                )
+                                st.markdown(f"""
+                                <div style="background:rgba(231,76,60,0.1);
+                                            border-left:4px solid #e74c3c;
+                                            padding:14px;border-radius:8px;margin-bottom:10px;">
+                                    <b style="color:#e74c3c;">
+                                        🚨 {len(missing_elems)} عنصر ناقص الكمية
+                                    </b><br>
+                                    <span style="font-size:12px;color:#d1d5da;">
+                                        اطلب الكميات من المكتب الفني لهذه العناصر:
+                                    </span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                st.dataframe(miss_df, use_container_width=True)
+                            else:
+                                st.success("✅ جميع العناصر لديها كميات!")
+
+                        with col_c:
+                            if covered_elems:
+                                cov_df = pd.DataFrame(covered_elems).sort_values(
+                                    'Executed Qty', ascending=False
+                                )
+                                st.markdown(f"""
+                                <div style="background:rgba(46,204,113,0.1);
+                                            border-left:4px solid #2ecc71;
+                                            padding:14px;border-radius:8px;margin-bottom:10px;">
+                                    <b style="color:#2ecc71;">
+                                        ✅ {len(covered_elems)} عنصر له كمية
+                                    </b><br>
+                                    <span style="font-size:12px;color:#d1d5da;">
+                                        هذه العناصر وصلتها كميات من المكتب الفني.
+                                    </span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                st.dataframe(cov_df, use_container_width=True)
+                    else:
+                        missing_c = []
+                        if not elem_all_col:   missing_c.append("Element (all)")
+                        if not elment_col:     missing_c.append("ELMENT")
+                        if not contractor_col: missing_c.append("Contractor")
+                        if not comp_name_col:  missing_c.append("Company Name")
+                        st.warning(f"⚠️ أعمدة ناقصة للفاحص: {', '.join(missing_c)}")
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                    # ══════════════════════════════════════════════════════
+                    # 6. KPI SUMMARY — على كل الكروت
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🎯 KPI Summary")
+
+                    if contractor_col and exec_qty_m3_col and target_col:
+                        kpi_rows = []
+                        for ct in df[contractor_col].dropna().astype(str).str.strip().unique():
+                            if ct.lower() in ['nan', 'none', '']: continue
+                            ct_df = df[df[contractor_col].astype(str).str.strip() == ct]
+
+                            # Total Scope
+                            scope = 0
+                            if company_col and total_qty_col and company_col in ct_df.columns:
+                                c_df = ct_df[ct_df[company_col].astype(str).str.strip() == ct]
+                                if elem_all_col and elem_all_col in c_df.columns:
+                                    scope = c_df.groupby(elem_all_col)[total_qty_col].max().sum()
                                 else:
-                                    worst_df['DURATION'] = 0
-                                
-                                # Sort to find worst: Low Mean, High Duration
-                                worst_df = worst_df.sort_values(by=['mean', 'DURATION'], ascending=[True, False])
-                                worst_df = worst_df[worst_df['count'] > 0] # Ensure they actually worked
-                                
-                                if not worst_df.empty:
-                                    w_cont = worst_df.iloc[0]
-                                    st.markdown(f"""
-                                    <div style="background:rgba(231,76,60,0.1);border-left:5px solid #e74c3c;border-radius:12px;padding:16px;">
-                                        <div style="color:#e74c3c;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:6px;">🔴 Weakest Contractor in {sector_val}</div>
-                                        <div style="color:#ffffff;font-size:20px;font-weight:700;">{w_cont[col_contractor]}</div>
-                                        <div style="color:#8da3b9;font-size:13px;margin-top:6px;">
-                                            Avg Daily Qty: <b style="color:#e74c3c">{w_cont['mean']:.1f} m³</b><br>
-                                            Std Dev: <b style="color:#e74c3c">{w_cont['std']:.1f}</b><br>
-                                            Avg Duration: <b style="color:#e74c3c">{w_cont['DURATION']:.1f} Days</b>
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                                    
-                                    with st.expander(f"View Full {sector_val} Ranking"):
-                                        st.dataframe(worst_df.rename(columns={'mean': 'Avg Daily Qty', 'std': 'Std Dev', 'count': 'Active Days', 'DURATION': 'Avg Duration'}), use_container_width=True)
+                                    scope = c_df[total_qty_col].sum()
+
+                            exec_sum   = ct_df[exec_qty_m3_col].sum()
+                            compl      = round((exec_sum / scope * 100), 1) if scope > 0 else 0
+                            valid      = ct_df[ct_df[target_col] > 0]
+                            days_w     = len(valid)
+                            days_met   = int((valid[exec_qty_m3_col] >= valid[target_col]).sum()) if days_w else 0
+                            hit_rate   = round(days_met / days_w * 100, 1) if days_w else 0
+                            status     = '🟢 Good' if hit_rate >= 70 else ('🟡 Fair' if hit_rate >= 40 else '🔴 Poor')
+
+                            kpi_rows.append({
+                                'Contractor':        ct,
+                                'Total Scope (m³)':  round(scope, 1),
+                                'Executed (m³)':     round(exec_sum, 1),
+                                'Completion %':      compl,
+                                'Hit Rate %':        hit_rate,
+                                'Status':            status
+                            })
+
+                        if kpi_rows:
+                            kpi_df = pd.DataFrame(kpi_rows).sort_values(
+                                'Hit Rate %', ascending=False
+                            )
+                            st.dataframe(kpi_df, use_container_width=True)
+
+                            fig_kpi = px.bar(
+                                kpi_df, x='Contractor',
+                                y=['Completion %', 'Hit Rate %'],
+                                barmode='group',
+                                color_discrete_sequence=['#00d2ff', '#ffaa00'],
+                                title="Completion % vs Target Hit Rate % per Contractor",
+                                text_auto=True
+                            )
+                            try: fig_kpi = style_3d_glassy(fig_kpi, "bar")
+                            except: pass
+                            st.plotly_chart(fig_kpi, use_container_width=True, key="qty_kpi_chart")
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-                    # ---------------------------------------------------------
-                    # 9: DPL & PLATE LOAD Statistics
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🧪 Laboratory Tests Stats (DPL & PLATE LOAD)")
-                    df_comp_tests = pd.DataFrame()
-                    if col_company_name in temp_df.columns:
-                        df_comp_tests = temp_df[temp_df[col_company_name].astype(str).str.strip().str.lower() == selected_comp.lower()]
-                    
-                    if col_test_type in df_comp_tests.columns and col_num_tests in df_comp_tests.columns:
-                        dpl_pts = pd.to_numeric(df_comp_tests[df_comp_tests[col_test_type].astype(str).str.upper().str.contains('DPL', na=False)][col_num_tests], errors='coerce').sum()
-                        plate_pts = pd.to_numeric(df_comp_tests[df_comp_tests[col_test_type].astype(str).str.upper().str.contains('PLATE', na=False)][col_num_tests], errors='coerce').sum()
-                        
-                        t1, t2, t3 = st.columns(3)
-                        create_card(t1, "DPL Count", int(dpl_pts))
-                        create_card(t2, "PLATE LOAD Count", int(plate_pts))
-                        create_card(t3, "Total Critical Tests", int(dpl_pts + plate_pts))
+                    # ══════════════════════════════════════════════════════
+                    # 7. أسوء مقاول في كل Sector
+                    # المتوسط والانحراف المعياري للأداء اليومي
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🏆 أسوأ مقاول — بالقطاع")
+                    st.caption(
+                        "يحدد المقاول الأقل أداءً باستخدام المتوسط والانحراف المعياري "
+                        "للكمية اليومية مقارنة بالمستهدف."
+                    )
+
+                    if contractor_col and target_col and exec_qty_m3_col:
+                        df_w = df.copy()
+                        df_w[target_col]      = pd.to_numeric(df_w[target_col],      errors='coerce').fillna(0)
+                        df_w[exec_qty_m3_col] = pd.to_numeric(df_w[exec_qty_m3_col], errors='coerce').fillna(0)
+                        df_w = df_w[df_w[target_col] > 0].copy()
+                        df_w['perf_ratio'] = df_w[exec_qty_m3_col] / df_w[target_col]
+
+                        def sector_ranking(data):
+                            """يحسب المتوسط والانحراف المعياري لكل مقاول"""
+                            result = (
+                                data.groupby(contractor_col)['perf_ratio']
+                                .agg(
+                                    Avg_Perf='mean',
+                                    Std_Perf='std',
+                                    Days='count'
+                                )
+                                .reset_index()
+                            )
+                            result['Avg_Perf_%']  = (result['Avg_Perf'] * 100).round(1)
+                            result['Std_%']       = (result['Std_Perf'].fillna(0) * 100).round(1)
+                            result['Total (m³)']  = data.groupby(contractor_col)[exec_qty_m3_col].sum().values
+                            result['Days Below']  = data.groupby(contractor_col).apply(
+                                lambda x: int((x[exec_qty_m3_col] < x[target_col]).sum())
+                            ).values
+                            return result.sort_values('Avg_Perf_%')
+
+                        def show_sector_cards(perf, sector_name):
+                            if perf.empty: return
+                            worst = perf.iloc[0]
+                            best  = perf.iloc[-1]
+                            w_col, b_col = st.columns(2)
+                            w_col.markdown(f"""
+                            <div style="background:rgba(231,76,60,0.1);
+                                        border-left:5px solid #e74c3c;
+                                        border-radius:12px;padding:16px;margin-bottom:12px;">
+                                <div style="color:#e74c3c;font-size:11px;font-weight:600;
+                                            text-transform:uppercase;margin-bottom:6px;">
+                                    🔴 أسوأ مقاول — {sector_name}
+                                </div>
+                                <div style="color:#fff;font-size:18px;font-weight:700;">
+                                    {worst[contractor_col]}
+                                </div>
+                                <div style="color:#8da3b9;font-size:12px;margin-top:6px;">
+                                    متوسط الأداء:
+                                    <b style="color:#e74c3c">{worst['Avg_Perf_%']:.1f}%</b>
+                                    من الهدف<br>
+                                    انحراف معياري:
+                                    <b style="color:#ffaa00">±{worst['Std_%']:.1f}%</b><br>
+                                    أيام تحت الهدف:
+                                    <b style="color:#e74c3c">{int(worst['Days Below'])}</b>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            b_col.markdown(f"""
+                            <div style="background:rgba(46,204,113,0.1);
+                                        border-left:5px solid #2ecc71;
+                                        border-radius:12px;padding:16px;margin-bottom:12px;">
+                                <div style="color:#2ecc71;font-size:11px;font-weight:600;
+                                            text-transform:uppercase;margin-bottom:6px;">
+                                    🟢 أفضل مقاول — {sector_name}
+                                </div>
+                                <div style="color:#fff;font-size:18px;font-weight:700;">
+                                    {best[contractor_col]}
+                                </div>
+                                <div style="color:#8da3b9;font-size:12px;margin-top:6px;">
+                                    متوسط الأداء:
+                                    <b style="color:#2ecc71">{best['Avg_Perf_%']:.1f}%</b>
+                                    من الهدف<br>
+                                    انحراف معياري:
+                                    <b style="color:#ffaa00">±{best['Std_%']:.1f}%</b><br>
+                                    أيام تحت الهدف:
+                                    <b style="color:#2ecc71">{int(best['Days Below'])}</b>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            # شارت الـ Ranking
+                            fig_w = px.bar(
+                                perf.sort_values('Avg_Perf_%'),
+                                x=contractor_col, y='Avg_Perf_%',
+                                error_y='Std_%',
+                                color='Avg_Perf_%',
+                                color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'],
+                                range_color=[0, 150],
+                                title=f"{sector_name} — Contractor Performance vs Target",
+                                text_auto=True,
+                                hover_data=['Days', 'Days Below', 'Total (m³)']
+                            )
+                            fig_w.add_hline(
+                                y=100, line_dash="dash", line_color="#ffaa00",
+                                annotation_text="100% Target",
+                                annotation_position="top right"
+                            )
+                            try: fig_w = style_3d_glassy(fig_w, "bar")
+                            except: pass
+                            st.plotly_chart(
+                                fig_w, use_container_width=True,
+                                key=f"worst_{sector_name.replace(' ','_').replace('/','_')}"
+                            )
+
+                        if sector_col and sector_col in df_w.columns:
+                            for sec in sorted(df_w[sector_col].dropna().astype(str).unique()):
+                                sec_data = df_w[df_w[sector_col].astype(str) == sec]
+                                if sec_data.empty: continue
+                                st.markdown(f"**📍 {sec}**")
+                                perf = sector_ranking(sec_data)
+                                show_sector_cards(perf, sec)
+                                st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                        else:
+                            st.info("لا يوجد عمود Sector — عرض التصنيف الإجمالي.")
+                            perf_all = sector_ranking(df_w)
+                            show_sector_cards(perf_all, "Overall")
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                    # ══════════════════════════════════════════════════════
+                    # 8. نقاط DPL و PLATE LOAD لكل شركة
+                    # Contractor + Company Name + Test Type + Number of Tests
+                    # ══════════════════════════════════════════════════════
+                    st.markdown("#### 🧪 نقاط DPL و PLATE LOAD لكل شركة")
+                    st.caption(
+                        "XLOOKUP: Contractor → Company Name، "
+                        "ثم فلتر Test Type على DPL و PLATE LOAD، "
+                        "وجمع Number of Tests."
+                    )
+
+                    if contractor_col and comp_name_col and test_type_col and num_tests_col:
+                        df_tests = df.copy()
+                        df_tests[num_tests_col] = pd.to_numeric(
+                            df_tests[num_tests_col], errors='coerce'
+                        ).fillna(0)
+
+                        # فلتر على DPL و PLATE LOAD
+                        mask_dpl  = df_tests[test_type_col].astype(str).str.upper().str.contains('DPL')
+                        mask_pl   = df_tests[test_type_col].astype(str).str.upper().str.contains('PLATE')
+                        df_dpl    = df_tests[mask_dpl]
+                        df_pl     = df_tests[mask_pl]
+
+                        # XLOOKUP: بنشوف اسم الشركة في Contractor وقابله في Company Name
+                        companies_for_lookup = (
+                            df[[contractor_col, comp_name_col]]
+                            .dropna()
+                            .drop_duplicates(subset=[contractor_col])
+                            .set_index(contractor_col)[comp_name_col]
+                            .to_dict()
+                        )
+
+                        test_rows = []
+                        for ct in df[contractor_col].dropna().astype(str).str.strip().unique():
+                            if ct.lower() in ['nan', 'none', '']: continue
+
+                            # اسم الشركة من Company Name
+                            comp_name_val = companies_for_lookup.get(ct, ct)
+
+                            # DPL count — من Contractor
+                            dpl_from_ct  = df_dpl[
+                                df_dpl[contractor_col].astype(str).str.strip() == ct
+                            ][num_tests_col].sum()
+
+                            # DPL count — من Company Name
+                            dpl_from_cn  = df_dpl[
+                                df_dpl[comp_name_col].astype(str).str.strip() == ct
+                            ][num_tests_col].sum()
+
+                            dpl_total = dpl_from_ct + dpl_from_cn
+
+                            # PLATE LOAD — من Contractor
+                            pl_from_ct   = df_pl[
+                                df_pl[contractor_col].astype(str).str.strip() == ct
+                            ][num_tests_col].sum()
+
+                            # PLATE LOAD — من Company Name
+                            pl_from_cn   = df_pl[
+                                df_pl[comp_name_col].astype(str).str.strip() == ct
+                            ][num_tests_col].sum()
+
+                            pl_total = pl_from_ct + pl_from_cn
+
+                            if dpl_total > 0 or pl_total > 0:
+                                test_rows.append({
+                                    'Contractor':           ct,
+                                    'Company Name (ref)':   comp_name_val,
+                                    'DPL Tests':            int(dpl_total),
+                                    'Plate Load Tests':     int(pl_total),
+                                    'Total Tests':          int(dpl_total + pl_total)
+                                })
+
+                        if test_rows:
+                            test_df = pd.DataFrame(test_rows).sort_values(
+                                'Total Tests', ascending=False
+                            )
+                            # كروت للأعلى 4
+                            top4_t = test_df.head(4)
+                            t_cols = st.columns(min(len(top4_t), 4))
+                            for i, (_, row) in enumerate(top4_t.iterrows()):
+                                create_card(
+                                    t_cols[i],
+                                    f"🧪 {row['Contractor']}",
+                                    f"DPL: {row['DPL Tests']:,}",
+                                    delta_html=(
+                                        f"<span style='color:#00d2ff;font-size:11px'>"
+                                        f"Plate Load: {row['Plate Load Tests']:,}</span>"
+                                    )
+                                )
+
+                            # شارت مقارنة
+                            fig_tests = px.bar(
+                                test_df,
+                                x='Contractor',
+                                y=['DPL Tests', 'Plate Load Tests'],
+                                barmode='group',
+                                color_discrete_sequence=['#00d2ff', '#ffaa00'],
+                                title="DPL vs Plate Load Tests per Contractor",
+                                text_auto=True
+                            )
+                            try: fig_tests = style_3d_glassy(fig_tests, "bar")
+                            except: pass
+                            st.plotly_chart(fig_tests, use_container_width=True, key="dpl_pl_chart")
+
+                            with st.expander("📋 الجدول الكامل"):
+                                st.dataframe(test_df, use_container_width=True)
+                        else:
+                            st.info("لا توجد بيانات DPL أو PLATE LOAD في الفلتر الحالي.")
                     else:
-                        st.info("Requires 'Test Type' and 'Number of Tests' columns to calculate Lab Stats.")
+                        missing_t = []
+                        if not contractor_col:  missing_t.append("Contractor")
+                        if not comp_name_col:   missing_t.append("Company Name")
+                        if not test_type_col:   missing_t.append("Test Type")
+                        if not num_tests_col:   missing_t.append("Number of Tests")
+                        st.warning(f"⚠️ أعمدة ناقصة: {', '.join(missing_t)}")
 
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
         bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
