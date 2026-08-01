@@ -3506,86 +3506,83 @@ def render_dashboard():
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
                     # ══════════════════════════════════════════════════════
-                    # 7. DPL & PLATE LOAD TESTS
+                    # 7. DPL & PLATE LOAD TESTS (XLOOKUP Fix & Avg DPL)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🧪 DPL & PLATE LOAD Tests per Contractor")
-                    st.caption(
-                        "XLOOKUP: Contractor → Company Name, filters Test Type for DPL & PLATE LOAD, "
-                        "summing Number of Tests."
-                    )
+                    st.caption("Matches Contractor name directly with Company Name to aggregate tests and calculate Average DPL.")
 
                     if contractor_col and comp_name_col and test_type_col and num_tests_col:
-                        # 1. بناخد نسخة من الداتا المتفلترة والمتنضفة
+                        # 1. القراءة من الداتا المتنضفة
                         df_tests = df_sel.copy()
                         
-                        # 2. خطوة أمان إضافية: تنظيف عمود عدد الاختبارات من الفواصل عشان الجمع ميطلعش صفر
+                        # 2. تنظيف الفواصل من عدد الاختبارات
                         if df_tests[num_tests_col].dtype == 'object':
                             df_tests[num_tests_col] = df_tests[num_tests_col].astype(str).str.replace(',', '', regex=False)
                         df_tests[num_tests_col] = pd.to_numeric(df_tests[num_tests_col], errors='coerce').fillna(0)
+                        
+                        # تنظيف عمود المتوسط لو موجود عشان الحسابات
+                        if 'AVERAGE VALUE' in df_tests.columns:
+                            df_tests['AVERAGE VALUE'] = pd.to_numeric(df_tests['AVERAGE VALUE'], errors='coerce')
 
-                        # 3. فلترة أنواع الاختبارات
+                        # 3. فصل الداتا لـ DPL و Plate Load
                         mask_dpl  = df_tests[test_type_col].astype(str).str.upper().str.contains('DPL')
                         mask_pl   = df_tests[test_type_col].astype(str).str.upper().str.contains('PLATE')
                         df_dpl    = df_tests[mask_dpl]
                         df_pl     = df_tests[mask_pl]
 
-                        # 4. عمل قاموس البحث (XLOOKUP) من الداتا الخام
-                        companies_for_lookup = (
-                            df[[contractor_col, comp_name_col]]
-                            .dropna()
-                            .drop_duplicates(subset=[contractor_col])
-                            .set_index(contractor_col)[comp_name_col]
-                            .to_dict()
-                        )
-
                         test_rows = []
-                        for ct in df[contractor_col].dropna().astype(str).str.strip().unique():
+                        
+                        # 4. البحث المباشر (Direct XLOOKUP Logic)
+                        # بنجيب كل أسماء المقاولين من الداتا الأساسية
+                        unique_contractors = df_q[contractor_col].dropna().astype(str).str.strip().unique()
+                        
+                        for ct in unique_contractors:
                             if ct.lower() in ['nan', 'none', '']: continue
+                            
+                            # بندور على اسم المقاول ده في عمود (Company Name) أو (Contractor) بالظبط
+                            # ده بيمنع أي تداخل أو قراءة شركة مكان شركة
+                            ct_dpl = df_dpl[(df_dpl[comp_name_col].astype(str).str.strip().str.lower() == ct.lower()) | 
+                                            (df_dpl[contractor_col].astype(str).str.strip().str.lower() == ct.lower())]
+                                            
+                            ct_pl = df_pl[(df_pl[comp_name_col].astype(str).str.strip().str.lower() == ct.lower()) | 
+                                          (df_pl[contractor_col].astype(str).str.strip().str.lower() == ct.lower())]
 
-                            comp_name_val = companies_for_lookup.get(ct, ct)
-
-                            dpl_from_ct  = df_dpl[
-                                df_dpl[contractor_col].astype(str).str.strip() == ct
-                            ][num_tests_col].sum()
-                            dpl_from_cn  = df_dpl[
-                                df_dpl[comp_name_col].astype(str).str.strip() == ct
-                            ][num_tests_col].sum()
-                            dpl_total = dpl_from_ct + dpl_from_cn
-
-                            pl_from_ct   = df_pl[
-                                df_pl[contractor_col].astype(str).str.strip() == ct
-                            ][num_tests_col].sum()
-                            pl_from_cn   = df_pl[
-                                df_pl[comp_name_col].astype(str).str.strip() == ct
-                            ][num_tests_col].sum()
-                            pl_total = pl_from_ct + pl_from_cn
+                            dpl_total = ct_dpl[num_tests_col].sum()
+                            pl_total  = ct_pl[num_tests_col].sum()
+                            
+                            # حساب متوسط الـ DPL للشركة دي بس
+                            avg_dpl = ct_dpl['AVERAGE VALUE'].mean() if 'AVERAGE VALUE' in ct_dpl.columns else np.nan
 
                             if dpl_total > 0 or pl_total > 0:
                                 test_rows.append({
-                                    'Contractor':           ct,
-                                    'Company Name (ref)':   comp_name_val,
-                                    'DPL Tests':            int(dpl_total),
-                                    'Plate Load Tests':     int(pl_total),
-                                    'Total Tests':          int(dpl_total + pl_total)
+                                    'Contractor':       ct,
+                                    'DPL Tests':        int(dpl_total),
+                                    'Plate Load Tests': int(pl_total),
+                                    'Total Tests':      int(dpl_total + pl_total),
+                                    'Avg DPL':          round(avg_dpl, 2) if pd.notna(avg_dpl) else 0
                                 })
 
                         if test_rows:
-                            test_df = pd.DataFrame(test_rows).sort_values(
-                                'Total Tests', ascending=False
-                            )
+                            test_df = pd.DataFrame(test_rows).sort_values('Total Tests', ascending=False)
+                            
+                            # 5. رسم الكروت وإضافة المتوسط
                             top4_t = test_df.head(4)
                             t_cols = st.columns(min(len(top4_t), 4))
                             for i, (_, row) in enumerate(top4_t.iterrows()):
+                                # إضافة سطر المتوسط لو الرقم موجود
+                                avg_text = f" | Avg DPL: <b style='color:#2ecc71;'>{row['Avg DPL']}</b>" if row['Avg DPL'] > 0 else ""
+                                
                                 create_card(
                                     t_cols[i],
                                     f"🧪 {row['Contractor']}",
                                     f"DPL: {row['DPL Tests']:,}",
                                     delta_html=(
-                                        f"<span style='color:#00d2ff;font-size:11px'>"
-                                        f"Plate Load: {row['Plate Load Tests']:,}</span>"
+                                        f"<span style='color:#8da3b9;font-size:12px'>"
+                                        f"Plate Load: <b style='color:#00d2ff;'>{row['Plate Load Tests']:,}</b>{avg_text}</span>"
                                     )
                                 )
 
+                            # 6. رسم الشارت
                             fig_tests = px.bar(
                                 test_df,
                                 x='Contractor',
