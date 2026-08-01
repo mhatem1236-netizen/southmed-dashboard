@@ -3534,7 +3534,7 @@ def render_dashboard():
                         
                         # 4. البحث المباشر (Direct XLOOKUP Logic)
                         # بنجيب كل أسماء المقاولين من الداتا الأساسية
-                        unique_contractors = df_q[contractor_col].dropna().astype(str).str.strip().unique()
+                        unique_contractors = df_sel[contractor_col].dropna().astype(str).str.strip().unique()
                         
                         for ct in unique_contractors:
                             if ct.lower() in ['nan', 'none', '']: continue
