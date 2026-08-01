@@ -3505,34 +3505,36 @@ def render_dashboard():
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-                    # ══════════════════════════════════════════════════════
-                    # 7. DPL & PLATE LOAD TESTS (True XLOOKUP & Avg DPL)
+                   # ══════════════════════════════════════════════════════
+                    # 7. DPL & PLATE LOAD TESTS (Strict Lookup in Company Name)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🧪 DPL & PLATE LOAD Tests per Contractor")
-                    st.caption("Matches Contractor name directly with Company Name to aggregate tests and calculate Average DPL.")
+                    st.caption("Takes the Contractor name and strictly matches it against 'Company Name' to get accurate test counts and Avg DPL.")
 
                     if contractor_col and comp_name_col and test_type_col and num_tests_col:
-                        # ⚠️ السر هنا: بنقرأ من الداتا الأصلية (df) مش المتفلترة عشان منخسرش الصفوف اللي عمود المقاول فيها فاضي
+                        # 1. بنقرأ من الداتا الأصلية الكاملة عشان مفيش صفوف تضيع
                         df_tests = df.copy()
                         
-                        # تنظيف الفواصل من عدد الاختبارات
+                        # 2. تنظيف الفواصل من عدد الاختبارات عشان تتجمع صح
                         if df_tests[num_tests_col].dtype == 'object':
                             df_tests[num_tests_col] = df_tests[num_tests_col].astype(str).str.replace(',', '', regex=False)
                         df_tests[num_tests_col] = pd.to_numeric(df_tests[num_tests_col], errors='coerce').fillna(0)
                         
-                        # تنظيف عمود المتوسط لو موجود
+                        # 3. تنظيف عمود المتوسط 
                         if 'AVERAGE VALUE' in df_tests.columns:
                             df_tests['AVERAGE VALUE'] = pd.to_numeric(df_tests['AVERAGE VALUE'], errors='coerce')
 
+                        # 4. فلترة أنواع الاختبارات
                         mask_dpl  = df_tests[test_type_col].astype(str).str.upper().str.contains('DPL')
                         mask_pl   = df_tests[test_type_col].astype(str).str.upper().str.contains('PLATE')
                         df_dpl    = df_tests[mask_dpl]
                         df_pl     = df_tests[mask_pl]
 
-                        # لو إنت مختار مقاول معين من الفلتر اللي فوق، هنعرضه هو بس، لو لأ هنعرض الكل
+                        # 5. تحديد الأسماء اللي هنبحث بيها (بناءً على اختيارك من الفلتر)
                         if sel_contractor != 'All Contractors':
                             contractors_to_show = [sel_contractor]
                         else:
+                            # بناخد لستة الأسماء من عمود Contractor بس
                             contractors_to_show = df[contractor_col].dropna().astype(str).str.strip().unique()
 
                         test_rows = []
@@ -3540,16 +3542,14 @@ def render_dashboard():
                         for ct in contractors_to_show:
                             if ct.lower() in ['nan', 'none', '']: continue
                             
-                            # الـ XLOOKUP الفعلي: بندور في الداتا الكاملة على أي صف فيه اسم الشركة في عمود Contractor أو Company Name
-                            ct_dpl = df_dpl[(df_dpl[comp_name_col].astype(str).str.strip().str.lower() == ct.lower()) | 
-                                            (df_dpl[contractor_col].astype(str).str.strip().str.lower() == ct.lower())]
-                                            
-                            ct_pl = df_pl[(df_pl[comp_name_col].astype(str).str.strip().str.lower() == ct.lower()) | 
-                                          (df_pl[contractor_col].astype(str).str.strip().str.lower() == ct.lower())]
+                            # ⚠️ التعديل الجذري هنا: بنبحث بالاسم (ct) في عمود Company Name فقـــــط
+                            ct_dpl = df_dpl[df_dpl[comp_name_col].astype(str).str.strip().str.lower() == ct.lower()]
+                            ct_pl  = df_pl[df_pl[comp_name_col].astype(str).str.strip().str.lower() == ct.lower()]
 
                             dpl_total = ct_dpl[num_tests_col].sum()
                             pl_total  = ct_pl[num_tests_col].sum()
                             
+                            # حساب متوسط الـ DPL
                             avg_dpl = ct_dpl['AVERAGE VALUE'].mean() if 'AVERAGE VALUE' in ct_dpl.columns else np.nan
 
                             if dpl_total > 0 or pl_total > 0:
@@ -3564,6 +3564,7 @@ def render_dashboard():
                         if test_rows:
                             test_df = pd.DataFrame(test_rows).sort_values('Total Tests', ascending=False)
                             
+                            # رسم الكروت
                             top4_t = test_df.head(4)
                             t_cols = st.columns(min(len(top4_t), 4))
                             for i, (_, row) in enumerate(top4_t.iterrows()):
@@ -3578,6 +3579,7 @@ def render_dashboard():
                                     )
                                 )
 
+                            # رسم الشارت
                             fig_tests = px.bar(
                                 test_df,
                                 x='Contractor',
@@ -3589,7 +3591,7 @@ def render_dashboard():
                             )
                             try: fig_tests = style_3d_glassy(fig_tests, "bar")
                             except: pass
-                            st.plotly_chart(fig_tests, use_container_width=True, key="dpl_pl_chart_fix")
+                            st.plotly_chart(fig_tests, use_container_width=True, key="dpl_pl_chart_strict")
 
                             with st.expander("📋 Full Table"):
                                 st.dataframe(test_df, use_container_width=True)
