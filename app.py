@@ -2314,1022 +2314,819 @@ def render_dashboard():
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies, key="deepdive_comp_sel")
                 comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
                 
-                tab_360, tab_stockpile, tab_execution, tab_quantities = st.tabs([
-                        "🌐 360° Corporate Profile", 
-                        "⛰️ Stockpile Sourcing", 
-                        "🏗️ Executive Progress & Compaction",
-                        "📊 Quantities Rate"
-                    ])
-                    
+                tab_360, tab_stockpile, tab_execution = st.tabs([
+                    "🌐 360° Corporate Profile", 
+                    "⛰️ Stockpile Sourcing", 
+                    "🏗️ Executive Progress & Compaction"
+                ])
+                
                 with tab_360:
-                        st.markdown(f"### 🌐 Executive Profile: `{selected_comp}`")
+                    st.markdown(f"### 🌐 Executive Profile: `{selected_comp}`")
+                    
+                    battalion_col_360 = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
+                    zone_col_360 = next((c for c in comp_df_full.columns if 'ZONE' in c.upper()), None)
+                    elment_col_360 = next((c for c in comp_df_full.columns if 'ELMEN' in c.upper() or 'ELEMENT' in c.upper()), None)
+                    
+                    total_tests_360 = int(pd.to_numeric(comp_df_full[num_tests_col], errors='coerce').fillna(0).sum()) if num_tests_col else len(comp_df_full)
+                    battalions_count = comp_df_full[battalion_col_360].nunique() if battalion_col_360 else "N/A"
+                    zones_count = comp_df_full[zone_col_360].nunique() if zone_col_360 else "N/A"
+                    avg_dur_360 = pd.to_numeric(comp_df_full['DURATION'], errors='coerce').mean() if 'DURATION' in comp_df_full.columns else "N/A"
+                    
+                    c1, c2, c3, c4 = st.columns(4)
+                    create_card(c1, "Total Test Points", total_tests_360)
+                    create_card(c2, "Active Battalions", battalions_count)
+                    create_card(c3, "Active Zones", zones_count)
+                    create_card(c4, "Avg Delay (Days)", f"{avg_dur_360:.1f}" if pd.notna(avg_dur_360) else "N/A")
+                    
+                    if battalion_col_360 and zone_col_360:
+                        st.markdown("#### 🗺️ Spatial Footprint (Battalion ➔ Zone)")
+                        tree_df_360 = comp_df_full.copy()
+                        tree_df_360[battalion_col_360] = tree_df_360[battalion_col_360].fillna('Unknown Battalion').astype(str)
+                        tree_df_360[zone_col_360] = tree_df_360[zone_col_360].fillna('Unknown Zone').astype(str)
+                        tree_grouped = tree_df_360.groupby([battalion_col_360, zone_col_360]).size().reset_index(name='Submittals')
+                        fig_tree_360 = px.treemap(tree_grouped, path=[battalion_col_360, zone_col_360], values='Submittals', title=f"Workload Distribution for {selected_comp}", color='Submittals', color_continuous_scale='Blues')
+                        fig_tree_360 = style_3d_glassy(fig_tree_360, chart_type="treemap")
+                        st.plotly_chart(fig_tree_360, use_container_width=True, key=f"tree_360_{selected_comp}")
                         
-                        battalion_col_360 = next((c for c in comp_df_full.columns if 'BATTAL' in c.upper()), None)
-                        zone_col_360 = next((c for c in comp_df_full.columns if 'ZONE' in c.upper()), None)
-                        elment_col_360 = next((c for c in comp_df_full.columns if 'ELMEN' in c.upper() or 'ELEMENT' in c.upper()), None)
+                    col_q1, col_q2 = st.columns(2)
+                    with col_q1:
+                        if battalion_col_360 and 'sample status' in comp_df_full.columns:
+                            st.markdown("#### ⚖️ Quality by Battalion")
+                            comp_df_full['status_upper'] = comp_df_full['sample status'].str.upper()
+                            qual_df = comp_df_full.groupby([battalion_col_360, 'status_upper']).size().reset_index(name='Count')
+                            fig_qual = px.bar(qual_df, x=battalion_col_360, y='Count', color='status_upper', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map=STATUS_COLORS)
+                            fig_qual = style_3d_glassy(fig_qual, chart_type="bar")
+                            st.plotly_chart(fig_qual, use_container_width=True, key=f"qual_{selected_comp}")
+                            
+                    with col_q2:
+                        if elment_col_360:
+                            st.markdown("#### 🏗️ Workload by Element")
+                            el_df = comp_df_full.groupby(elment_col_360).size().reset_index(name='Count').sort_values('Count', ascending=False)
+                            fig_elment = px.bar(el_df.head(15), x=elment_col_360, y='Count', title="Top 15 Elements by Submittals", color=elment_col_360, color_discrete_sequence=NEON_COLORS)
+                            fig_elment = style_3d_glassy(fig_elment, chart_type="bar")
+                            st.plotly_chart(fig_elment, use_container_width=True, key=f"elment_{selected_comp}")
+                        else:
+                            st.info("No Element column found for workload breakdown.")
+                                
+                    col_d1, col_d2 = st.columns(2)
+                    with col_d1:
+                        if 'Done BY' in comp_df_full.columns:
+                            st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
+                            off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count').sort_values('Count', ascending=False)
+                            off_df['Percent'] = (off_df['Count'] / off_df['Count'].sum() * 100).round(1)
+                            fig_off = px.bar(off_df, x='Done BY', y='Count', text='Count', title="Submittal Volume per Review Office", color='Done BY', color_discrete_sequence=NEON_COLORS)
+                            fig_off.update_traces(customdata=off_df['Percent'], hovertemplate='<b>Office:</b> %{x}<br>Count: %{y}<br>Percentage: %{customdata}%')
+                            fig_off = style_3d_glassy(fig_off, chart_type="bar")
+                            st.plotly_chart(fig_off, use_container_width=True, key=f"off_{selected_comp}")
+                            
+                    with col_d2:
+                        if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
+                            st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
+                            st.caption("Shows rejections ONLY IF the same Layer/Element wasn't approved later.")
+                            rejected_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
+                            accepted_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                            comp_df_rf = comp_df_full.copy()
+                            comp_df_rf['Loc_ID'] = comp_df_rf[elment_col_360].astype(str) + "_" + comp_df_rf['layer'].astype(str)
+                            approved_locs = set(comp_df_rf[accepted_mask]['Loc_ID'].unique())
+                            red_flags = comp_df_rf[rejected_mask & (~comp_df_rf['Loc_ID'].isin(approved_locs))]
+                            if not red_flags.empty:
+                                display_cols = ['serial', 'sample status', elment_col_360, 'layer']
+                                if battalion_col_360: display_cols.append(battalion_col_360)
+                                if 'Test Type' in red_flags.columns: display_cols.append('Test Type')
+                                existing_cols = [c for c in display_cols if c in red_flags.columns]
+                                st.dataframe(red_flags[existing_cols].head(100), use_container_width=True)
+                                st.caption(f"Total unresolved layers: {len(red_flags)}")
+                            else:
+                                st.success("✅ All rejected layers have been successfully re-tested and approved!")
+                        else:
+                            st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
+
+                    if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
+                        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                        st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
                         
-                        total_tests_360 = int(pd.to_numeric(comp_df_full[num_tests_col], errors='coerce').fillna(0).sum()) if num_tests_col else len(comp_df_full)
-                        battalions_count = comp_df_full[battalion_col_360].nunique() if battalion_col_360 else "N/A"
-                        zones_count = comp_df_full[zone_col_360].nunique() if zone_col_360 else "N/A"
-                        avg_dur_360 = pd.to_numeric(comp_df_full['DURATION'], errors='coerce').mean() if 'DURATION' in comp_df_full.columns else "N/A"
+                        rework_df = comp_df_full.copy()
+                        rejected_items = rework_df[rework_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
+                        
+                        if not rejected_items.empty:
+                            ledger_data = []
+                            total_delay_days = 0
+                            el_col = elment_col_360 if elment_col_360 else None
+                            
+                            for _, rej_row in rejected_items.iterrows():
+                                serial = rej_row.get('serial', 'N/A')
+                                rej_date = rej_row['Date( SUB)']
+                                layer = str(rej_row.get('layer', 'Unknown'))
+                                test_type = str(rej_row.get('Test Type', 'Unknown'))
+                                
+                                filter_mask = (
+                                    (rework_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])) & 
+                                    (rework_df['Date( SUB)'] >= rej_date) &
+                                    (rework_df['layer'].astype(str) == layer) &
+                                    (rework_df['Test Type'].astype(str) == test_type)
+                                )
+                                
+                                if el_col:
+                                    element_val = str(rej_row.get(el_col, 'Unknown'))
+                                    filter_mask = filter_mask & (rework_df[el_col].astype(str) == element_val)
+                                else:
+                                    element_val = "N/A"
+
+                                future_accepts = rework_df[filter_mask]
+                                
+                                if not future_accepts.empty:
+                                    acc_date = future_accepts['Date( SUB)'].min()
+                                    delay_days = (acc_date - rej_date).days
+                                    total_delay_days += delay_days
+                                    status_text = "Resolved ✅"
+                                else:
+                                    acc_date = pd.NaT
+                                    delay_days = 0
+                                    status_text = "Pending 🚨"
+                                    
+                                ledger_data.append({
+                                    "Rejected Serial": serial,
+                                    "Element": element_val,
+                                    "Layer": layer,
+                                    "Test Type": test_type,
+                                    "Rejection Date": rej_date.strftime('%Y-%m-%d') if pd.notna(rej_date) else 'N/A',
+                                    "Resolution Date": acc_date.strftime('%Y-%m-%d') if pd.notna(acc_date) else 'Not Resolved',
+                                    "Rework Delay (Days)": delay_days,
+                                    "Status": status_text
+                                })
+                            
+                            ledger_df = pd.DataFrame(ledger_data).sort_values(by=["Status", "Rework Delay (Days)"], ascending=[False, False])
+                            
+                            st.markdown(f"""
+                            <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h3 style="margin: 0; color: #e74c3c; font-size: 18px;">Total Rework Time Leakage</h3>
+                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">Total project days lost tracking re-submissions for the same rejected layers/elements.</p>
+                                </div>
+                                <div style="font-size: 32px; font-weight: bold; color: #e74c3c;">{total_delay_days} Days Lost</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            st.dataframe(ledger_df, use_container_width=True)
+                        else:
+                            st.success(f"✅ No rejected submittals found for {selected_comp}. Zero rework leakage!")
+                    else:
+                        st.info("Requires 'sample status', 'layer', and 'Date( SUB)' columns to calculate rework delays.")
+
+                    if battalion_col_360 and elment_col_360 and 'Date ( test)' in comp_df_full.columns:
+                        st.markdown("#### ⏱️ Inter-Battalion Element Timeline Analysis")
+                        st.caption("Evaluates contractor speed and start/end dates for each element across different battalions.")
+                        time_df = comp_df_full.dropna(subset=['Date ( test)'])
+                        if not time_df.empty:
+                            timeline = time_df.groupby([battalion_col_360, elment_col_360]).agg(
+                                Start_Date=('Date ( test)', 'min'),
+                                End_Date=('Date ( test)', 'max'),
+                                Total_Submittals=('Date ( test)', 'count')
+                            ).reset_index()
+                            timeline['Duration (Days)'] = (timeline['End_Date'] - timeline['Start_Date']).dt.days
+                            timeline['Start_Date'] = timeline['Start_Date'].dt.strftime('%Y-%m-%d')
+                            timeline['End_Date'] = timeline['End_Date'].dt.strftime('%Y-%m-%d')
+                            timeline = timeline.sort_values([battalion_col_360, 'Start_Date'])
+                            st.dataframe(timeline, use_container_width=True)
+                        else:
+                            st.info("No valid dates found for timeline analysis.")
+
+                with tab_stockpile:
+                    if battalion_col_stock:
+                        avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
+                        selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats, key=f"bat_stock_{selected_comp}")
+                        
+                        if selected_bat != "All Battalions":
+                            comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
+                            b_key = fmt_b(selected_bat)
+                            req_qty = target_dict.get(f"{selected_comp.strip()}_{b_key}", np.nan)
+                        else:
+                            comp_bat_df = comp_df_full
+                            m_keys = [k for k in target_dict.keys() if k.startswith(selected_comp.strip() + "_")]
+                            if m_keys:
+                                req_qty = sum(target_dict[k] for k in m_keys)
+                            else:
+                                req_qty = np.nan
+                    else:
+                        comp_bat_df = comp_df_full
+                        req_qty = target_dict.get(selected_comp.strip(), np.nan)
+
+                    stock_df = comp_bat_df[comp_bat_df['Loc_Category'] == 'Stockpile']
+                    
+                    if num_tests_col:
+                        stock_count = int(pd.to_numeric(stock_df[num_tests_col], errors='coerce').fillna(0).sum())
+                        bottom_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'][num_tests_col], errors='coerce').fillna(0).sum())
+                        fill_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Fill'][num_tests_col], errors='coerce').fillna(0).sum())
+                    else:
+                        stock_count = len(stock_df)
+                        bottom_count = len(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'])
+                        fill_count = len(comp_bat_df[comp_bat_df['Loc_Category'] == 'Fill'])
+                    
+                    col_200 = next((c for c in stock_df.columns if '200' in str(c)), None)
+                    if col_200 and not stock_df.empty:
+                        clean_200 = stock_df[col_200].astype(str).str.replace('%', '', regex=False).str.strip()
+                        clean_200 = pd.to_numeric(clean_200, errors='coerce')
+                        avg_200 = clean_200.mean()
+                    else:
+                        avg_200 = np.nan
+                    
+                    cc1, cc2, cc3, cc4 = st.columns(4)
+                    create_card(cc1, "Stockpile Tests", stock_count)
+                    create_card(cc2, "Bottom Excavation Tests", bottom_count)
+                    create_card(cc3, "Fill Tests", fill_count)
+                    create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
+                    
+                    if pd.notna(req_qty) and req_qty > 0:
+                        req_qty_int = int(req_qty)
+                        diff = stock_count - req_qty_int
+                        progress_pct = min(100, (stock_count / req_qty_int) * 100) if req_qty_int > 0 else 100
+                        
+                        if progress_pct >= 90:
+                            prog_color = "#2ecc71" 
+                            status_color = "#2ecc71"
+                            status_icon = "✅"
+                        elif progress_pct >= 70:
+                            prog_color = "#f1c40f" 
+                            status_color = "#f1c40f"
+                            status_icon = "⚠️"
+                        else:
+                            prog_color = "#e74c3c" 
+                            status_color = "#e74c3c"
+                            status_icon = "🚨"
+
+                        if diff >= 0:
+                            status_msg = f"<span style='color: #2ecc71;'>{status_icon} Target Exceeded (+{diff} Tests)</span>"
+                            prog_color = "#2ecc71"
+                        else:
+                            status_msg = f"<span style='color: {status_color};'>{status_icon} Missing {abs(diff)} Tests ({progress_pct:.1f}%)</span>"
+                        
+                        st.markdown(f"""
+                        <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
+                            <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 20px; font-size: 18px; font-weight: bold;">🎯 Stockpile Target Achievement</h4>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: flex-end;">
+                                <span style="color: {ui['text_muted']}; font-size: 14px;">Target Required: <b style="color: {ui['text_main']}; font-size: 16px;">{req_qty_int}</b></span>
+                                <span style="color: #00d2ff; font-size: 14px;">Executed Tests: <b style="color: {ui['text_main']}; font-size: 16px;">{stock_count}</b></span>
+                                <span style="font-size: 14px; font-weight: bold; color: {ui['text_main']};">Status: {status_msg}</span>
+                            </div>
+                            <div class="prog-bg" style="height: 12px; background: rgba(127,140,141,0.2); border-radius: 10px; width: 100%; overflow: hidden;">
+                                <div class="prog-fill" style="width: {progress_pct}%; background: {prog_color}; height: 100%; border-radius: 10px; transition: width 1s ease-in-out;"></div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                        <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
+                            <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;">🎯 Stockpile Target Achievement</h4>
+                            <p style="color: {ui['text_muted']}; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    if 'Date ( test)' in comp_bat_df.columns:
+                        time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
+                        time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
+                        fill_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Fill'].groupby('Month').size()
+                        stock_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Stockpile'].groupby('Month').size()
+
+                        if not fill_by_month.empty:
+                            peak_fill_month = fill_by_month.idxmax()
+                            peak_fill_val = fill_by_month.max()
+                            stock_in_peak = stock_by_month.get(peak_fill_month, 0)
+                            
+                            bat_key = selected_bat if battalion_col_stock else "all"
+                            scan_key = f"scan_{selected_comp}_{bat_key}"
+                            
+                            if scan_key not in st.session_state:
+                                st.session_state[scan_key] = False
+
+                            if not st.session_state[scan_key]:
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                if st.button("🧠 Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
+                                    with st.container():
+                                        progress_bar = st.progress(0)
+                                        status_text = st.empty()
+                                        status_text.markdown(f"**<span style='color:#00d2ff;'>[1/3]</span> Scanning {total_requests_count:,} Submittal Logs...**", unsafe_allow_html=True)
+                                        time.sleep(1)
+                                        progress_bar.progress(33)
+                                        status_text.markdown("**<span style='color:#ffaa00;'>[2/3]</span> Correlating Fill layers with Stockpile sources...**", unsafe_allow_html=True)
+                                        time.sleep(1.2)
+                                        progress_bar.progress(66)
+                                        status_text.markdown("**<span style='color:#2ecc71;'>[3/3]</span> Generating Quality Traceability Insights...**", unsafe_allow_html=True)
+                                        time.sleep(1.2)
+                                        progress_bar.progress(100)
+                                        time.sleep(0.5)
+                                        st.session_state[scan_key] = True
+                                        st.rerun()
+                            
+                            if st.session_state[scan_key]:
+                                base_confidence = 75.0
+                                confidence_bonus = min(24.5, peak_fill_val * 0.6) 
+                                ai_confidence = round(base_confidence + confidence_bonus, 1)
+
+                                ai_ratio = stock_in_peak / peak_fill_val if peak_fill_val > 0 else 1
+                                
+                                has_target_qty = pd.notna(req_qty) and req_qty > 0
+                                
+                                if ai_ratio < 0.05:
+                                    status_level, status_color, status_bg, status_icon = "SEVERE DEFICIT", "#e74c3c", "rgba(231, 76, 60, 0.1)", "🚨"
+                                    quality_insight = f"Significant discrepancy detected. Fill operations ({peak_fill_val} tests) lack sufficient corresponding stockpile verifications, creating a gap in material quality traceability."
+                                    if has_target_qty:
+                                        samples_needed = max(1, int(peak_fill_val * 0.1))
+                                        directive = f"ACTION REQUIRED: Request contractor to submit at least {samples_needed} Stockpile samples to cover the executed fill volume."
+                                    else:
+                                        directive = f"SYSTEM.HALT: Cannot calculate required samples. No Target 'Required Quantity' is registered for this contractor. Update records to enable exact sampling estimates."
+                                elif ai_ratio < 0.15:
+                                    status_level, status_color, status_bg, status_icon = "COVERAGE GAP", "#f1c40f", "rgba(241, 196, 15, 0.1)", "⚠️"
+                                    quality_insight = f"Material approval rate is lagging behind fill execution speed. A minor gap in material source validation is forming."
+                                    directive = f"ADVISORY: Schedule routine stockpile sampling to restore balance with field operations."
+                                else:
+                                    status_level, status_color, status_bg, status_icon = "OPTIMAL COVERAGE", "#2ecc71", "rgba(46, 204, 113, 0.1)", "✅"
+                                    quality_insight = f"Stockpile testing frequency is well-aligned with the current fill execution volume."
+                                    directive = f"MAINTAIN: Continue current testing and approval workflow."
+
+                                st.markdown(f"""
+                                <style>
+                                    @keyframes scanline {{ 0% {{ transform: translateY(-10px); opacity: 0; }} 50% {{ opacity: 1; }} 100% {{ transform: translateY(0); opacity: 1; }} }}
+                                    .ai-terminal {{ background: linear-gradient(145deg, #0a1118, {status_bg}); border: 1px solid rgba(255,255,255,0.05); border-left: 5px solid {status_color}; border-radius: 12px; padding: 25px; margin: 20px 0; box-shadow: 0 0 20px {status_bg}; animation: scanline 0.8s ease-out forwards; }}
+                                    .ai-badge {{ background: rgba(0,0,0,0.4); border: 1px solid {ui['border_color']}; padding: 5px 12px; border-radius: 20px; font-size: 12px; color: #00d2ff; }}
+                                </style>
+                                <div class="ai-terminal">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+                                        <h3 style="color: {status_color}; margin: 0; display: flex; align-items: center; font-size: 20px;"><span style="font-size: 24px; margin-right: 10px;">🤖</span> Generative AI Quality Auditor</h3>
+                                        <div style="display: flex; gap: 10px;">
+                                            <span class="ai-badge">⚡ Data Confidence: {ai_confidence}%</span>
+                                            <span class="ai-badge" style="color: {status_color}; border-color: {status_color}; font-weight: bold;">{status_icon} Status: {status_level}</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #00d2ff;">
+                                            <div style="color: #00d2ff; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> FIELD_DATA.DETECT()</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">Peak filling activity detected in <b style="color:white;">{peak_fill_month}</b> with <b style="color:#00d2ff;">{peak_fill_val} submittals</b>.<br>Correlating approved Stockpile volume during this period is <b style="color:{status_color};">{stock_in_peak}</b>.</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #ffaa00;">
+                                            <div style="color: #ffaa00; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QUALITY_GAP.ANALYZE()</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{quality_insight}</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid {status_color};">
+                                            <div style="color: {status_color}; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QC_ACTION.RECOMMEND()</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6; font-weight: 500;">{directive}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                col_reset, _ = st.columns([0.2, 0.8])
+                                if col_reset.button("🔄 Reset AI Auditor", key=f"reset_{scan_key}"):
+                                    st.session_state[scan_key] = False
+                                    st.rerun()
+
+                    ch_col1, ch_col2 = st.columns(2)
+                    with ch_col1:
+                        if 'Classification' in stock_df.columns and not stock_df.empty:
+                            class_counts = stock_df['Classification'].value_counts().reset_index()
+                            class_counts.columns = ['Classification', 'Count']
+                            fig_class = px.pie(class_counts, names='Classification', values='Count', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
+                            fig_class.update_traces(textinfo='label+percent', hovertemplate='<b>Class:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
+                            fig_class = style_3d_glassy(fig_class, chart_type="pie")
+                            st.plotly_chart(fig_class, use_container_width=True, key=f"class_{selected_comp}")
+                        else:
+                            st.info(f"No Stockpile classification data logged.")
+                            
+                    with ch_col2:
+                        if 'sample status' in stock_df.columns and not stock_df.empty:
+                            stock_df['status_upper'] = stock_df['sample status'].str.upper()
+                            fig_stock_status = px.pie(stock_df, names='status_upper', title=f"Stockpile Approval/Rejection Rate", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
+                            fig_stock_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
+                            fig_stock_status = style_3d_glassy(fig_stock_status, chart_type="pie")
+                            st.plotly_chart(fig_stock_status, use_container_width=True, key=f"stock_status_{selected_comp}")
+                        else:
+                            st.info(f"No Stockpile status data logged.")
+
+                    ch_col3, ch_col4 = st.columns(2)
+                    with ch_col3:
+                        if 'Date ( test)' in stock_df.columns and not stock_df.empty:
+                            time_df = stock_df.dropna(subset=['Date ( test)']).copy()
+                            time_df['Month'] = time_df['Date ( test)'].dt.strftime('%b %Y')
+                            time_df['Month_Sort'] = time_df['Date ( test)'].dt.to_period('M')
+                            monthly_stock = time_df.groupby(['Month_Sort', 'Month']).size().reset_index(name='Count').sort_values('Month_Sort')
+                            fig_timeline = px.bar(monthly_stock, x='Month', y='Count', title="Stockpile Tests Timeline", text_auto=True, color_discrete_sequence=['#ffaa00'])
+                            fig_timeline = style_3d_glassy(fig_timeline, chart_type="bar")
+                            st.plotly_chart(fig_timeline, use_container_width=True, key=f"stock_time_{selected_comp}")
+                        else:
+                            st.info("No Date data available to show Stockpile timeline.")
+
+                    with ch_col4:
+                        if 'sample status' in comp_bat_df.columns and not comp_bat_df.empty:
+                            comp_bat_df['status_upper'] = comp_bat_df['sample status'].str.upper()
+                            fig_status = px.pie(comp_bat_df, names='status_upper', title=f"Overall Approval Rate (All Tests)", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
+                            fig_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
+                            fig_status = style_3d_glassy(fig_status, chart_type="pie")
+                            st.plotly_chart(fig_status, use_container_width=True, key=f"stock_all_{selected_comp}")
+                        else:
+                            st.info(f"No overall status data logged.")
+
+                with tab_execution:
+                    st.markdown(f"### 🏗️ Executive Progress & Compaction: `{selected_comp}`")
+                    
+                    company_col_qty = next((c for c in df.columns if 'COMPANY' in c.upper() and c != 'Company Name'), 'Company Name')
+                    qty_match_df = df[df[company_col_qty].astype(str).str.strip().str.lower() == selected_comp.strip().lower()]
+                    if qty_match_df.empty: qty_match_df = comp_df_full
+                        
+                    tot_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in str(c).strip().upper()), None)
+                    exec_qty_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in str(c).strip().upper()), None)
+                    
+                    tot_qty = pd.to_numeric(qty_match_df[tot_qty_col], errors='coerce').max() if tot_qty_col else 0
+                    exe_qty = pd.to_numeric(qty_match_df[exec_qty_col], errors='coerce').max() if exec_qty_col else 0
+                    prog_pct = (exe_qty / tot_qty * 100) if pd.notna(tot_qty) and tot_qty > 0 else 0
+                    
+                    test_col = 'Test Type' if 'Test Type' in comp_df_full.columns else None
+                    compaction_df = pd.DataFrame()
+                    if test_col:
+                        compaction_df = comp_df_full[comp_df_full[test_col].astype(str).str.contains('DPL|PLATE', case=False, na=False)].copy()
+                        
+                    num_tests_col_exec = next((c for c in comp_df_full.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
+                    
+                    dpl_df = compaction_df[compaction_df[test_col].astype(str).str.contains('DPL', case=False, na=False)] if test_col else pd.DataFrame()
+                    plate_df = compaction_df[compaction_df[test_col].astype(str).str.contains('PLATE', case=False, na=False)] if test_col else pd.DataFrame()
+                    
+                    dpl_pts = int(pd.to_numeric(dpl_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not dpl_df.empty else len(dpl_df)
+                    plate_pts = int(pd.to_numeric(plate_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not plate_df.empty else len(plate_df)
+                    total_test_points = dpl_pts + plate_pts
+                    
+                    avg_dpl = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in dpl_df.columns else np.nan
+                        
+                    c1, c2, c3, c4 = st.columns(4)
+                    create_card(c1, "Total Target Qty", f"{tot_qty:,.0f}" if pd.notna(tot_qty) and tot_qty>0 else "N/A")
+                    create_card(c2, "Executed Qty", f"{exe_qty:,.0f}" if pd.notna(exe_qty) and exe_qty>0 else "0")
+                    pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
+                    create_card(c3, "Total Compaction Points", f"{total_test_points:,}", delta_html=pts_html)
+                    create_card(c4, "Average DPL Value", f"{avg_dpl:.2f}" if pd.notna(avg_dpl) else "N/A")
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    
+                    r2_c1, r2_c2 = st.columns(2)
+                    
+                    with r2_c1:
+                        st.markdown("#### 🚀 Execution Progress vs Target")
+                        if pd.notna(tot_qty) and tot_qty > 0:
+                            fig_exec_kpi = go.Figure(go.Indicator(
+                                mode = "gauge+number+delta",
+                                value = exe_qty,
+                                title = {'text': "Completed Volume", 'font': {'size': 16, 'color': "white" if is_dark else "#2C3E50"}},
+                                number = {'font': {'size': 35, 'color': "white" if is_dark else "#2C3E50"}},
+                                delta = {'reference': tot_qty, 'increasing': {'color': "#2ecc71"}, 'decreasing': {'color': "#e74c3c"}},
+                                gauge = {
+                                    'axis': {'range': [None, tot_qty], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
+                                    'bar': {'color': "#00d2ff"},
+                                    'bgcolor': "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)",
+                                    'steps': [
+                                        {'range': [0, tot_qty*0.5], 'color': "rgba(231,76,60,0.3)"},
+                                        {'range': [tot_qty*0.5, tot_qty*0.8], 'color': "rgba(241,196,15,0.3)"},
+                                        {'range': [tot_qty*0.8, tot_qty], 'color': "rgba(46,204,113,0.3)"}
+                                    ],
+                                    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': tot_qty}
+                                }
+                            ))
+                            fig_exec_kpi.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=320, margin=dict(l=20, r=20, t=50, b=20), font={'family': 'Montserrat'})
+                            st.plotly_chart(fig_exec_kpi, use_container_width=True, key=f"exec_kpi_gauge_{selected_comp}")
+                        else:
+                            st.info("No Target Quantity defined to show progress.")
+                            
+                    with r2_c2:
+                        st.markdown("#### ⚖️ Compaction Quality Metrics (Pass Rate)")
+                        if 'sample status' in compaction_df.columns and not compaction_df.empty:
+                            compaction_df['status_upper'] = compaction_df['sample status'].str.upper()
+                            fig_comp_qual = px.pie(compaction_df, names='status_upper', hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
+                            fig_comp_qual.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Yield: %{percent}')
+                            fig_comp_qual = style_3d_glassy(fig_comp_qual, chart_type="pie")
+                            fig_comp_qual.update_layout(height=320, margin=dict(l=20, r=20, t=20, b=20))
+                            st.plotly_chart(fig_comp_qual, use_container_width=True, key=f"comp_qual_pie_{selected_comp}")
+                        else:
+                            st.info("No Quality/Status data found for Compaction.")
+                            
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    
+                    st.markdown("#### 📈 Monthly Compaction Trend Analysis")
+                    if not compaction_df.empty and 'Date ( test)' in compaction_df.columns:
+                        compaction_df['Month'] = compaction_df['Date ( test)'].dt.strftime('%b %Y')
+                        compaction_df['Month_Sort'] = compaction_df['Date ( test)'].dt.to_period('M')
+                        monthly_comp = compaction_df.groupby(['Month_Sort', 'Month', test_col]).size().reset_index(name='Count').sort_values('Month_Sort')
+                        
+                        fig_comp_trend = px.bar(monthly_comp, x='Month', y='Count', color=test_col, barmode='group', color_discrete_sequence=NEON_COLORS)
+                        fig_comp_trend.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Tests:</b> %{y}')
+                        fig_comp_trend = style_3d_glassy(fig_comp_trend, chart_type="bar")
+                        fig_comp_trend.update_layout(height=350)
+                        st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_bar_{selected_comp}")
+                    else:
+                        st.info("No Date data found for Compaction Trend.")
+                        
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    st.markdown("#### 🧠 Executive AI Insights & Alerts")
+                    
+                    pred_date_str = "Insufficient Data"
+                    daily_rate = 0
+                    if 'Date ( test)' in qty_match_df.columns and pd.notna(tot_qty) and tot_qty > 0:
+                        dates = qty_match_df['Date ( test)'].dropna()
+                        if len(dates) >= 2 and exe_qty > 0:
+                            min_date = dates.min()
+                            max_date = dates.max()
+                            days_worked = (max_date - min_date).days
+                            if days_worked > 0:
+                                daily_rate = exe_qty / days_worked
+                                if exe_qty >= tot_qty:
+                                    pred_date_str = "Target Achieved ✅"
+                                else:
+                                    rem_qty = tot_qty - exe_qty
+                                    rem_days = rem_qty / daily_rate
+                                    pred_date = max_date + timedelta(days=rem_days)
+                                    pred_date_str = pred_date.strftime('%B %Y')
+                    
+                    rej_rate = 0
+                    top_fail_str = "None"
+                    if 'sample status' in compaction_df.columns and not compaction_df.empty:
+                        rej_df = compaction_df[compaction_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
+                        rej_rate = (len(rej_df) / len(compaction_df)) * 100
+                        if not rej_df.empty:
+                            if test_col in rej_df.columns:
+                                top_fail_str = rej_df[test_col].value_counts().idxmax()
+                    
+                    insight_c1, insight_c2, insight_c3 = st.columns(3)
+                    
+                    with insight_c1:
+                        st.markdown(f"""
+                        <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 8px; height: 100%;">
+                            <h4 style="color: #00d2ff; margin-top: 0; font-size: 16px;">📊 Performance vs Target</h4>
+                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                • <b>Completion:</b> {prog_pct:.1f}% of total target.<br>
+                                • <b>Daily Velocity:</b> ~{int(daily_rate):,} units/day.<br>
+                                • <b>Status:</b> {"On Track" if prog_pct > 50 else "Requires Acceleration"}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    with insight_c2:
+                        qual_color = "#e74c3c" if rej_rate > 15 else "#2ecc71"
+                        st.markdown(f"""
+                        <div style="background: rgba(231, 76, 60, 0.05); border-left: 4px solid {qual_color}; padding: 20px; border-radius: 8px; height: 100%;">
+                            <h4 style="color: {qual_color}; margin-top: 0; font-size: 16px;">⚠️ Quality Issues</h4>
+                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                • <b>Rejection Rate:</b> {rej_rate:.1f}% in compaction.<br>
+                                • <b>Most Failed Test:</b> {top_fail_str}.<br>
+                                • <b>Action:</b> {"Urgent audit needed for equipment." if rej_rate > 15 else "Quality is within acceptable limits."}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    with insight_c3:
+                        st.markdown(f"""
+                        <div style="background: rgba(241, 196, 15, 0.05); border-left: 4px solid #f1c40f; padding: 20px; border-radius: 8px; height: 100%;">
+                            <h4 style="color: #f1c40f; margin-top: 0; font-size: 16px;">🔮 Predictive Completion</h4>
+                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                • <b>Forecasted Finish:</b> <b style="color:#ffaa00; font-size:16px;">{pred_date_str}</b><br>
+                                • <b>Algorithm:</b> Based on historical velocity of {int(daily_rate):,} avg volume per active day.<br>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
+        bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
+        zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
+        if bh_col_name:
+            filtered_df[bh_col_name] = filtered_df[bh_col_name].fillna('').astype(str).str.strip()
+            bh_list = [bh for bh in filtered_df[bh_col_name].unique() if str(bh).upper() != 'NAN' and str(bh) != '']
+            if len(bh_list) > 0:
+                selected_bh = st.selectbox(f"Select an Element ({bh_col_name}) to investigate:", ["-- Select Element --"] + sorted(bh_list))
+                if selected_bh != "-- Select Element --":
+                    bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
+                    bh_df = None
+                    if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
+                        available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
+                        st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
+                        selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
+                        if selected_zone:
+                            bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
+                            st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
+                    else:
+                        bh_df = bh_df_raw
+                        st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
+                    
+                    if bh_df is not None:
+                        if 'layer' in bh_df.columns:
+                            bh_df['Layer_Num'] = bh_df['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
+                            bh_df = bh_df.sort_values(['Layer_Num', 'Date ( test)'])
+                        
+                        bh_total_submittals = len(bh_df) 
+                        num_tests_col_bh = next((c for c in bh_df.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
+                        bh_total_tests = int(pd.to_numeric(bh_df[num_tests_col_bh], errors='coerce').fillna(0).sum()) if num_tests_col_bh else bh_total_submittals 
+                        bh_accepted = len(bh_df[bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bh_df.columns else 0
+                        bh_pass_rate = (bh_accepted / bh_total_submittals * 100) if bh_total_submittals > 0 else 0
+                        bh_avg_dpl = pd.to_numeric(bh_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in bh_df.columns else 0
+                        start_date = bh_df['Date ( test)'].min().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].min()) else "N/A"
+                        end_date = bh_df['Date ( test)'].max().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].max()) else "N/A"
                         
                         c1, c2, c3, c4 = st.columns(4)
-                        create_card(c1, "Total Test Points", total_tests_360)
-                        create_card(c2, "Active Battalions", battalions_count)
-                        create_card(c3, "Active Zones", zones_count)
-                        create_card(c4, "Avg Delay (Days)", f"{avg_dur_360:.1f}" if pd.notna(avg_dur_360) else "N/A")
-                        
-                        if battalion_col_360 and zone_col_360:
-                            st.markdown("#### 🗺️ Spatial Footprint (Battalion ➔ Zone)")
-                            tree_df_360 = comp_df_full.copy()
-                            tree_df_360[battalion_col_360] = tree_df_360[battalion_col_360].fillna('Unknown Battalion').astype(str)
-                            tree_df_360[zone_col_360] = tree_df_360[zone_col_360].fillna('Unknown Zone').astype(str)
-                            tree_grouped = tree_df_360.groupby([battalion_col_360, zone_col_360]).size().reset_index(name='Submittals')
-                            fig_tree_360 = px.treemap(tree_grouped, path=[battalion_col_360, zone_col_360], values='Submittals', title=f"Workload Distribution for {selected_comp}", color='Submittals', color_continuous_scale='Blues')
-                            fig_tree_360 = style_3d_glassy(fig_tree_360, chart_type="treemap")
-                            st.plotly_chart(fig_tree_360, use_container_width=True, key=f"tree_360_{selected_comp}")
-                            
-                        col_q1, col_q2 = st.columns(2)
-                        with col_q1:
-                            if battalion_col_360 and 'sample status' in comp_df_full.columns:
-                                st.markdown("#### ⚖️ Quality by Battalion")
-                                comp_df_full['status_upper'] = comp_df_full['sample status'].str.upper()
-                                qual_df = comp_df_full.groupby([battalion_col_360, 'status_upper']).size().reset_index(name='Count')
-                                fig_qual = px.bar(qual_df, x=battalion_col_360, y='Count', color='status_upper', title="Approval/Rejection per Battalion", barmode='group', color_discrete_map=STATUS_COLORS)
-                                fig_qual = style_3d_glassy(fig_qual, chart_type="bar")
-                                st.plotly_chart(fig_qual, use_container_width=True, key=f"qual_{selected_comp}")
-                                
-                        with col_q2:
-                            if elment_col_360:
-                                st.markdown("#### 🏗️ Workload by Element")
-                                el_df = comp_df_full.groupby(elment_col_360).size().reset_index(name='Count').sort_values('Count', ascending=False)
-                                fig_elment = px.bar(el_df.head(15), x=elment_col_360, y='Count', title="Top 15 Elements by Submittals", color=elment_col_360, color_discrete_sequence=NEON_COLORS)
-                                fig_elment = style_3d_glassy(fig_elment, chart_type="bar")
-                                st.plotly_chart(fig_elment, use_container_width=True, key=f"elment_{selected_comp}")
-                            else:
-                                st.info("No Element column found for workload breakdown.")
-                                    
-                        col_d1, col_d2 = st.columns(2)
-                        with col_d1:
-                            if 'Done BY' in comp_df_full.columns:
-                                st.markdown("#### 👨‍💼 Processed by Office (Done BY)")
-                                off_df = comp_df_full.groupby('Done BY').size().reset_index(name='Count').sort_values('Count', ascending=False)
-                                off_df['Percent'] = (off_df['Count'] / off_df['Count'].sum() * 100).round(1)
-                                fig_off = px.bar(off_df, x='Done BY', y='Count', text='Count', title="Submittal Volume per Review Office", color='Done BY', color_discrete_sequence=NEON_COLORS)
-                                fig_off.update_traces(customdata=off_df['Percent'], hovertemplate='<b>Office:</b> %{x}<br>Count: %{y}<br>Percentage: %{customdata}%')
-                                fig_off = style_3d_glassy(fig_off, chart_type="bar")
-                                st.plotly_chart(fig_off, use_container_width=True, key=f"off_{selected_comp}")
-                                
-                        with col_d2:
-                            if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
-                                st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
-                                st.caption("Shows rejections ONLY IF the same Layer/Element wasn't approved later.")
-                                rejected_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                                accepted_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                                comp_df_rf = comp_df_full.copy()
-                                comp_df_rf['Loc_ID'] = comp_df_rf[elment_col_360].astype(str) + "_" + comp_df_rf['layer'].astype(str)
-                                approved_locs = set(comp_df_rf[accepted_mask]['Loc_ID'].unique())
-                                red_flags = comp_df_rf[rejected_mask & (~comp_df_rf['Loc_ID'].isin(approved_locs))]
-                                if not red_flags.empty:
-                                    display_cols = ['serial', 'sample status', elment_col_360, 'layer']
-                                    if battalion_col_360: display_cols.append(battalion_col_360)
-                                    if 'Test Type' in red_flags.columns: display_cols.append('Test Type')
-                                    existing_cols = [c for c in display_cols if c in red_flags.columns]
-                                    st.dataframe(red_flags[existing_cols].head(100), use_container_width=True)
-                                    st.caption(f"Total unresolved layers: {len(red_flags)}")
-                                else:
-                                    st.success("✅ All rejected layers have been successfully re-tested and approved!")
-                            else:
-                                st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
+                        create_card(c1, "Total Submittals", bh_total_submittals)
+                        create_card(c2, "Total Tests", bh_total_tests)
+                        create_card(c3, "First Test Date", start_date)
+                        create_card(c4, "Last Test Date", end_date)
+                        c5, c6, c7, c8 = st.columns(4)
+                        create_card(c5, "Passed/Approved", bh_accepted)
+                        create_card(c6, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
+                        create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
+                        create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
 
-                        if 'sample status' in comp_df_full.columns and 'Date( SUB)' in comp_df_full.columns and 'layer' in comp_df_full.columns:
-                            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                            st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
-                            
-                            rework_df = comp_df_full.copy()
-                            rejected_items = rework_df[rework_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
-                            
-                            if not rejected_items.empty:
-                                ledger_data = []
-                                total_delay_days = 0
-                                el_col = elment_col_360 if elment_col_360 else None
-                                
-                                for _, rej_row in rejected_items.iterrows():
-                                    serial = rej_row.get('serial', 'N/A')
-                                    rej_date = rej_row['Date( SUB)']
-                                    layer = str(rej_row.get('layer', 'Unknown'))
-                                    test_type = str(rej_row.get('Test Type', 'Unknown'))
-                                    
-                                    filter_mask = (
-                                        (rework_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])) & 
-                                        (rework_df['Date( SUB)'] >= rej_date) &
-                                        (rework_df['layer'].astype(str) == layer) &
-                                        (rework_df['Test Type'].astype(str) == test_type)
-                                    )
-                                    
-                                    if el_col:
-                                        element_val = str(rej_row.get(el_col, 'Unknown'))
-                                        filter_mask = filter_mask & (rework_df[el_col].astype(str) == element_val)
-                                    else:
-                                        element_val = "N/A"
-
-                                    future_accepts = rework_df[filter_mask]
-                                    
-                                    if not future_accepts.empty:
-                                        acc_date = future_accepts['Date( SUB)'].min()
-                                        delay_days = (acc_date - rej_date).days
-                                        total_delay_days += delay_days
-                                        status_text = "Resolved ✅"
-                                    else:
-                                        acc_date = pd.NaT
-                                        delay_days = 0
-                                        status_text = "Pending 🚨"
-                                        
-                                    ledger_data.append({
-                                        "Rejected Serial": serial,
-                                        "Element": element_val,
-                                        "Layer": layer,
-                                        "Test Type": test_type,
-                                        "Rejection Date": rej_date.strftime('%Y-%m-%d') if pd.notna(rej_date) else 'N/A',
-                                        "Resolution Date": acc_date.strftime('%Y-%m-%d') if pd.notna(acc_date) else 'Not Resolved',
-                                        "Rework Delay (Days)": delay_days,
-                                        "Status": status_text
-                                    })
-                                
-                                ledger_df = pd.DataFrame(ledger_data).sort_values(by=["Status", "Rework Delay (Days)"], ascending=[False, False])
-                                
-                                st.markdown(f"""
-                                <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <h3 style="margin: 0; color: #e74c3c; font-size: 18px;">Total Rework Time Leakage</h3>
-                                        <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">Total project days lost tracking re-submissions for the same rejected layers/elements.</p>
-                                    </div>
-                                    <div style="font-size: 32px; font-weight: bold; color: #e74c3c;">{total_delay_days} Days Lost</div>
+                        if 'Company Name' in bh_df.columns:
+                            if 'Date ( test)' in bh_df.columns:
+                                comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
+                                comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:{ui['text_muted']};'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
+                                companies_str = "<br>".join(comp_details) if comp_details else "N/A"
+                            else:
+                                companies_worked = bh_df['Company Name'].dropna().unique()
+                                companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
+                            st.markdown(f"""
+                                <div class="custom-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
+                                    <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element</div>
+                                    <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500; color:{ui['text_main']};">{companies_str}</div>
                                 </div>
                                 """, unsafe_allow_html=True)
-                                
-                                st.dataframe(ledger_df, use_container_width=True)
-                            else:
-                                st.success(f"✅ No rejected submittals found for {selected_comp}. Zero rework leakage!")
-                        else:
-                            st.info("Requires 'sample status', 'layer', and 'Date( SUB)' columns to calculate rework delays.")
 
-                        if battalion_col_360 and elment_col_360 and 'Date ( test)' in comp_df_full.columns:
-                            st.markdown("#### ⏱️ Inter-Battalion Element Timeline Analysis")
-                            st.caption("Evaluates contractor speed and start/end dates for each element across different battalions.")
-                            time_df = comp_df_full.dropna(subset=['Date ( test)'])
-                            if not time_df.empty:
-                                timeline = time_df.groupby([battalion_col_360, elment_col_360]).agg(
-                                    Start_Date=('Date ( test)', 'min'),
-                                    End_Date=('Date ( test)', 'max'),
-                                    Total_Submittals=('Date ( test)', 'count')
-                                ).reset_index()
-                                timeline['Duration (Days)'] = (timeline['End_Date'] - timeline['Start_Date']).dt.days
-                                timeline['Start_Date'] = timeline['Start_Date'].dt.strftime('%Y-%m-%d')
-                                timeline['End_Date'] = timeline['End_Date'].dt.strftime('%Y-%m-%d')
-                                timeline = timeline.sort_values([battalion_col_360, 'Start_Date'])
-                                st.dataframe(timeline, use_container_width=True)
-                            else:
-                                st.info("No valid dates found for timeline analysis.")
-
-                            with tab_stockpile:
-                                if battalion_col_stock:
-                                    avail_bats = ["All Battalions"] + sorted([str(b) for b in comp_df_full[battalion_col_stock].unique() if pd.notna(b) and str(b).strip() != ''])
-                                    selected_bat = st.selectbox("📍 Filter Sourcing Analysis by Battalion:", avail_bats, key=f"bat_stock_{selected_comp}")
-                                    
-                                    if selected_bat != "All Battalions":
-                                        comp_bat_df = comp_df_full[comp_df_full[battalion_col_stock].astype(str) == selected_bat]
-                                        b_key = fmt_b(selected_bat)
-                                        req_qty = target_dict.get(f"{selected_comp.strip()}_{b_key}", np.nan)
-                                    else:
-                                        comp_bat_df = comp_df_full
-                                        m_keys = [k for k in target_dict.keys() if k.startswith(selected_comp.strip() + "_")]
-                                        if m_keys:
-                                            req_qty = sum(target_dict[k] for k in m_keys)
-                                        else:
-                                            req_qty = np.nan
-                                else:
-                                    comp_bat_df = comp_df_full
-                                    req_qty = target_dict.get(selected_comp.strip(), np.nan)
-
-                                stock_df = comp_bat_df[comp_bat_df['Loc_Category'] == 'Stockpile']
-                                
-                                if num_tests_col:
-                                    stock_count = int(pd.to_numeric(stock_df[num_tests_col], errors='coerce').fillna(0).sum())
-                                    bottom_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'][num_tests_col], errors='coerce').fillna(0).sum())
-                                    fill_count = int(pd.to_numeric(comp_bat_df[comp_bat_df['Loc_Category'] == 'Fill'][num_tests_col], errors='coerce').fillna(0).sum())
-                                else:
-                                    stock_count = len(stock_df)
-                                    bottom_count = len(comp_bat_df[comp_bat_df['Loc_Category'] == 'Bottom of Excavation'])
-                                    fill_count = len(comp_bat_df[comp_bat_df['Loc_Category'] == 'Fill'])
-                                
-                                col_200 = next((c for c in stock_df.columns if '200' in str(c)), None)
-                                if col_200 and not stock_df.empty:
-                                    clean_200 = stock_df[col_200].astype(str).str.replace('%', '', regex=False).str.strip()
-                                    clean_200 = pd.to_numeric(clean_200, errors='coerce')
-                                    avg_200 = clean_200.mean()
-                                else:
-                                    avg_200 = np.nan
-                                
-                                cc1, cc2, cc3, cc4 = st.columns(4)
-                                create_card(cc1, "Stockpile Tests", stock_count)
-                                create_card(cc2, "Bottom Excavation Tests", bottom_count)
-                                create_card(cc3, "Fill Tests", fill_count)
-                                create_card(cc4, "Avg Sieve #200 (Stockpile)", f"{avg_200:.2f}%" if pd.notna(avg_200) else "N/A")
-                                
-                                if pd.notna(req_qty) and req_qty > 0:
-                                    req_qty_int = int(req_qty)
-                                    diff = stock_count - req_qty_int
-                                    progress_pct = min(100, (stock_count / req_qty_int) * 100) if req_qty_int > 0 else 100
-                                    
-                                    if progress_pct >= 90:
-                                        prog_color = "#2ecc71" 
-                                        status_color = "#2ecc71"
-                                        status_icon = "✅"
-                                    elif progress_pct >= 70:
-                                        prog_color = "#f1c40f" 
-                                        status_color = "#f1c40f"
-                                        status_icon = "⚠️"
-                                    else:
-                                        prog_color = "#e74c3c" 
-                                        status_color = "#e74c3c"
-                                        status_icon = "🚨"
-
-                                    if diff >= 0:
-                                        status_msg = f"<span style='color: #2ecc71;'>{status_icon} Target Exceeded (+{diff} Tests)</span>"
-                                        prog_color = "#2ecc71"
-                                    else:
-                                        status_msg = f"<span style='color: {status_color};'>{status_icon} Missing {abs(diff)} Tests ({progress_pct:.1f}%)</span>"
-                                    
-                                    st.markdown(f"""
-                                    <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #00d2ff; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
-                                        <h4 style="color: #00d2ff; margin-top: 0; margin-bottom: 20px; font-size: 18px; font-weight: bold;">🎯 Stockpile Target Achievement</h4>
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: flex-end;">
-                                            <span style="color: {ui['text_muted']}; font-size: 14px;">Target Required: <b style="color: {ui['text_main']}; font-size: 16px;">{req_qty_int}</b></span>
-                                            <span style="color: #00d2ff; font-size: 14px;">Executed Tests: <b style="color: {ui['text_main']}; font-size: 16px;">{stock_count}</b></span>
-                                            <span style="font-size: 14px; font-weight: bold; color: {ui['text_main']};">Status: {status_msg}</span>
-                                        </div>
-                                        <div class="prog-bg" style="height: 12px; background: rgba(127,140,141,0.2); border-radius: 10px; width: 100%; overflow: hidden;">
-                                            <div class="prog-fill" style="width: {progress_pct}%; background: {prog_color}; height: 100%; border-radius: 10px; transition: width 1s ease-in-out;"></div>
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                                else:
-                                    st.markdown(f"""
-                                    <div style="background: {ui['card_bg']}; padding: 25px; border-radius: 12px; border-left: 6px solid #95a5a6; margin-top: 15px; margin-bottom: 25px; box-shadow: {ui['shadow']};">
-                                        <h4 style="color: #95a5a6; margin-top: 0; margin-bottom: 10px;">🎯 Stockpile Target Achievement</h4>
-                                        <p style="color: {ui['text_muted']}; font-size: 15px; margin: 0;">No 'Required Quantity' target is currently defined for <b>{selected_comp}</b> in the selected scope.</p>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-
-                                if 'Date ( test)' in comp_bat_df.columns:
-                                    time_analysis_df = comp_bat_df.dropna(subset=['Date ( test)']).copy()
-                                    time_analysis_df['Month'] = time_analysis_df['Date ( test)'].dt.strftime('%b %Y')
-                                    fill_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Fill'].groupby('Month').size()
-                                    stock_by_month = time_analysis_df[time_analysis_df['Loc_Category'] == 'Stockpile'].groupby('Month').size()
-
-                                    if not fill_by_month.empty:
-                                        peak_fill_month = fill_by_month.idxmax()
-                                        peak_fill_val = fill_by_month.max()
-                                        stock_in_peak = stock_by_month.get(peak_fill_month, 0)
-                                        
-                                        bat_key = selected_bat if battalion_col_stock else "all"
-                                        scan_key = f"scan_{selected_comp}_{bat_key}"
-                                        
-                                        if scan_key not in st.session_state:
-                                            st.session_state[scan_key] = False
-
-                                        if not st.session_state[scan_key]:
-                                            st.markdown("<br>", unsafe_allow_html=True)
-                                            if st.button("🧠 Run AI Material Correlation Scan", type="primary", use_container_width=True, key=f"btn_{scan_key}"):
-                                                with st.container():
-                                                    progress_bar = st.progress(0)
-                                                    status_text = st.empty()
-                                                    status_text.markdown(f"**<span style='color:#00d2ff;'>[1/3]</span> Scanning {total_requests_count:,} Submittal Logs...**", unsafe_allow_html=True)
-                                                    time.sleep(1)
-                                                    progress_bar.progress(33)
-                                                    status_text.markdown("**<span style='color:#ffaa00;'>[2/3]</span> Correlating Fill layers with Stockpile sources...**", unsafe_allow_html=True)
-                                                    time.sleep(1.2)
-                                                    progress_bar.progress(66)
-                                                    status_text.markdown("**<span style='color:#2ecc71;'>[3/3]</span> Generating Quality Traceability Insights...**", unsafe_allow_html=True)
-                                                    time.sleep(1.2)
-                                                    progress_bar.progress(100)
-                                                    time.sleep(0.5)
-                                                    st.session_state[scan_key] = True
-                                                    st.rerun()
-                                        
-                                        if st.session_state[scan_key]:
-                                            base_confidence = 75.0
-                                            confidence_bonus = min(24.5, peak_fill_val * 0.6) 
-                                            ai_confidence = round(base_confidence + confidence_bonus, 1)
-
-                                            ai_ratio = stock_in_peak / peak_fill_val if peak_fill_val > 0 else 1
-                                            
-                                            has_target_qty = pd.notna(req_qty) and req_qty > 0
-                                            
-                                            if ai_ratio < 0.05:
-                                                status_level, status_color, status_bg, status_icon = "SEVERE DEFICIT", "#e74c3c", "rgba(231, 76, 60, 0.1)", "🚨"
-                                                quality_insight = f"Significant discrepancy detected. Fill operations ({peak_fill_val} tests) lack sufficient corresponding stockpile verifications, creating a gap in material quality traceability."
-                                                if has_target_qty:
-                                                    samples_needed = max(1, int(peak_fill_val * 0.1))
-                                                    directive = f"ACTION REQUIRED: Request contractor to submit at least {samples_needed} Stockpile samples to cover the executed fill volume."
-                                                else:
-                                                    directive = f"SYSTEM.HALT: Cannot calculate required samples. No Target 'Required Quantity' is registered for this contractor. Update records to enable exact sampling estimates."
-                                            elif ai_ratio < 0.15:
-                                                status_level, status_color, status_bg, status_icon = "COVERAGE GAP", "#f1c40f", "rgba(241, 196, 15, 0.1)", "⚠️"
-                                                quality_insight = f"Material approval rate is lagging behind fill execution speed. A minor gap in material source validation is forming."
-                                                directive = f"ADVISORY: Schedule routine stockpile sampling to restore balance with field operations."
-                                            else:
-                                                status_level, status_color, status_bg, status_icon = "OPTIMAL COVERAGE", "#2ecc71", "rgba(46, 204, 113, 0.1)", "✅"
-                                                quality_insight = f"Stockpile testing frequency is well-aligned with the current fill execution volume."
-                                                directive = f"MAINTAIN: Continue current testing and approval workflow."
-
-                                            st.markdown(f"""
-                                            <style>
-                                                @keyframes scanline {{ 0% {{ transform: translateY(-10px); opacity: 0; }} 50% {{ opacity: 1; }} 100% {{ transform: translateY(0); opacity: 1; }} }}
-                                                .ai-terminal {{ background: linear-gradient(145deg, #0a1118, {status_bg}); border: 1px solid rgba(255,255,255,0.05); border-left: 5px solid {status_color}; border-radius: 12px; padding: 25px; margin: 20px 0; box-shadow: 0 0 20px {status_bg}; animation: scanline 0.8s ease-out forwards; }}
-                                                .ai-badge {{ background: rgba(0,0,0,0.4); border: 1px solid {ui['border_color']}; padding: 5px 12px; border-radius: 20px; font-size: 12px; color: #00d2ff; }}
-                                            </style>
-                                            <div class="ai-terminal">
-                                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
-                                                    <h3 style="color: {status_color}; margin: 0; display: flex; align-items: center; font-size: 20px;"><span style="font-size: 24px; margin-right: 10px;">🤖</span> Generative AI Quality Auditor</h3>
-                                                    <div style="display: flex; gap: 10px;">
-                                                        <span class="ai-badge">⚡ Data Confidence: {ai_confidence}%</span>
-                                                        <span class="ai-badge" style="color: {status_color}; border-color: {status_color}; font-weight: bold;">{status_icon} Status: {status_level}</span>
-                                                    </div>
-                                                </div>
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
-                                                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #00d2ff;">
-                                                        <div style="color: #00d2ff; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> FIELD_DATA.DETECT()</div>
-                                                        <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">Peak filling activity detected in <b style="color:white;">{peak_fill_month}</b> with <b style="color:#00d2ff;">{peak_fill_val} submittals</b>.<br>Correlating approved Stockpile volume during this period is <b style="color:{status_color};">{stock_in_peak}</b>.</div>
-                                                    </div>
-                                                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #ffaa00;">
-                                                        <div style="color: #ffaa00; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QUALITY_GAP.ANALYZE()</div>
-                                                        <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{quality_insight}</div>
-                                                    </div>
-                                                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid {status_color};">
-                                                        <div style="color: {status_color}; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QC_ACTION.RECOMMEND()</div>
-                                                        <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6; font-weight: 500;">{directive}</div>
-                                                    </div>
-                                                </div>
+                        if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
+                            rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
+                            accepted_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                            approved_layers = set(bh_df[accepted_mask]['layer'].dropna().astype(str).unique())
+                            unresolved_alerts = list(set([(str(row.get('layer', 'Unknown')), row.get('Test Type', 'N/A'), row.get('serial', 'N/A')) for _, row in bh_df[rejected_mask].iterrows() if str(row.get('layer', 'Unknown')) not in approved_layers]))
+                            if unresolved_alerts:
+                                st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
+                                alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
+                                for idx, alert in enumerate(unresolved_alerts[:8]): 
+                                    l, t_type, ser = alert
+                                    alert_cols[idx % 4].markdown(f"""
+                                        <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
+                                            <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
+                                                <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
+                                                <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
                                             </div>
-                                            """, unsafe_allow_html=True)
-                                            col_reset, _ = st.columns([0.2, 0.8])
-                                            if col_reset.button("🔄 Reset AI Auditor", key=f"reset_{scan_key}"):
-                                                st.session_state[scan_key] = False
-                                                st.rerun()
-
-                                ch_col1, ch_col2 = st.columns(2)
-                                with ch_col1:
-                                    if 'Classification' in stock_df.columns and not stock_df.empty:
-                                        class_counts = stock_df['Classification'].value_counts().reset_index()
-                                        class_counts.columns = ['Classification', 'Count']
-                                        fig_class = px.pie(class_counts, names='Classification', values='Count', title=f"Stockpile Classifications for {selected_comp}", hole=0.3, color_discrete_sequence=NEON_COLORS)
-                                        fig_class.update_traces(textinfo='label+percent', hovertemplate='<b>Class:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
-                                        fig_class = style_3d_glassy(fig_class, chart_type="pie")
-                                        st.plotly_chart(fig_class, use_container_width=True, key=f"class_{selected_comp}")
-                                    else:
-                                        st.info(f"No Stockpile classification data logged.")
-                                        
-                                with ch_col2:
-                                    if 'sample status' in stock_df.columns and not stock_df.empty:
-                                        stock_df['status_upper'] = stock_df['sample status'].str.upper()
-                                        fig_stock_status = px.pie(stock_df, names='status_upper', title=f"Stockpile Approval/Rejection Rate", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
-                                        fig_stock_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
-                                        fig_stock_status = style_3d_glassy(fig_stock_status, chart_type="pie")
-                                        st.plotly_chart(fig_stock_status, use_container_width=True, key=f"stock_status_{selected_comp}")
-                                    else:
-                                        st.info(f"No Stockpile status data logged.")
-
-                                ch_col3, ch_col4 = st.columns(2)
-                                with ch_col3:
-                                    if 'Date ( test)' in stock_df.columns and not stock_df.empty:
-                                        time_df = stock_df.dropna(subset=['Date ( test)']).copy()
-                                        time_df['Month'] = time_df['Date ( test)'].dt.strftime('%b %Y')
-                                        time_df['Month_Sort'] = time_df['Date ( test)'].dt.to_period('M')
-                                        monthly_stock = time_df.groupby(['Month_Sort', 'Month']).size().reset_index(name='Count').sort_values('Month_Sort')
-                                        fig_timeline = px.bar(monthly_stock, x='Month', y='Count', title="Stockpile Tests Timeline", text_auto=True, color_discrete_sequence=['#ffaa00'])
-                                        fig_timeline = style_3d_glassy(fig_timeline, chart_type="bar")
-                                        st.plotly_chart(fig_timeline, use_container_width=True, key=f"stock_time_{selected_comp}")
-                                    else:
-                                        st.info("No Date data available to show Stockpile timeline.")
-
-                                with ch_col4:
-                                    if 'sample status' in comp_bat_df.columns and not comp_bat_df.empty:
-                                        comp_bat_df['status_upper'] = comp_bat_df['sample status'].str.upper()
-                                        fig_status = px.pie(comp_bat_df, names='status_upper', title=f"Overall Approval Rate (All Tests)", hole=0.3, color='status_upper', color_discrete_map=STATUS_COLORS)
-                                        fig_status.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
-                                        fig_status = style_3d_glassy(fig_status, chart_type="pie")
-                                        st.plotly_chart(fig_status, use_container_width=True, key=f"stock_all_{selected_comp}")
-                                    else:
-                                        st.info(f"No overall status data logged.")
-
-                        with tab_execution:
-                            st.markdown(f"### 🏗️ Executive Progress & Compaction: `{selected_comp}`")
-                            
-                            company_col_qty = next((c for c in df.columns if 'COMPANY' in c.upper() and c != 'Company Name'), 'Company Name')
-                            qty_match_df = df[df[company_col_qty].astype(str).str.strip().str.lower() == selected_comp.strip().lower()]
-                            if qty_match_df.empty: qty_match_df = comp_df_full
-                                
-                            tot_qty_col = next((c for c in df.columns if 'TOTAL QUANTITY' in str(c).strip().upper()), None)
-                            exec_qty_col = next((c for c in df.columns if 'EXECUTED QUANTITY' in str(c).strip().upper()), None)
-                            
-                            tot_qty = pd.to_numeric(qty_match_df[tot_qty_col], errors='coerce').max() if tot_qty_col else 0
-                            exe_qty = pd.to_numeric(qty_match_df[exec_qty_col], errors='coerce').max() if exec_qty_col else 0
-                            prog_pct = (exe_qty / tot_qty * 100) if pd.notna(tot_qty) and tot_qty > 0 else 0
-                            
-                            test_col = 'Test Type' if 'Test Type' in comp_df_full.columns else None
-                            compaction_df = pd.DataFrame()
-                            if test_col:
-                                compaction_df = comp_df_full[comp_df_full[test_col].astype(str).str.contains('DPL|PLATE', case=False, na=False)].copy()
-                                
-                            num_tests_col_exec = next((c for c in comp_df_full.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
-                            
-                            dpl_df = compaction_df[compaction_df[test_col].astype(str).str.contains('DPL', case=False, na=False)] if test_col else pd.DataFrame()
-                            plate_df = compaction_df[compaction_df[test_col].astype(str).str.contains('PLATE', case=False, na=False)] if test_col else pd.DataFrame()
-                            
-                            dpl_pts = int(pd.to_numeric(dpl_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not dpl_df.empty else len(dpl_df)
-                            plate_pts = int(pd.to_numeric(plate_df[num_tests_col_exec], errors='coerce').sum()) if num_tests_col_exec and not plate_df.empty else len(plate_df)
-                            total_test_points = dpl_pts + plate_pts
-                            
-                            avg_dpl = pd.to_numeric(dpl_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in dpl_df.columns else np.nan
-                                
-                            c1, c2, c3, c4 = st.columns(4)
-                            create_card(c1, "Total Target Qty", f"{tot_qty:,.0f}" if pd.notna(tot_qty) and tot_qty>0 else "N/A")
-                            create_card(c2, "Executed Qty", f"{exe_qty:,.0f}" if pd.notna(exe_qty) and exe_qty>0 else "0")
-                            pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
-                            create_card(c3, "Total Compaction Points", f"{total_test_points:,}", delta_html=pts_html)
-                            create_card(c4, "Average DPL Value", f"{avg_dpl:.2f}" if pd.notna(avg_dpl) else "N/A")
-
-                            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                            
-                            r2_c1, r2_c2 = st.columns(2)
-                            
-                            with r2_c1:
-                                st.markdown("#### 🚀 Execution Progress vs Target")
-                                if pd.notna(tot_qty) and tot_qty > 0:
-                                    fig_exec_kpi = go.Figure(go.Indicator(
-                                        mode = "gauge+number+delta",
-                                        value = exe_qty,
-                                        title = {'text': "Completed Volume", 'font': {'size': 16, 'color': "white" if is_dark else "#2C3E50"}},
-                                        number = {'font': {'size': 35, 'color': "white" if is_dark else "#2C3E50"}},
-                                        delta = {'reference': tot_qty, 'increasing': {'color': "#2ecc71"}, 'decreasing': {'color': "#e74c3c"}},
-                                        gauge = {
-                                            'axis': {'range': [None, tot_qty], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
-                                            'bar': {'color': "#00d2ff"},
-                                            'bgcolor': "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)",
-                                            'steps': [
-                                                {'range': [0, tot_qty*0.5], 'color': "rgba(231,76,60,0.3)"},
-                                                {'range': [tot_qty*0.5, tot_qty*0.8], 'color': "rgba(241,196,15,0.3)"},
-                                                {'range': [tot_qty*0.8, tot_qty], 'color': "rgba(46,204,113,0.3)"}
-                                            ],
-                                            'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': tot_qty}
-                                        }
-                                    ))
-                                    fig_exec_kpi.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=320, margin=dict(l=20, r=20, t=50, b=20), font={'family': 'Montserrat'})
-                                    st.plotly_chart(fig_exec_kpi, use_container_width=True, key=f"exec_kpi_gauge_{selected_comp}")
-                                else:
-                                    st.info("No Target Quantity defined to show progress.")
-                                    
-                            with r2_c2:
-                                st.markdown("#### ⚖️ Compaction Quality Metrics (Pass Rate)")
-                                if 'sample status' in compaction_df.columns and not compaction_df.empty:
-                                    compaction_df['status_upper'] = compaction_df['sample status'].str.upper()
-                                    fig_comp_qual = px.pie(compaction_df, names='status_upper', hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
-                                    fig_comp_qual.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Yield: %{percent}')
-                                    fig_comp_qual = style_3d_glassy(fig_comp_qual, chart_type="pie")
-                                    fig_comp_qual.update_layout(height=320, margin=dict(l=20, r=20, t=20, b=20))
-                                    st.plotly_chart(fig_comp_qual, use_container_width=True, key=f"comp_qual_pie_{selected_comp}")
-                                else:
-                                    st.info("No Quality/Status data found for Compaction.")
-                                    
-                            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                            
-                            st.markdown("#### 📈 Monthly Compaction Trend Analysis")
-                            if not compaction_df.empty and 'Date ( test)' in compaction_df.columns:
-                                compaction_df['Month'] = compaction_df['Date ( test)'].dt.strftime('%b %Y')
-                                compaction_df['Month_Sort'] = compaction_df['Date ( test)'].dt.to_period('M')
-                                monthly_comp = compaction_df.groupby(['Month_Sort', 'Month', test_col]).size().reset_index(name='Count').sort_values('Month_Sort')
-                                
-                                fig_comp_trend = px.bar(monthly_comp, x='Month', y='Count', color=test_col, barmode='group', color_discrete_sequence=NEON_COLORS)
-                                fig_comp_trend.update_traces(hovertemplate='<b>Month:</b> %{x}<br><b>Tests:</b> %{y}')
-                                fig_comp_trend = style_3d_glassy(fig_comp_trend, chart_type="bar")
-                                fig_comp_trend.update_layout(height=350)
-                                st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_bar_{selected_comp}")
-                            else:
-                                st.info("No Date data found for Compaction Trend.")
-                                
-                            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                            st.markdown("#### 🧠 Executive AI Insights & Alerts")
-                            
-                            pred_date_str = "Insufficient Data"
-                            daily_rate = 0
-                            if 'Date ( test)' in qty_match_df.columns and pd.notna(tot_qty) and tot_qty > 0:
-                                dates = qty_match_df['Date ( test)'].dropna()
-                                if len(dates) >= 2 and exe_qty > 0:
-                                    min_date = dates.min()
-                                    max_date = dates.max()
-                                    days_worked = (max_date - min_date).days
-                                    if days_worked > 0:
-                                        daily_rate = exe_qty / days_worked
-                                        if exe_qty >= tot_qty:
-                                            pred_date_str = "Target Achieved ✅"
-                                        else:
-                                            rem_qty = tot_qty - exe_qty
-                                            rem_days = rem_qty / daily_rate
-                                            pred_date = max_date + timedelta(days=rem_days)
-                                            pred_date_str = pred_date.strftime('%B %Y')
-                            
-                            rej_rate = 0
-                            top_fail_str = "None"
-                            if 'sample status' in compaction_df.columns and not compaction_df.empty:
-                                rej_df = compaction_df[compaction_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
-                                rej_rate = (len(rej_df) / len(compaction_df)) * 100
-                                if not rej_df.empty:
-                                    if test_col in rej_df.columns:
-                                        top_fail_str = rej_df[test_col].value_counts().idxmax()
-                            
-                            insight_c1, insight_c2, insight_c3 = st.columns(3)
-                            
-                            with insight_c1:
-                                st.markdown(f"""
-                                <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 8px; height: 100%;">
-                                    <h4 style="color: #00d2ff; margin-top: 0; font-size: 16px;">📊 Performance vs Target</h4>
-                                    <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                        • <b>Completion:</b> {prog_pct:.1f}% of total target.<br>
-                                        • <b>Daily Velocity:</b> ~{int(daily_rate):,} units/day.<br>
-                                        • <b>Status:</b> {"On Track" if prog_pct > 50 else "Requires Acceleration"}
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                            with insight_c2:
-                                qual_color = "#e74c3c" if rej_rate > 15 else "#2ecc71"
-                                st.markdown(f"""
-                                <div style="background: rgba(231, 76, 60, 0.05); border-left: 4px solid {qual_color}; padding: 20px; border-radius: 8px; height: 100%;">
-                                    <h4 style="color: {qual_color}; margin-top: 0; font-size: 16px;">⚠️ Quality Issues</h4>
-                                    <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                        • <b>Rejection Rate:</b> {rej_rate:.1f}% in compaction.<br>
-                                        • <b>Most Failed Test:</b> {top_fail_str}.<br>
-                                        • <b>Action:</b> {"Urgent audit needed for equipment." if rej_rate > 15 else "Quality is within acceptable limits."}
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                            with insight_c3:
-                                st.markdown(f"""
-                                <div style="background: rgba(241, 196, 15, 0.05); border-left: 4px solid #f1c40f; padding: 20px; border-radius: 8px; height: 100%;">
-                                    <h4 style="color: #f1c40f; margin-top: 0; font-size: 16px;">🔮 Predictive Completion</h4>
-                                    <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                        • <b>Forecasted Finish:</b> <b style="color:#ffaa00; font-size:16px;">{pred_date_str}</b><br>
-                                        • <b>Algorithm:</b> Based on historical velocity of {int(daily_rate):,} avg volume per active day.<br>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-
-                st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                with tab_quantities:
-                    st.markdown(f"### 📊 Quantities Rate & Execution Analytics: `{selected_comp}`")
-                    st.caption("Custom-built per exact functional column mapping requirements.")
-
-                    # --- Column Declarations (Strictly as Requested) ---
-                    col_company = 'Company'
-                    col_company_name = 'Company Name'
-                    col_contractor = 'Contractor'
-                    col_tot_qty = 'Total Quantity'
-                    col_exec_qty = 'Executed Quantity'
-                    col_exec_m3 = 'Executed Quantity (m3)'
-                    col_elem_all = 'Element (all)'
-                    col_element_actual = 'ELEMENT' if 'ELEMENT' in df.columns else ('ELMENT' if 'ELMENT' in df.columns else None)
-                    col_target = 'Target Daily Rate'
-                    col_date_daily = 'Date (Daily)'
-                    col_sector = 'Sector' if 'Sector' in df.columns else ('Sectoer' if 'Sectoer' in df.columns else None)
-                    col_num_tests = 'Number of Tests'
-                    col_test_type = 'Test Type'
-
-                    temp_df = df.copy()
-                    
-                    # ---------------------------------------------------------
-                    # 1 & 2: Total Quantity & Executed Quantity (Using 'Company')
-                    # ---------------------------------------------------------
-                    df_company = pd.DataFrame()
-                    if col_company in temp_df.columns:
-                        df_company = temp_df[temp_df[col_company].astype(str).str.strip().str.lower() == selected_comp.lower()]
-                    
-                    tot_qty_val = pd.to_numeric(df_company[col_tot_qty], errors='coerce').max() if (col_tot_qty in df_company.columns and not df_company.empty) else 0
-                    exec_qty_val = pd.to_numeric(df_company[col_exec_qty], errors='coerce').max() if (col_exec_qty in df_company.columns and not df_company.empty) else 0
-
-                    # ---------------------------------------------------------
-                    # 3: Daily Executed Quantity (Using 'Contractor')
-                    # ---------------------------------------------------------
-                    df_contractor = pd.DataFrame()
-                    if col_contractor in temp_df.columns:
-                        df_contractor = temp_df[temp_df[col_contractor].astype(str).str.strip().str.lower() == selected_comp.lower()]
-
-                    daily_exec_m3_val = pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').sum() if (col_exec_m3 in df_contractor.columns and not df_contractor.empty) else 0
-
-                    # ---------------------------------------------------------
-                    # 6 & 7: Missing Elements & KPIs Calculation
-                    # ---------------------------------------------------------
-                    exec_pct = (daily_exec_m3_val / tot_qty_val * 100) if tot_qty_val > 0 else 0
-                    rem_qty = max(0, tot_qty_val - daily_exec_m3_val) if tot_qty_val > 0 else 0
-                    
-                    planned_elems = set()
-                    executed_elems = set()
-                    missing_elems = set()
-                    if col_element_actual and col_company_name in temp_df.columns and col_elem_all in temp_df.columns and col_contractor in temp_df.columns:
-                        df_planned = temp_df[temp_df[col_company_name].astype(str).str.strip().str.lower() == selected_comp.lower()]
-                        planned_elems = set(df_planned[col_element_actual].dropna().astype(str).str.strip())
-                        executed_elems = set(df_contractor[pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').fillna(0) > 0][col_elem_all].dropna().astype(str).str.strip()) if col_exec_m3 in df_contractor.columns else set()
-                        missing_elems = planned_elems - executed_elems
-
-                    st.markdown("#### 📦 Overall Quantity KPIs")
-                    k1, k2, k3, k4 = st.columns(4)
-                    create_card(k1, "Total Qty", f"{tot_qty_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Company'</span>")
-                    create_card(k2, "Executed Qty", f"{exec_qty_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Company'</span>")
-                    create_card(k3, "Daily Executed (m3)", f"{daily_exec_m3_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Contractor'</span>")
-                    create_card(k4, "Execution %", f"{exec_pct:.1f}%", progress=min(100, exec_pct))
-
-                    c1, c2, c3, c4 = st.columns(4)
-                    create_card(c1, "Remaining Quantity", f"{rem_qty:,.1f}")
-                    create_card(c2, "Planned Elements", len(planned_elems))
-                    create_card(c3, "Missing Elements", len(missing_elems))
-                    create_card(c4, "Completed Elements", len(executed_elems))
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ---------------------------------------------------------
-                    # 4: Element Quantity Cards
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🏗️ Execution per Element")
-                    if col_elem_all in df_contractor.columns and col_exec_m3 in df_contractor.columns:
-                        df_contractor[col_exec_m3] = pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').fillna(0)
-                        elem_df = df_contractor.groupby(col_elem_all)[col_exec_m3].sum().reset_index()
-                        elem_df = elem_df[elem_df[col_exec_m3] > 0].sort_values(col_exec_m3, ascending=False)
-                        
-                        if not elem_df.empty:
-                            elem_cols = st.columns(min(len(elem_df), 4))
-                            for i, (_, r) in enumerate(elem_df.head(8).iterrows()):
-                                create_card(elem_cols[i % 4], f"Element: {r[col_elem_all]}", f"{r[col_exec_m3]:,.1f} m³", delta_html=f"<span style='font-size:10px;color:#8da3b9;'>{selected_comp}</span>")
-                            with st.expander("📋 View All Elements Breakdown"):
-                                st.dataframe(elem_df.rename(columns={col_elem_all: 'Element', col_exec_m3: 'Total Executed (m3)'}), use_container_width=True)
-                        else:
-                            st.info("No elements execution data found for this contractor.")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ---------------------------------------------------------
-                    # 5: Daily Performance Chart
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🚀 Daily Performance Chart")
-                    if col_date_daily in df_contractor.columns and col_target in df_contractor.columns and col_exec_m3 in df_contractor.columns:
-                        daily_df = df_contractor.copy()
-                        daily_df[col_date_daily] = pd.to_datetime(daily_df[col_date_daily], errors='coerce')
-                        daily_df = daily_df.dropna(subset=[col_date_daily])
-                        
-                        if not daily_df.empty:
-                            daily_df[col_target] = pd.to_numeric(daily_df[col_target], errors='coerce').fillna(0)
-                            daily_agg = daily_df.groupby(col_date_daily).agg({
-                                col_exec_m3: 'sum',
-                                col_target: 'max'
-                            }).reset_index().sort_values(col_date_daily)
-                            
-                            fig_daily = go.Figure()
-                            fig_daily.add_trace(go.Scatter(x=daily_agg[col_date_daily], y=daily_agg[col_target], name="Target Daily Rate", line=dict(color='#e74c3c', width=3, shape='spline')))
-                            fig_daily.add_trace(go.Bar(x=daily_agg[col_date_daily], y=daily_agg[col_exec_m3], name="Executed Quantity (m3)", marker_color='#00d2ff'))
-                            fig_daily.update_layout(barmode='group', hovermode='x unified', title="Actual vs Target Daily Execution")
-                            try: fig_daily = style_3d_glassy(fig_daily, "combo")
-                            except: pass
-                            st.plotly_chart(fig_daily, use_container_width=True)
-                    else:
-                        st.info("Required columns for Daily Performance Chart not found.")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ---------------------------------------------------------
-                    # 6: Missing Elements Warning (Table)
-                    # ---------------------------------------------------------
-                    st.markdown("#### ⚠️ Missing Elements Warning")
-                    if missing_elems:
-                        st.error(f"🚨 ALERT: Found {len(missing_elems)} Planned Elements with NO execution records!")
-                        miss_df = pd.DataFrame({"Missing Planned Element": list(missing_elems)})
-                        st.dataframe(miss_df, use_container_width=True)
-                    else:
-                        if len(planned_elems) > 0:
-                            st.success("✅ All planned elements have been matched with execution records.")
-                        else:
-                            st.info("No planned elements detected to compare.")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ---------------------------------------------------------
-                    # 8: Worst Contractor Analysis
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🏆 Sector Analysis (Worst Performer)")
-                    if col_sector and col_sector in df_contractor.columns and col_contractor in temp_df.columns and col_exec_m3 in temp_df.columns:
-                        sector_val = df_contractor[col_sector].dropna().iloc[0] if not df_contractor[col_sector].dropna().empty else None
-                        
-                        if sector_val:
-                            sec_df = temp_df[temp_df[col_sector].astype(str).str.strip() == str(sector_val).strip()].copy()
-                            if col_date_daily in sec_df.columns:
-                                sec_df[col_exec_m3] = pd.to_numeric(sec_df[col_exec_m3], errors='coerce').fillna(0)
-                                
-                                # Aggregate daily sum per contractor
-                                daily_sec_agg = sec_df.groupby([col_contractor, col_date_daily])[col_exec_m3].sum().reset_index()
-                                
-                                # Calculate Mean and StdDev per contractor
-                                worst_df = daily_sec_agg.groupby(col_contractor)[col_exec_m3].agg(['mean', 'std', 'count']).reset_index()
-                                
-                                # Add duration if available
-                                if 'DURATION' in sec_df.columns:
-                                    sec_df['DURATION'] = pd.to_numeric(sec_df['DURATION'], errors='coerce').fillna(0)
-                                    dur_agg = sec_df.groupby(col_contractor)['DURATION'].mean().reset_index()
-                                    worst_df = pd.merge(worst_df, dur_agg, on=col_contractor, how='left')
-                                else:
-                                    worst_df['DURATION'] = 0
-                                
-                                # Sort to find worst: Low Mean, High Duration
-                                worst_df = worst_df.sort_values(by=['mean', 'DURATION'], ascending=[True, False])
-                                worst_df = worst_df[worst_df['count'] > 0] # Ensure they actually worked
-                                
-                                if not worst_df.empty:
-                                    w_cont = worst_df.iloc[0]
-                                    st.markdown(f"""
-                                    <div style="background:rgba(231,76,60,0.1);border-left:5px solid #e74c3c;border-radius:12px;padding:16px;">
-                                        <div style="color:#e74c3c;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:6px;">🔴 Weakest Contractor in {sector_val}</div>
-                                        <div style="color:#ffffff;font-size:20px;font-weight:700;">{w_cont[col_contractor]}</div>
-                                        <div style="color:#8da3b9;font-size:13px;margin-top:6px;">
-                                            Avg Daily Qty: <b style="color:#e74c3c">{w_cont['mean']:.1f} m³</b><br>
-                                            Std Dev: <b style="color:#e74c3c">{w_cont['std']:.1f}</b><br>
-                                            Avg Duration: <b style="color:#e74c3c">{w_cont['DURATION']:.1f} Days</b>
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                                    
-                                    with st.expander(f"View Full {sector_val} Ranking"):
-                                        st.dataframe(worst_df.rename(columns={'mean': 'Avg Daily Qty', 'std': 'Std Dev', 'count': 'Active Days', 'DURATION': 'Avg Duration'}), use_container_width=True)
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
-                    # ---------------------------------------------------------
-                    # 9: DPL & PLATE LOAD Statistics
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🧪 Laboratory Tests Stats (DPL & PLATE LOAD)")
-                    df_comp_tests = pd.DataFrame()
-                    if col_company_name in temp_df.columns:
-                        df_comp_tests = temp_df[temp_df[col_company_name].astype(str).str.strip().str.lower() == selected_comp.lower()]
-                    
-                    if col_test_type in df_comp_tests.columns and col_num_tests in df_comp_tests.columns:
-                        dpl_pts = pd.to_numeric(df_comp_tests[df_comp_tests[col_test_type].astype(str).str.upper().str.contains('DPL', na=False)][col_num_tests], errors='coerce').sum()
-                        plate_pts = pd.to_numeric(df_comp_tests[df_comp_tests[col_test_type].astype(str).str.upper().str.contains('PLATE', na=False)][col_num_tests], errors='coerce').sum()
-                        
-                        t1, t2, t3 = st.columns(3)
-                        create_card(t1, "DPL Count", int(dpl_pts))
-                        create_card(t2, "PLATE LOAD Count", int(plate_pts))
-                        create_card(t3, "Total Critical Tests", int(dpl_pts + plate_pts))
-                    else:
-                        st.info("Requires 'Test Type' and 'Number of Tests' columns to calculate Lab Stats.")
-
-            st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
-            bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
-            zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
-            if bh_col_name:
-                filtered_df[bh_col_name] = filtered_df[bh_col_name].fillna('').astype(str).str.strip()
-                bh_list = [bh for bh in filtered_df[bh_col_name].unique() if str(bh).upper() != 'NAN' and str(bh) != '']
-                if len(bh_list) > 0:
-                    selected_bh = st.selectbox(f"Select an Element ({bh_col_name}) to investigate:", ["-- Select Element --"] + sorted(bh_list))
-                    if selected_bh != "-- Select Element --":
-                        bh_df_raw = filtered_df[filtered_df[bh_col_name] == selected_bh].copy()
-                        bh_df = None
-                        if zone_col_name and bh_df_raw[zone_col_name].nunique() > 1:
-                            available_zones = sorted([str(z) for z in bh_df_raw[zone_col_name].unique() if pd.notna(z) and str(z).strip() != ''])
-                            st.warning(f"⚠️ **Attention:** Element `{selected_bh}` is present in multiple zones. Please select the required Zone:")
-                            selected_zone = st.radio("📍 Select Zone:", available_zones, horizontal=True)
-                            if selected_zone:
-                                bh_df = bh_df_raw[bh_df_raw[zone_col_name].astype(str) == selected_zone].copy()
-                                st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}` <span style='color:#00d2ff; font-size:18px;'>[Zone: {selected_zone}]</span>", unsafe_allow_html=True)
-                        else:
-                            bh_df = bh_df_raw
-                            st.markdown(f"#### 🎯 Investigation Report: `{selected_bh}`")
-                        
-                        if bh_df is not None:
-                            if 'layer' in bh_df.columns:
-                                bh_df['Layer_Num'] = bh_df['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
-                                bh_df = bh_df.sort_values(['Layer_Num', 'Date ( test)'])
-                            
-                            bh_total_submittals = len(bh_df) 
-                            num_tests_col_bh = next((c for c in bh_df.columns if 'NUMBER OF TESTS' in str(c).strip().upper() or 'NUM OF TEST' in str(c).strip().upper()), None)
-                            bh_total_tests = int(pd.to_numeric(bh_df[num_tests_col_bh], errors='coerce').fillna(0).sum()) if num_tests_col_bh else bh_total_submittals 
-                            bh_accepted = len(bh_df[bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bh_df.columns else 0
-                            bh_pass_rate = (bh_accepted / bh_total_submittals * 100) if bh_total_submittals > 0 else 0
-                            bh_avg_dpl = pd.to_numeric(bh_df['AVERAGE VALUE'], errors='coerce').mean() if 'AVERAGE VALUE' in bh_df.columns else 0
-                            start_date = bh_df['Date ( test)'].min().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].min()) else "N/A"
-                            end_date = bh_df['Date ( test)'].max().strftime('%Y-%m-%d') if 'Date ( test)' in bh_df.columns and not pd.isna(bh_df['Date ( test)'].max()) else "N/A"
-                            
-                            c1, c2, c3, c4 = st.columns(4)
-                            create_card(c1, "Total Submittals", bh_total_submittals)
-                            create_card(c2, "Total Tests", bh_total_tests)
-                            create_card(c3, "First Test Date", start_date)
-                            create_card(c4, "Last Test Date", end_date)
-                            c5, c6, c7, c8 = st.columns(4)
-                            create_card(c5, "Passed/Approved", bh_accepted)
-                            create_card(c6, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
-                            create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
-                            create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
-
-                            if 'Company Name' in bh_df.columns:
-                                if 'Date ( test)' in bh_df.columns:
-                                    comp_stats = bh_df.dropna(subset=['Company Name']).groupby('Company Name')['Date ( test)'].agg(['min', 'max']).reset_index()
-                                    comp_details = [f"<span style='color:#2ecc71;'><b>{r['Company Name']}</b></span>: <span style='font-size:16px; color:{ui['text_muted']};'>{r['min'].strftime('%Y-%m-%d') if pd.notna(r['min']) else 'N/A'} <b style='color:#ffaa00;'>&rarr;</b> {r['max'].strftime('%Y-%m-%d') if pd.notna(r['max']) else 'N/A'}</span>" for _, r in comp_stats.iterrows()]
-                                    companies_str = "<br>".join(comp_details) if comp_details else "N/A"
-                                else:
-                                    companies_worked = bh_df['Company Name'].dropna().unique()
-                                    companies_str = " ، ".join(companies_worked) if len(companies_worked) > 0 else "N/A"
-                                st.markdown(f"""
-                                    <div class="custom-card" style="margin-top: 5px; text-align: left; padding-left: 30px;">
-                                        <div class="metric-label" style="color:#ffaa00; text-align: left; margin-bottom: 15px;">Contractors Timeline on this Element</div>
-                                        <div class="metric-value" style="font-size: 18px; line-height: 2.0; font-weight: 500; color:{ui['text_main']};">{companies_str}</div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-
-                            if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
-                                rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                                accepted_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                                approved_layers = set(bh_df[accepted_mask]['layer'].dropna().astype(str).unique())
-                                unresolved_alerts = list(set([(str(row.get('layer', 'Unknown')), row.get('Test Type', 'N/A'), row.get('serial', 'N/A')) for _, row in bh_df[rejected_mask].iterrows() if str(row.get('layer', 'Unknown')) not in approved_layers]))
-                                if unresolved_alerts:
-                                    st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
-                                    alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
-                                    for idx, alert in enumerate(unresolved_alerts[:8]): 
-                                        l, t_type, ser = alert
-                                        alert_cols[idx % 4].markdown(f"""
-                                            <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
-                                                <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
-                                                <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                                    <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
-                                                    <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
-                                                </div>
-                                            </div>
-                                            """, unsafe_allow_html=True)
-                            st.divider()
-
-                            if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
-                                st.markdown("#### 🧠 AI Engineering Sequence Inspector (Compaction Only)")
-                                seq_df = bh_df.dropna(subset=['Date ( test)']).copy()
-                                if 'Test Type' in seq_df.columns:
-                                    seq_df = seq_df[seq_df['Test Type'].astype(str).str.contains('SANDCONE|SAND CONE|DPL', case=False, na=False)]
-                                seq_df['Layer_Int'] = seq_df['layer'].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
-                                seq_df = seq_df[seq_df['Layer_Int'] > 0]
-                                if not seq_df.empty:
-                                    layer_timeline = seq_df.groupby('Layer_Int')['Date ( test)'].min().reset_index()
-                                    layer_timeline = layer_timeline.sort_values('Layer_Int')
-                                    logic_errors = []
-                                    missing_layers = []
-                                    min_layer = layer_timeline['Layer_Int'].min()
-                                    max_layer = layer_timeline['Layer_Int'].max()
-                                    expected_layers = set(range(min_layer, max_layer + 1))
-                                    actual_layers = set(layer_timeline['Layer_Int'])
-                                    missing_layers = sorted(list(expected_layers - actual_layers))
-                                    for i in range(len(layer_timeline) - 1):
-                                        curr_L = layer_timeline.iloc[i]['Layer_Int']
-                                        next_L = layer_timeline.iloc[i+1]['Layer_Int']
-                                        curr_D = layer_timeline.iloc[i]['Date ( test)']
-                                        next_D = layer_timeline.iloc[i+1]['Date ( test)']
-                                        if curr_D > next_D:
-                                            logic_errors.append(f"<b>Layer {curr_L}</b> was tested on <span style='color:#ffaa00;'>{curr_D.date()}</span>, which is AFTER <b>Layer {next_L}</b> tested on <span style='color:#ffaa00;'>{next_D.date()}</span>.")
-                                    if not missing_layers and not logic_errors:
-                                        st.markdown(f"""
-                                        <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                                            <h5 style="color: #2ecc71; margin: 0;">✅ Sequence Verified</h5>
-                                            <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">All compaction layers are chronologically correct with no missing intermediate layers.</p>
                                         </div>
                                         """, unsafe_allow_html=True)
-                                    else:
-                                        if missing_layers:
-                                            missing_str = ", ".join([f"Layer {l}" for l in missing_layers])
-                                            st.markdown(f"""
-                                            <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-                                                <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5>
-                                                <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:{ui['text_main']};">{missing_str}</b></p>
-                                            </div>
-                                            """, unsafe_allow_html=True)
-                                        if logic_errors:
-                                            errors_html = "<br>".join([f"🚨 {err}" for err in logic_errors])
-                                            st.markdown(f"""
-                                            <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                                                <h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5>
-                                                <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px; line-height:1.8;">{errors_html}</p>
-                                            </div>
-                                            """, unsafe_allow_html=True)
+                        st.divider()
+
+                        if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
+                            st.markdown("#### 🧠 AI Engineering Sequence Inspector (Compaction Only)")
+                            seq_df = bh_df.dropna(subset=['Date ( test)']).copy()
+                            if 'Test Type' in seq_df.columns:
+                                seq_df = seq_df[seq_df['Test Type'].astype(str).str.contains('SANDCONE|SAND CONE|DPL', case=False, na=False)]
+                            seq_df['Layer_Int'] = seq_df['layer'].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
+                            seq_df = seq_df[seq_df['Layer_Int'] > 0]
+                            if not seq_df.empty:
+                                layer_timeline = seq_df.groupby('Layer_Int')['Date ( test)'].min().reset_index()
+                                layer_timeline = layer_timeline.sort_values('Layer_Int')
+                                logic_errors = []
+                                missing_layers = []
+                                min_layer = layer_timeline['Layer_Int'].min()
+                                max_layer = layer_timeline['Layer_Int'].max()
+                                expected_layers = set(range(min_layer, max_layer + 1))
+                                actual_layers = set(layer_timeline['Layer_Int'])
+                                missing_layers = sorted(list(expected_layers - actual_layers))
+                                for i in range(len(layer_timeline) - 1):
+                                    curr_L = layer_timeline.iloc[i]['Layer_Int']
+                                    next_L = layer_timeline.iloc[i+1]['Layer_Int']
+                                    curr_D = layer_timeline.iloc[i]['Date ( test)']
+                                    next_D = layer_timeline.iloc[i+1]['Date ( test)']
+                                    if curr_D > next_D:
+                                        logic_errors.append(f"<b>Layer {curr_L}</b> was tested on <span style='color:#ffaa00;'>{curr_D.date()}</span>, which is AFTER <b>Layer {next_L}</b> tested on <span style='color:#ffaa00;'>{next_D.date()}</span>.")
+                                if not missing_layers and not logic_errors:
+                                    st.markdown(f"""
+                                    <div style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                                        <h5 style="color: #2ecc71; margin: 0;">✅ Sequence Verified</h5>
+                                        <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">All compaction layers are chronologically correct with no missing intermediate layers.</p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
                                 else:
-                                    st.info("No compaction tests (SANDCONE or DPL) found to evaluate sequence.")
-                            st.divider()
+                                    if missing_layers:
+                                        missing_str = ", ".join([f"Layer {l}" for l in missing_layers])
+                                        st.markdown(f"""
+                                        <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                                            <h5 style="color: #f1c40f; margin: 0;">⚠️ Missing Compaction Layers Detected</h5>
+                                            <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px;">Gap found in execution sequence. Missing: <b style="color:{ui['text_main']};">{missing_str}</b></p>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    if logic_errors:
+                                        errors_html = "<br>".join([f"🚨 {err}" for err in logic_errors])
+                                        st.markdown(f"""
+                                        <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                                            <h5 style="color: #e74c3c; margin: 0;">🛑 Critical Chronological Illogic</h5>
+                                            <p style="color: {ui['text_main']}; margin: 5px 0 0 0; font-size: 14px; line-height:1.8;">{errors_html}</p>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                            else:
+                                st.info("No compaction tests (SANDCONE or DPL) found to evaluate sequence.")
+                        st.divider()
 
-                            if 'Sampling Location' in bh_df.columns:
-                                st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
-                                boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
-                                if not boe_df.empty:
-                                    boe_count = len(boe_df)
-                                    st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
-                                    if 'Classification' in boe_df.columns:
-                                        class_counts = boe_df['Classification'].value_counts().reset_index()
-                                        class_counts.columns = ['Classification', 'Count']
-                                        fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True, color_discrete_sequence=NEON_COLORS)
-                                        fig_sc = style_3d_glassy(fig_sc, chart_type="bar")
-                                        st.plotly_chart(fig_sc, use_container_width=True, key=f"sc_{selected_bh}")
-                                else:
-                                    st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
-                            st.divider()
+                        if 'Sampling Location' in bh_df.columns:
+                            st.markdown("#### ⛏️ Bottom of Excavation & Soil Quality")
+                            boe_df = bh_df[bh_df['Sampling Location'].astype(str).str.contains('Bottom|Soil', case=False, na=False)]
+                            if not boe_df.empty:
+                                boe_count = len(boe_df)
+                                st.info(f"📌 Found **{boe_count}** submittals related to Bottom of Excavation / Soil in this Element.")
+                                if 'Classification' in boe_df.columns:
+                                    class_counts = boe_df['Classification'].value_counts().reset_index()
+                                    class_counts.columns = ['Classification', 'Count']
+                                    fig_sc = px.bar(class_counts, x='Classification', y='Count', title="Soil Classifications", color='Classification', text_auto=True, color_discrete_sequence=NEON_COLORS)
+                                    fig_sc = style_3d_glassy(fig_sc, chart_type="bar")
+                                    st.plotly_chart(fig_sc, use_container_width=True, key=f"sc_{selected_bh}")
+                            else:
+                                st.success("No 'Bottom of Excavation' specific issues or tests logged for this Element.")
+                        st.divider()
 
-                            if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
-                                layer_col = bh_df['layer'] if 'layer' in bh_df.columns else pd.Series([''] * len(bh_df), index=bh_df.index)
-                                samp_loc = bh_df['Sampling Location'] if 'Sampling Location' in bh_df.columns else pd.Series(['General Location'] * len(bh_df), index=bh_df.index)
-                                bh_df['Execution_Node'] = np.where(layer_col.astype(str).str.contains(r'\d'), layer_col, samp_loc)
-                                bh_df['Execution_Node'] = bh_df['Execution_Node'].replace(r'^\s*$', 'General Location', regex=True).fillna('General Location')
-                                fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], title=f"Who did What & Where in {selected_bh}", color='Done BY', color_discrete_sequence=NEON_COLORS)
-                                fig_matrix.update_traces(textinfo="label+value")
-                                fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
-                                st.plotly_chart(fig_matrix, use_container_width=True, key=f"mat_{selected_bh}")
-                            st.divider()
+                        if 'Test Type' in bh_df.columns and 'Done BY' in bh_df.columns:
+                            layer_col = bh_df['layer'] if 'layer' in bh_df.columns else pd.Series([''] * len(bh_df), index=bh_df.index)
+                            samp_loc = bh_df['Sampling Location'] if 'Sampling Location' in bh_df.columns else pd.Series(['General Location'] * len(bh_df), index=bh_df.index)
+                            bh_df['Execution_Node'] = np.where(layer_col.astype(str).str.contains(r'\d'), layer_col, samp_loc)
+                            bh_df['Execution_Node'] = bh_df['Execution_Node'].replace(r'^\s*$', 'General Location', regex=True).fillna('General Location')
+                            fig_matrix = px.treemap(bh_df, path=['Done BY', 'Test Type', 'Execution_Node'], title=f"Who did What & Where in {selected_bh}", color='Done BY', color_discrete_sequence=NEON_COLORS)
+                            fig_matrix.update_traces(textinfo="label+value")
+                            fig_matrix = style_3d_glassy(fig_matrix, chart_type="treemap")
+                            st.plotly_chart(fig_matrix, use_container_width=True, key=f"mat_{selected_bh}")
+                        st.divider()
 
-                            b_col1, b_col2 = st.columns(2)
-                            with b_col1:
-                                if 'sample status' in bh_df.columns:
-                                    bh_df['status_upper'] = bh_df['sample status'].str.upper()
-                                    fig_ep = px.pie(bh_df, names='status_upper', title=f"Status Breakdown for {selected_bh}", hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
-                                    fig_ep.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
-                                    fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
-                                    st.plotly_chart(fig_ep, use_container_width=True, key=f"ep_{selected_bh}")
-                            with b_col2:
-                                if 'layer' in bh_df.columns:
-                                    layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
-                                    layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
-                                    layer_reqs = layer_reqs.sort_values('Layer_Num')
-                                    fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
-                                    fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
-                                    st.plotly_chart(fig_eb, use_container_width=True, key=f"eb_{selected_bh}")
+                        b_col1, b_col2 = st.columns(2)
+                        with b_col1:
+                            if 'sample status' in bh_df.columns:
+                                bh_df['status_upper'] = bh_df['sample status'].str.upper()
+                                fig_ep = px.pie(bh_df, names='status_upper', title=f"Status Breakdown for {selected_bh}", hole=0.4, color='status_upper', color_discrete_map=STATUS_COLORS)
+                                fig_ep.update_traces(textinfo='label+percent', hovertemplate='<b>Status:</b> %{label}<br>Count: %{value}<br>Percentage: %{percent}')
+                                fig_ep = style_3d_glassy(fig_ep, chart_type="pie")
+                                st.plotly_chart(fig_ep, use_container_width=True, key=f"ep_{selected_bh}")
+                        with b_col2:
+                            if 'layer' in bh_df.columns:
+                                layer_reqs = bh_df.groupby('layer').size().reset_index(name='Submittals')
+                                layer_reqs['Layer_Num'] = layer_reqs['layer'].astype(str).str.extract(r'(\d+)').fillna(999).astype(int)
+                                layer_reqs = layer_reqs.sort_values('Layer_Num')
+                                fig_eb = px.bar(layer_reqs, x='layer', y='Submittals', title="Number of Submittals per Layer (Sorted)", text_auto=True, color_discrete_sequence=['#ffaa00'])
+                                fig_eb = style_3d_glassy(fig_eb, chart_type="bar")
+                                st.plotly_chart(fig_eb, use_container_width=True, key=f"eb_{selected_bh}")
 
-                            if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
-                                trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
-                                if not trend_df.empty:
-                                    fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}", color_discrete_sequence=NEON_COLORS)
-                                    fig_el = style_3d_glassy(fig_el, chart_type="line")
-                                    st.plotly_chart(fig_el, use_container_width=True, key=f"el_{selected_bh}")
-                            
-                            with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
-                                st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
-            else:
-                st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
-
-            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-            with st.expander("📂 View Complete Operational Records (Raw Data)"):
-                st.dataframe(filtered_df, use_container_width=True)
-
-            # Back to Home Button
-            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-            if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
-                st.session_state["current_page"] = "home"
-                st.rerun()
-
+                        if 'Date ( test)' in bh_df.columns and 'AVERAGE VALUE' in bh_df.columns and 'layer' in bh_df.columns:
+                            trend_df = bh_df.dropna(subset=['Date ( test)', 'AVERAGE VALUE'])
+                            if not trend_df.empty:
+                                fig_el = px.line(trend_df, x='Date ( test)', y='AVERAGE VALUE', color='layer', markers=True, title=f"DPL Values Trend across Layers over time for {selected_bh}", color_discrete_sequence=NEON_COLORS)
+                                fig_el = style_3d_glassy(fig_el, chart_type="line")
+                                st.plotly_chart(fig_el, use_container_width=True, key=f"el_{selected_bh}")
+                        
+                        with st.expander(f"📂 View Raw Detailed Audit Log for `{selected_bh}`"):
+                            st.dataframe(bh_df.drop(columns=['Layer_Num', 'Execution_Node'], errors='ignore'), use_container_width=True)
         else:
-            st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
+            st.warning("⚠️ **Column Not Found:** Could not locate an 'Element' column in your uploaded file to enable Deep Dive Analysis.")
 
-    # ==========================================
-    # 14. Main Application Execution
-    # ==========================================
-    def main():
-        inject_custom_css()  
-        init_auth_system()
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        with st.expander("📂 View Complete Operational Records (Raw Data)"):
+            st.dataframe(filtered_df, use_container_width=True)
+
+        # Back to Home Button
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
+            st.session_state["current_page"] = "home"
+            st.rerun()
+
+    else:
+        st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
+
+# ==========================================
+# 14. Main Application Execution
+# ==========================================
+def main():
+    inject_custom_css()  
+    init_auth_system()
+    
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+
+    if not st.session_state["authenticated"]:
+        render_login_screen()
+    else:
+        current_page = st.session_state.get("current_page", "home")
         
-        if "authenticated" not in st.session_state:
-            st.session_state["authenticated"] = False
-
-        if not st.session_state["authenticated"]:
-            render_login_screen()
-        else:
-            current_page = st.session_state.get("current_page", "home")
+        if current_page == "home":
+            render_home_page()
+        elif current_page == "dashboard":
+            render_dashboard()
+        elif current_page == "analytics":
+            if "analytics_df" not in st.session_state:
+                st.markdown("### 📥 Welcome to Advanced Analytics Hub")
+                st.info("You can upload your dataset directly here to begin analysis.")
+                hub_init_upload = st.file_uploader("Upload Dataset (CSV) 📂", type=["csv"], key="hub_init_uploader")
+                if hub_init_upload is not None:
+                    st.session_state["analytics_df"] = pd.read_csv(hub_init_upload)
+                    st.rerun()
             
-            if current_page == "home":
-                render_home_page()
-            elif current_page == "dashboard":
-                render_dashboard()
-            elif current_page == "analytics":
-                if "analytics_df" not in st.session_state:
-                    st.markdown("### 📥 Welcome to Advanced Analytics Hub")
-                    st.info("You can upload your dataset directly here to begin analysis.")
-                    hub_init_upload = st.file_uploader("Upload Dataset (CSV) 📂", type=["csv"], key="hub_init_uploader")
-                    if hub_init_upload is not None:
-                        st.session_state["analytics_df"] = pd.read_csv(hub_init_upload)
-                        st.rerun()
-                
-                if "analytics_df" in st.session_state:
-                    render_analytics_hub(st.session_state["analytics_df"])
-                else:
-                    st.warning("⚠️ Please upload a CSV file from the Main Dashboard first to use Analytics Hub")
-                    if st.button("📊 Go to Main Dashboard", use_container_width=True, type="primary"):
-                        st.session_state["current_page"] = "dashboard"
-                        st.rerun()
+            if "analytics_df" in st.session_state:
+                render_analytics_hub(st.session_state["analytics_df"])
+            else:
+                st.warning("⚠️ Please upload a CSV file from the Main Dashboard first to use Analytics Hub")
+                if st.button("📊 Go to Main Dashboard", use_container_width=True, type="primary"):
+                    st.session_state["current_page"] = "dashboard"
+                    st.rerun()
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()
