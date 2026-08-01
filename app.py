@@ -3076,58 +3076,107 @@ def render_dashboard():
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
                     # ══════════════════════════════════════════════════════
-                    # 3. CHART: Daily Executed vs Target Rate
+                    # 3. CHART: Daily Executed vs Target Rate + DPL Tests
                     # ══════════════════════════════════════════════════════
-                    st.markdown("#### 🚀 Daily Executed vs Target Rate")
+                    st.markdown("#### 🚀 Daily Executed vs Target Rate & DPL Tests")
 
                     if date_daily_col and target_col and exec_qty_m3_col and contractor_col:
                         df_chart = df_sel.copy()
+                        
+                        # 1. تظبيط التاريخ وترتيبه عشان الشارت ميرسمش خطوط رايحة جاية (علاج الـ Zigzag)
                         df_chart[date_daily_col] = pd.to_datetime(
                             df_chart[date_daily_col], errors='coerce'
                         )
                         df_chart = df_chart.dropna(subset=[date_daily_col])
+                        
+                        # 2. تجهيز عمود عدد اختبارات الـ DPL بناءً على نوع الاختبار
+                        if test_type_col and num_tests_col and test_type_col in df_chart.columns:
+                            # البحث عن كلمة DPL في عمود Test Type
+                            dpl_mask = df_chart[test_type_col].astype(str).str.upper().str.contains('DPL')
+                            df_chart['DPL_Count'] = 0
+                            
+                            # تنظيف عمود الأرقام من أي فواصل نصية
+                            if df_chart[num_tests_col].dtype == 'object':
+                                df_chart[num_tests_col] = df_chart[num_tests_col].astype(str).str.replace(',', '', regex=False)
+                                
+                            # سحب عدد الاختبارات فقط للسطور اللي فيها DPL
+                            df_chart.loc[dpl_mask, 'DPL_Count'] = pd.to_numeric(df_chart.loc[dpl_mask, num_tests_col], errors='coerce').fillna(0)
+                        else:
+                            df_chart['DPL_Count'] = 0
 
+                        # 3. التجميع اليومي لكل مقاول
                         daily = (
                             df_chart
                             .groupby([date_daily_col, contractor_col])
                             .agg(
                                 Executed=(exec_qty_m3_col, 'sum'),
-                                Target=(target_col, 'max')
+                                Target=(target_col, 'max'),
+                                DPL_Tests=('DPL_Count', 'sum')
                             )
                             .reset_index()
                         )
-                        daily.columns = ['Date', 'Contractor', 'Executed (m³)', 'Target']
+                        daily.columns = ['Date', 'Contractor', 'Executed (m³)', 'Target', 'DPL Tests']
+                        
+                        # الترتيب الزمني ضروري جداااااااً عشان الخط يمشي صح
+                        daily = daily.sort_values(by=['Date', 'Contractor'])
 
                         if not daily.empty:
-                            ch_left, ch_right = st.columns([0.68, 0.32])
+                            ch_left, ch_right = st.columns([0.70, 0.30])
                             with ch_left:
-                                fig_d = go.Figure()
+                                # استدعاء مكتبة المحاور المزدوجة من Plotly
+                                from plotly.subplots import make_subplots
+                                
+                                # إنشاء شارت بمحورين (كميات على الشمال، DPL على اليمين)
+                                fig_d = make_subplots(specs=[[{"secondary_y": True}]])
+                                
+                                # خط الـ Target الكلي (بياخد أعلى تارجت مطلوب في اليوم ده)
+                                daily_target = daily.groupby('Date')['Target'].max().reset_index().sort_values('Date')
                                 fig_d.add_trace(go.Scatter(
-                                    x=daily['Date'], y=daily['Target'],
+                                    x=daily_target['Date'], y=daily_target['Target'],
                                     name='Target Daily Rate',
-                                    mode='lines+markers',
-                                    line=dict(color='#e74c3c', width=3, shape='spline'),
-                                    marker=dict(size=6, color='white',
-                                                line=dict(color='#e74c3c', width=2)),
+                                    mode='lines',
+                                    line=dict(color='#e74c3c', width=3, dash='dash'),
                                     hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Target: %{y:,.1f} m³'
-                                ))
+                                ), secondary_y=False)
+                                
+                                # إضافة بارات الكميات وخطوط الـ DPL لكل مقاول
                                 for idx, ct in enumerate(daily['Contractor'].unique()):
                                     ct_data = daily[daily['Contractor'] == ct]
+                                    ct_color = NEON_COLORS[idx % len(NEON_COLORS)]
+                                    
+                                    # بارات الكمية المنفذة (محور أساسي - شمال)
                                     fig_d.add_trace(go.Bar(
                                         x=ct_data['Date'],
                                         y=ct_data['Executed (m³)'],
-                                        name=ct,
-                                        marker_color=NEON_COLORS[idx % len(NEON_COLORS)],
+                                        name=f'{ct} (Qty)',
+                                        marker_color=ct_color,
                                         opacity=0.85,
                                         hovertemplate=(
                                             f'<b>{ct}</b><br>'
                                             'Date: %{x|%Y-%m-%d}<br>'
-                                            'Executed: %{y:,.1f} m³'
+                                            'Executed Qty: %{y:,.1f} m³'
                                         )
-                                    ))
+                                    ), secondary_y=False)
+                                    
+                                    # خط وماركر اختبارات الـ DPL (محور ثانوي - يمين)
+                                    if ct_data['DPL Tests'].sum() > 0:
+                                        fig_d.add_trace(go.Scatter(
+                                            x=ct_data['Date'],
+                                            y=ct_data['DPL Tests'],
+                                            name=f'{ct} (DPL Tests)',
+                                            mode='markers+lines',
+                                            line=dict(color=ct_color, width=2),
+                                            marker=dict(symbol='diamond', size=8, color='white', line=dict(color=ct_color, width=2)),
+                                            hovertemplate=(
+                                                f'<b>{ct}</b><br>'
+                                                'Date: %{x|%Y-%m-%d}<br>'
+                                                'DPL Tests: %{y}'
+                                            )
+                                        ), secondary_y=True)
+
                                 fig_d.update_layout(
-                                    title="Daily Execution vs Target",
-                                    height=400, barmode='group',
+                                    title="Daily Execution vs Target & DPL Rate",
+                                    height=450, barmode='group',
                                     hovermode='x unified',
                                     margin=dict(l=0, r=0, t=40, b=0),
                                     legend=dict(
@@ -3135,6 +3184,11 @@ def render_dashboard():
                                         y=1.02, xanchor="right", x=1
                                     )
                                 )
+                                
+                                # تسمية المحاور
+                                fig_d.update_yaxes(title_text="Quantity (m³)", secondary_y=False)
+                                fig_d.update_yaxes(title_text="Number of DPL Tests", secondary_y=True, showgrid=False)
+                                
                                 try: fig_d = style_3d_glassy(fig_d, "bar")
                                 except: pass
                                 st.plotly_chart(fig_d, use_container_width=True, key="qty_daily_chart")
@@ -3148,12 +3202,13 @@ def render_dashboard():
                                     met        = int((ct_d['Executed (m³)'] >= ct_d['Target']).sum())
                                     hit_rate   = round(met / days * 100, 1) if days else 0
                                     total_exec = ct_d['Executed (m³)'].sum()
+                                    total_dpl  = ct_d['DPL Tests'].sum()
                                     perf_rows.append({
                                         'Contractor':        ct,
                                         'Days Worked':       days,
-                                        'Days Met Target':   met,
                                         'Hit Rate %':        hit_rate,
-                                        'Total (m³)':        round(total_exec, 1)
+                                        'Total (m³)':        round(total_exec, 1),
+                                        'Total DPL':         int(total_dpl)
                                     })
                                 perf_df = pd.DataFrame(perf_rows).sort_values(
                                     'Hit Rate %', ascending=False
@@ -3169,8 +3224,6 @@ def render_dashboard():
                             'Contractor': contractor_col
                         }.items() if not v]
                         st.warning(f"⚠️ Missing columns: {', '.join(missing)}")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
                     # ══════════════════════════════════════════════════════
                     # 4. ELEMENT COVERAGE AUDIT
