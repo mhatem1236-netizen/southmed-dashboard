@@ -2314,10 +2314,11 @@ def render_dashboard():
                 selected_comp = st.selectbox("Select a Contractor to Analyze:", all_log_companies, key="deepdive_comp_sel")
                 comp_df_full = mat_df[mat_df['Company Name'] == selected_comp]
                 
-                tab_360, tab_stockpile, tab_execution = st.tabs([
+                tab_360, tab_stockpile, tab_execution, tab_quantities = st.tabs([
                     "🌐 360° Corporate Profile", 
                     "⛰️ Stockpile Sourcing", 
-                    "🏗️ Executive Progress & Compaction"
+                    "🏗️ Executive Progress & Compaction",
+                    "📊 Quantities Rate"
                 ])
                 
                 with tab_360:
@@ -2886,7 +2887,209 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                with tab_quantities:
+                    st.markdown(f"### 📊 Quantities Rate & Execution Analytics: `{selected_comp}`")
+                    st.caption("Custom-built per exact functional column mapping requirements.")
+
+                    # --- Column Declarations (Strictly as Requested) ---
+                    col_company = 'Company'
+                    col_company_name = 'Company Name'
+                    col_contractor = 'Contractor'
+                    col_tot_qty = 'Total Quantity'
+                    col_exec_qty = 'Executed Quantity'
+                    col_exec_m3 = 'Executed Quantity (m3)'
+                    col_elem_all = 'Element (all)'
+                    col_element_actual = 'ELEMENT' if 'ELEMENT' in df.columns else ('ELMENT' if 'ELMENT' in df.columns else None)
+                    col_target = 'Target Daily Rate'
+                    col_date_daily = 'Date (Daily)'
+                    col_sector = 'Sector' if 'Sector' in df.columns else ('Sectoer' if 'Sectoer' in df.columns else None)
+                    col_num_tests = 'Number of Tests'
+                    col_test_type = 'Test Type'
+
+                    temp_df = df.copy()
+                    
+                    # ---------------------------------------------------------
+                    # 1 & 2: Total Quantity & Executed Quantity (Using 'Company')
+                    # ---------------------------------------------------------
+                    df_company = pd.DataFrame()
+                    if col_company in temp_df.columns:
+                        df_company = temp_df[temp_df[col_company].astype(str).str.strip().str.lower() == selected_comp.lower()]
+                    
+                    tot_qty_val = pd.to_numeric(df_company[col_tot_qty], errors='coerce').max() if (col_tot_qty in df_company.columns and not df_company.empty) else 0
+                    exec_qty_val = pd.to_numeric(df_company[col_exec_qty], errors='coerce').max() if (col_exec_qty in df_company.columns and not df_company.empty) else 0
+
+                    # ---------------------------------------------------------
+                    # 3: Daily Executed Quantity (Using 'Contractor')
+                    # ---------------------------------------------------------
+                    df_contractor = pd.DataFrame()
+                    if col_contractor in temp_df.columns:
+                        df_contractor = temp_df[temp_df[col_contractor].astype(str).str.strip().str.lower() == selected_comp.lower()]
+
+                    daily_exec_m3_val = pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').sum() if (col_exec_m3 in df_contractor.columns and not df_contractor.empty) else 0
+
+                    # ---------------------------------------------------------
+                    # 6 & 7: Missing Elements & KPIs Calculation
+                    # ---------------------------------------------------------
+                    exec_pct = (daily_exec_m3_val / tot_qty_val * 100) if tot_qty_val > 0 else 0
+                    rem_qty = max(0, tot_qty_val - daily_exec_m3_val) if tot_qty_val > 0 else 0
+                    
+                    planned_elems = set()
+                    executed_elems = set()
+                    missing_elems = set()
+                    if col_element_actual and col_company_name in temp_df.columns and col_elem_all in temp_df.columns and col_contractor in temp_df.columns:
+                        df_planned = temp_df[temp_df[col_company_name].astype(str).str.strip().str.lower() == selected_comp.lower()]
+                        planned_elems = set(df_planned[col_element_actual].dropna().astype(str).str.strip())
+                        executed_elems = set(df_contractor[pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').fillna(0) > 0][col_elem_all].dropna().astype(str).str.strip()) if col_exec_m3 in df_contractor.columns else set()
+                        missing_elems = planned_elems - executed_elems
+
+                    st.markdown("#### 📦 Overall Quantity KPIs")
+                    k1, k2, k3, k4 = st.columns(4)
+                    create_card(k1, "Total Qty", f"{tot_qty_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Company'</span>")
+                    create_card(k2, "Executed Qty", f"{exec_qty_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Company'</span>")
+                    create_card(k3, "Daily Executed (m3)", f"{daily_exec_m3_val:,.1f}", delta_html="<span style='font-size:10px;color:#8da3b9;'>Source: 'Contractor'</span>")
+                    create_card(k4, "Execution %", f"{exec_pct:.1f}%", progress=min(100, exec_pct))
+
+                    c1, c2, c3, c4 = st.columns(4)
+                    create_card(c1, "Remaining Quantity", f"{rem_qty:,.1f}")
+                    create_card(c2, "Planned Elements", len(planned_elems))
+                    create_card(c3, "Missing Elements", len(missing_elems))
+                    create_card(c4, "Completed Elements", len(executed_elems))
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                    # ---------------------------------------------------------
+                    # 4: Element Quantity Cards
+                    # ---------------------------------------------------------
+                    st.markdown("#### 🏗️ Execution per Element")
+                    if col_elem_all in df_contractor.columns and col_exec_m3 in df_contractor.columns:
+                        df_contractor[col_exec_m3] = pd.to_numeric(df_contractor[col_exec_m3], errors='coerce').fillna(0)
+                        elem_df = df_contractor.groupby(col_elem_all)[col_exec_m3].sum().reset_index()
+                        elem_df = elem_df[elem_df[col_exec_m3] > 0].sort_values(col_exec_m3, ascending=False)
+                        
+                        if not elem_df.empty:
+                            elem_cols = st.columns(min(len(elem_df), 4))
+                            for i, (_, r) in enumerate(elem_df.head(8).iterrows()):
+                                create_card(elem_cols[i % 4], f"Element: {r[col_elem_all]}", f"{r[col_exec_m3]:,.1f} m³", delta_html=f"<span style='font-size:10px;color:#8da3b9;'>{selected_comp}</span>")
+                            with st.expander("📋 View All Elements Breakdown"):
+                                st.dataframe(elem_df.rename(columns={col_elem_all: 'Element', col_exec_m3: 'Total Executed (m3)'}), use_container_width=True)
+                        else:
+                            st.info("No elements execution data found for this contractor.")
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                    # ---------------------------------------------------------
+                    # 5: Daily Performance Chart
+                    # ---------------------------------------------------------
+                    st.markdown("#### 🚀 Daily Performance Chart")
+                    if col_date_daily in df_contractor.columns and col_target in df_contractor.columns and col_exec_m3 in df_contractor.columns:
+                        daily_df = df_contractor.copy()
+                        daily_df[col_date_daily] = pd.to_datetime(daily_df[col_date_daily], errors='coerce')
+                        daily_df = daily_df.dropna(subset=[col_date_daily])
+                        
+                        if not daily_df.empty:
+                            daily_df[col_target] = pd.to_numeric(daily_df[col_target], errors='coerce').fillna(0)
+                            daily_agg = daily_df.groupby(col_date_daily).agg({
+                                col_exec_m3: 'sum',
+                                col_target: 'max'
+                            }).reset_index().sort_values(col_date_daily)
+                            
+                            fig_daily = go.Figure()
+                            fig_daily.add_trace(go.Scatter(x=daily_agg[col_date_daily], y=daily_agg[col_target], name="Target Daily Rate", line=dict(color='#e74c3c', width=3, shape='spline')))
+                            fig_daily.add_trace(go.Bar(x=daily_agg[col_date_daily], y=daily_agg[col_exec_m3], name="Executed Quantity (m3)", marker_color='#00d2ff'))
+                            fig_daily.update_layout(barmode='group', hovermode='x unified', title="Actual vs Target Daily Execution")
+                            try: fig_daily = style_3d_glassy(fig_daily, "combo")
+                            except: pass
+                            st.plotly_chart(fig_daily, use_container_width=True)
+                    else:
+                        st.info("Required columns for Daily Performance Chart not found.")
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                    # ---------------------------------------------------------
+                    # 6: Missing Elements Warning (Table)
+                    # ---------------------------------------------------------
+                    st.markdown("#### ⚠️ Missing Elements Warning")
+                    if missing_elems:
+                        st.error(f"🚨 ALERT: Found {len(missing_elems)} Planned Elements with NO execution records!")
+                        miss_df = pd.DataFrame({"Missing Planned Element": list(missing_elems)})
+                        st.dataframe(miss_df, use_container_width=True)
+                    else:
+                        if len(planned_elems) > 0:
+                            st.success("✅ All planned elements have been matched with execution records.")
+                        else:
+                            st.info("No planned elements detected to compare.")
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                    # ---------------------------------------------------------
+                    # 8: Worst Contractor Analysis
+                    # ---------------------------------------------------------
+                    st.markdown("#### 🏆 Sector Analysis (Worst Performer)")
+                    if col_sector and col_sector in df_contractor.columns and col_contractor in temp_df.columns and col_exec_m3 in temp_df.columns:
+                        sector_val = df_contractor[col_sector].dropna().iloc[0] if not df_contractor[col_sector].dropna().empty else None
+                        
+                        if sector_val:
+                            sec_df = temp_df[temp_df[col_sector].astype(str).str.strip() == str(sector_val).strip()].copy()
+                            if col_date_daily in sec_df.columns:
+                                sec_df[col_exec_m3] = pd.to_numeric(sec_df[col_exec_m3], errors='coerce').fillna(0)
+                                
+                                # Aggregate daily sum per contractor
+                                daily_sec_agg = sec_df.groupby([col_contractor, col_date_daily])[col_exec_m3].sum().reset_index()
+                                
+                                # Calculate Mean and StdDev per contractor
+                                worst_df = daily_sec_agg.groupby(col_contractor)[col_exec_m3].agg(['mean', 'std', 'count']).reset_index()
+                                
+                                # Add duration if available
+                                if 'DURATION' in sec_df.columns:
+                                    sec_df['DURATION'] = pd.to_numeric(sec_df['DURATION'], errors='coerce').fillna(0)
+                                    dur_agg = sec_df.groupby(col_contractor)['DURATION'].mean().reset_index()
+                                    worst_df = pd.merge(worst_df, dur_agg, on=col_contractor, how='left')
+                                else:
+                                    worst_df['DURATION'] = 0
+                                
+                                # Sort to find worst: Low Mean, High Duration
+                                worst_df = worst_df.sort_values(by=['mean', 'DURATION'], ascending=[True, False])
+                                worst_df = worst_df[worst_df['count'] > 0] # Ensure they actually worked
+                                
+                                if not worst_df.empty:
+                                    w_cont = worst_df.iloc[0]
+                                    st.markdown(f"""
+                                    <div style="background:rgba(231,76,60,0.1);border-left:5px solid #e74c3c;border-radius:12px;padding:16px;">
+                                        <div style="color:#e74c3c;font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:6px;">🔴 Weakest Contractor in {sector_val}</div>
+                                        <div style="color:#ffffff;font-size:20px;font-weight:700;">{w_cont[col_contractor]}</div>
+                                        <div style="color:#8da3b9;font-size:13px;margin-top:6px;">
+                                            Avg Daily Qty: <b style="color:#e74c3c">{w_cont['mean']:.1f} m³</b><br>
+                                            Std Dev: <b style="color:#e74c3c">{w_cont['std']:.1f}</b><br>
+                                            Avg Duration: <b style="color:#e74c3c">{w_cont['DURATION']:.1f} Days</b>
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                    with st.expander(f"View Full {sector_val} Ranking"):
+                                        st.dataframe(worst_df.rename(columns={'mean': 'Avg Daily Qty', 'std': 'Std Dev', 'count': 'Active Days', 'DURATION': 'Avg Duration'}), use_container_width=True)
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+                    # ---------------------------------------------------------
+                    # 9: DPL & PLATE LOAD Statistics
+                    # ---------------------------------------------------------
+                    st.markdown("#### 🧪 Laboratory Tests Stats (DPL & PLATE LOAD)")
+                    df_comp_tests = pd.DataFrame()
+                    if col_company_name in temp_df.columns:
+                        df_comp_tests = temp_df[temp_df[col_company_name].astype(str).str.strip().str.lower() == selected_comp.lower()]
+                    
+                    if col_test_type in df_comp_tests.columns and col_num_tests in df_comp_tests.columns:
+                        dpl_pts = pd.to_numeric(df_comp_tests[df_comp_tests[col_test_type].astype(str).str.upper().str.contains('DPL', na=False)][col_num_tests], errors='coerce').sum()
+                        plate_pts = pd.to_numeric(df_comp_tests[df_comp_tests[col_test_type].astype(str).str.upper().str.contains('PLATE', na=False)][col_num_tests], errors='coerce').sum()
+                        
+                        t1, t2, t3 = st.columns(3)
+                        create_card(t1, "DPL Count", int(dpl_pts))
+                        create_card(t2, "PLATE LOAD Count", int(plate_pts))
+                        create_card(t3, "Total Critical Tests", int(dpl_pts + plate_pts))
+                    else:
+                        st.info("Requires 'Test Type' and 'Number of Tests' columns to calculate Lab Stats.")
 
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
         bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
