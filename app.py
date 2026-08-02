@@ -3076,245 +3076,196 @@ def render_dashboard():
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
                     # ══════════════════════════════════════════════════════
-                    # 3. CHART: Daily Executed vs Target Rate + DPL Tests
+                    # 3. CHART: Daily Executed vs Target Rate + DPL Tests (Unified Timeline)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🚀 Daily Executed vs Target Rate & DPL Tests")
+                    st.caption("Execution mapped via 'Contractor' & 'Date (Daily)'. DPL mapped via 'Company Name' & 'Date ( test)'.")
 
-                    if date_daily_col and target_col and exec_qty_m3_col and contractor_col:
-                        df_chart = df_sel.copy()
-                        
-                        # ⚠️ التعديل الجذري هنا: إضافة dayfirst=True عشان بايثون ميعكسش اليوم مع الشهر
-                        df_chart[date_daily_col] = pd.to_datetime(
-                            df_chart[date_daily_col], 
-                            dayfirst=True, 
-                            errors='coerce'
-                        )
-                        df_chart = df_chart.dropna(subset=[date_daily_col])
-                        
-                        if test_type_col and num_tests_col and test_type_col in df_chart.columns:
-                            dpl_mask = df_chart[test_type_col].astype(str).str.upper().str.contains('DPL')
-                            df_chart['DPL_Count'] = 0
-                            if df_chart[num_tests_col].dtype == 'object':
-                                df_chart[num_tests_col] = df_chart[num_tests_col].astype(str).str.replace(',', '', regex=False)
-                            df_chart.loc[dpl_mask, 'DPL_Count'] = pd.to_numeric(df_chart.loc[dpl_mask, num_tests_col], errors='coerce').fillna(0)
+                    # اكتشاف عمود تاريخ الاختبار
+                    date_test_col = next((c for c in df.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
+                    if not date_test_col:
+                        date_test_col = next((c for c in df.columns if c.strip() == 'Date ( test)'), None)
+
+                    if date_daily_col and target_col and exec_qty_m3_col and contractor_col and date_test_col and comp_name_col:
+                        # --- 1. مسار الكميات (Execution Data) ---
+                        if sel_contractor != 'All Contractors':
+                            df_exec = df[df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy()
                         else:
-                            df_chart['DPL_Count'] = 0
-
-                        daily = (
-                            df_chart
-                            .groupby([date_daily_col, contractor_col])
-                            .agg(
-                                Executed=(exec_qty_m3_col, 'sum'),
-                                Target=(target_col, 'max'),
-                                DPL_Tests=('DPL_Count', 'sum')
-                            )
-                            .reset_index()
-                        )
-                        daily.columns = ['Date', 'Contractor', 'Executed (m³)', 'Target', 'DPL Tests']
-                        daily = daily.sort_values(by=['Date', 'Contractor'])
-
-                        if not daily.empty:
-                            ch_left, ch_right = st.columns([0.70, 0.30])
-                            with ch_left:
+                            df_exec = df.copy()
                             
-                                
-                                fig_d = make_subplots(specs=[[{"secondary_y": True}]])
-                                daily_target = daily.groupby('Date')['Target'].max().reset_index().sort_values('Date')
-                                
+                        df_exec[date_daily_col] = pd.to_datetime(df_exec[date_daily_col], dayfirst=True, errors='coerce')
+                        df_exec = df_exec.dropna(subset=[date_daily_col])
+                        
+                        daily_exec = df_exec.groupby([date_daily_col]).agg(
+                            Executed=(exec_qty_m3_col, 'sum'),
+                            Target=(target_col, 'max')
+                        ).reset_index()
+                        daily_exec.rename(columns={date_daily_col: 'Date'}, inplace=True)
+                        daily_exec = daily_exec.sort_values('Date')
+
+                        # --- 2. مسار الجودة (DPL Data) ---
+                        if sel_contractor != 'All Contractors':
+                            # XLOOKUP by Company Name
+                            df_qa = df[df[comp_name_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy()
+                        else:
+                            df_qa = df.copy()
+                            
+                        df_qa[date_test_col] = pd.to_datetime(df_qa[date_test_col], dayfirst=True, errors='coerce')
+                        df_qa = df_qa.dropna(subset=[date_test_col])
+                        
+                        mask_dpl = df_qa[test_type_col].astype(str).str.upper().str.contains('DPL')
+                        df_dpl = df_qa[mask_dpl].copy()
+                        
+                        if df_dpl[num_tests_col].dtype == 'object':
+                            df_dpl[num_tests_col] = df_dpl[num_tests_col].astype(str).str.replace(',', '', regex=False)
+                        df_dpl[num_tests_col] = pd.to_numeric(df_dpl[num_tests_col], errors='coerce').fillna(0)
+                        
+                        daily_dpl = df_dpl.groupby(date_test_col)[num_tests_col].sum().reset_index()
+                        daily_dpl.rename(columns={date_test_col: 'Date', num_tests_col: 'DPL Tests'}, inplace=True)
+                        daily_dpl = daily_dpl.sort_values('Date')
+
+                        # --- 3. الدمج في شارت واحد ---
+                        ch_left, ch_right = st.columns([0.75, 0.25])
+                        with ch_left:
+                            from plotly.subplots import make_subplots
+                            fig_d = make_subplots(specs=[[{"secondary_y": True}]])
+                            
+                            # رسم التارجت والمنفذ
+                            if not daily_exec.empty:
                                 fig_d.add_trace(go.Scatter(
-                                    x=daily_target['Date'], y=daily_target['Target'],
-                                    name='Target Daily Rate',
-                                    mode='lines',
+                                    x=daily_exec['Date'], y=daily_exec['Target'],
+                                    name='Target Daily Rate', mode='lines',
                                     line=dict(color='#e74c3c', width=3, dash='dash'),
                                     hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Target: %{y:,.1f} m³'
                                 ), secondary_y=False)
                                 
-                                for idx, ct in enumerate(daily['Contractor'].unique()):
-                                    ct_data = daily[daily['Contractor'] == ct]
-                                    ct_color = NEON_COLORS[idx % len(NEON_COLORS)]
-                                    
-                                    fig_d.add_trace(go.Bar(
-                                        x=ct_data['Date'], y=ct_data['Executed (m³)'],
-                                        name=f'{ct} (Qty)',
-                                        marker_color=ct_color, opacity=0.85,
-                                        hovertemplate=f'<b>{ct}</b><br>Date: %{{x|%Y-%m-%d}}<br>Executed Qty: %{{y:,.1f}} m³'
-                                    ), secondary_y=False)
-                                    
-                                    if ct_data['DPL Tests'].sum() > 0:
-                                        fig_d.add_trace(go.Scatter(
-                                            x=ct_data['Date'], y=ct_data['DPL Tests'],
-                                            name=f'{ct} (DPL)',
-                                            mode='markers+lines',
-                                            line=dict(color=ct_color, width=2),
-                                            marker=dict(symbol='diamond', size=8, color='white', line=dict(color=ct_color, width=2)),
-                                            hovertemplate=f'<b>{ct}</b><br>Date: %{{x|%Y-%m-%d}}<br>DPL Tests: %{{y}}'
-                                        ), secondary_y=True)
-
-                                fig_d.update_layout(
-                                    title="Daily Execution vs Target & DPL Rate",
-                                    height=450, barmode='group', hovermode='x unified',
-                                    margin=dict(l=0, r=0, t=40, b=0),
-                                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-                                )
-                                fig_d.update_yaxes(title_text="Quantity (m³)", secondary_y=False)
-                                fig_d.update_yaxes(title_text="Number of DPL Tests", secondary_y=True, showgrid=False)
+                                fig_d.add_trace(go.Bar(
+                                    x=daily_exec['Date'], y=daily_exec['Executed'],
+                                    name=f'Execution (m³)', marker_color='#00d2ff', opacity=0.85,
+                                    hovertemplate='<b>Execution</b><br>Date: %{x|%Y-%m-%d}<br>Executed Qty: %{y:,.1f} m³'
+                                ), secondary_y=False)
                                 
-                                try: fig_d = style_3d_glassy(fig_d, "bar")
-                                except: pass
-                                st.plotly_chart(fig_d, use_container_width=True, key="qty_daily_chart")
+                            # رسم الـ DPL
+                            if not daily_dpl.empty:
+                                fig_d.add_trace(go.Scatter(
+                                    x=daily_dpl['Date'], y=daily_dpl['DPL Tests'],
+                                    name=f'DPL Tests', mode='markers+lines',
+                                    line=dict(color='#ffaa00', width=2),
+                                    marker=dict(symbol='diamond', size=8, color='white', line=dict(color='#ffaa00', width=2)),
+                                    hovertemplate='<b>DPL</b><br>Date: %{x|%Y-%m-%d}<br>DPL Tests: %{y}'
+                                ), secondary_y=True)
 
-                            with ch_right:
-                                st.markdown("**Performance Summary**")
-                                perf_rows = []
-                                for ct in daily['Contractor'].unique():
-                                    ct_d = daily[daily['Contractor'] == ct]
-                                    days       = len(ct_d)
-                                    met        = int((ct_d['Executed (m³)'] >= ct_d['Target']).sum())
-                                    hit_rate   = round(met / days * 100, 1) if days else 0
-                                    total_exec = ct_d['Executed (m³)'].sum()
-                                    total_dpl  = ct_d['DPL Tests'].sum()
-                                    perf_rows.append({
-                                        'Contractor':        ct,
-                                        'Days Worked':       days,
-                                        'Hit Rate %':        hit_rate,
-                                        'Total (m³)':        round(total_exec, 1),
-                                        'Total DPL':         int(total_dpl)
-                                    })
-                                perf_df = pd.DataFrame(perf_rows).sort_values('Hit Rate %', ascending=False)
-                                st.dataframe(perf_df, use_container_width=True)
-                        else:
-                            st.info("No daily data available.")
+                            fig_d.update_layout(
+                                title=f"Unified Timeline: Execution vs Target vs DPL ({sel_contractor})",
+                                height=450, hovermode='x unified', margin=dict(l=0, r=0, t=40, b=0),
+                                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                            )
+                            fig_d.update_yaxes(title_text="Quantity (m³)", secondary_y=False)
+                            fig_d.update_yaxes(title_text="Number of DPL Tests", secondary_y=True, showgrid=False)
+                            try: fig_d = style_3d_glassy(fig_d, "bar")
+                            except: pass
+                            st.plotly_chart(fig_d, use_container_width=True, key="qty_daily_chart_unified")
+                            
+                        with ch_right:
+                            st.markdown("**Performance Summary**")
+                            days = len(daily_exec)
+                            met = int((daily_exec['Executed'] >= daily_exec['Target']).sum()) if not daily_exec.empty else 0
+                            hit_rate = round((met / days * 100), 1) if days else 0
+                            total_exec = daily_exec['Executed'].sum() if not daily_exec.empty else 0
+                            total_dpl = daily_dpl['DPL Tests'].sum() if not daily_dpl.empty else 0
+                            
+                            st.markdown(f"""
+                            <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; border-left:4px solid #00d2ff;">
+                                <div style="color:#8da3b9; font-size:12px;">Total Executed (m³)</div>
+                                <div style="color:#ffffff; font-size:20px; font-weight:bold;">{total_exec:,.1f}</div>
+                                <hr style="border-color:rgba(255,255,255,0.1); margin:10px 0;">
+                                <div style="color:#8da3b9; font-size:12px;">Total DPL Tests</div>
+                                <div style="color:#ffaa00; font-size:20px; font-weight:bold;">{int(total_dpl):,}</div>
+                                <hr style="border-color:rgba(255,255,255,0.1); margin:10px 0;">
+                                <div style="color:#8da3b9; font-size:12px;">Target Hit Rate</div>
+                                <div style="color:#2ecc71; font-size:20px; font-weight:bold;">{hit_rate}%</div>
+                            </div>
+                            """, unsafe_allow_html=True)
                     else:
-                        missing = [c for c, v in {
-                            'Date (Daily)': date_daily_col,
-                            'Target Daily Rate': target_col,
-                            'Executed Qty (m3)': exec_qty_m3_col,
-                            'Contractor': contractor_col
-                        }.items() if not v]
-                        st.warning(f"⚠️ Missing columns: {', '.join(missing)}")
+                        st.warning("⚠️ Missing columns to plot unified chart.")
+
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
                     # ══════════════════════════════════════════════════════
-                    # 4. ELEMENT COVERAGE AUDIT
+                    # 4. ELEMENT COVERAGE AUDIT (Linking QA to Execution)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🕵️ Quantity Auditor — Missing Elements")
                     st.caption(
-                        "Links Element (all) + Contractor with ELMENT + Company Name "
-                        "to detect elements with no assigned quantities."
+                        "Links elements tested in QA (ELMENT + Company Name) with Execution log "
+                        "(Element (all) + Contractor) to detect tested elements with no billed quantities."
                     )
 
                     if elem_all_col and elment_col and contractor_col and comp_name_col:
-                        expected = (
-                            df_sel[[contractor_col, elem_all_col]]
-                            .dropna()
-                            .drop_duplicates()
-                        )
-                        expected[contractor_col] = expected[contractor_col].astype(str).str.strip()
-                        expected[elem_all_col]   = expected[elem_all_col].astype(str).str.strip()
-                        expected = expected[
-                            (expected[contractor_col] != '') &
-                            (expected[elem_all_col]   != '') &
-                            (~expected[contractor_col].str.lower().isin(['nan','none'])) &
-                            (~expected[elem_all_col].str.lower().isin(['nan','none']))
-                        ]
-
-                        ref_df = df.copy()
-                        if exec_qty_col and exec_qty_col in ref_df.columns:
-                            ref_agg = (
-                                ref_df
-                                .groupby([comp_name_col, elment_col])[exec_qty_col]
-                                .sum()
-                                .reset_index()
-                            )
-                            ref_agg.columns = ['Company Name', 'ELMENT', 'Executed Qty']
+                        # 1. جلب العناصر اللي المقاول عملها اختبارات جودة (من مسار الجودة)
+                        if sel_contractor != 'All Contractors':
+                            tested_elements = df[df[comp_name_col].astype(str).str.strip().str.lower() == sel_contractor.lower()][elment_col].dropna().astype(str).str.strip().unique()
                         else:
-                            ref_agg = (
-                                ref_df
-                                .groupby([comp_name_col, elment_col])
-                                .size()
-                                .reset_index(name='Executed Qty')
-                            )
-                            ref_agg.columns = ['Company Name', 'ELMENT', 'Executed Qty']
+                            tested_elements = df[elment_col].dropna().astype(str).str.strip().unique()
 
-                        ref_agg['Company Name'] = ref_agg['Company Name'].astype(str).str.strip()
-                        ref_agg['ELMENT']        = ref_agg['ELMENT'].astype(str).str.strip()
+                        # 2. جلب بيانات الكميات للمقاول ده (من مسار الكميات)
+                        if sel_contractor != 'All Contractors':
+                            exec_df = df[df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()]
+                        else:
+                            exec_df = df.copy()
+                            
+                        # تجميع الكميات لكل عنصر (Element (all))
+                        exec_agg = exec_df.groupby(elem_all_col)[exec_qty_m3_col].sum().reset_index()
+                        exec_agg[elem_all_col] = exec_agg[elem_all_col].astype(str).str.strip().str.lower()
 
                         missing_elems  = []
                         covered_elems  = []
 
-                        for _, row in expected.iterrows():
-                            ct_name  = row[contractor_col]
-                            el_name  = row[elem_all_col]
-
-                            match = ref_agg[
-                                (ref_agg['Company Name'] == ct_name) &
-                                (ref_agg['ELMENT']        == el_name)
-                            ]
-                            qty = match['Executed Qty'].sum() if not match.empty else 0
+                        for el_name in tested_elements:
+                            if el_name == '' or el_name.lower() == 'nan': continue
+                            
+                            # بنبحث عن العنصر ده هل نزل له كمية ولا لأ
+                            match = exec_agg[exec_agg[elem_all_col] == el_name.lower()]
+                            qty = match[exec_qty_m3_col].sum() if not match.empty else 0
 
                             if qty == 0:
                                 missing_elems.append({
-                                    'Contractor':   ct_name,
-                                    'Element (all)': el_name,
-                                    'Status':       '❌ No Quantity'
+                                    'Tested Element (QA)': el_name,
+                                    'Status': '❌ No Quantity Logged'
                                 })
                             else:
                                 covered_elems.append({
-                                    'Contractor':   ct_name,
-                                    'Element (all)': el_name,
-                                    'Executed Qty': round(qty, 1),
-                                    'Status':       '✅ Has Quantity'
+                                    'Tested Element (QA)': el_name,
+                                    'Executed Qty (m³)': round(qty, 1),
+                                    'Status': '✅ Has Quantity'
                                 })
 
                         col_m, col_c = st.columns(2)
 
                         with col_m:
                             if missing_elems:
-                                miss_df = pd.DataFrame(missing_elems).sort_values(
-                                    ['Contractor', 'Element (all)']
-                                )
+                                miss_df = pd.DataFrame(missing_elems).sort_values('Tested Element (QA)')
                                 st.markdown(f"""
-                                <div style="background:rgba(231,76,60,0.1);
-                                            border-left:4px solid #e74c3c;
-                                            padding:14px;border-radius:8px;margin-bottom:10px;">
-                                    <b style="color:#e74c3c;">
-                                        🚨 {len(missing_elems)} Elements Missing Quantities
-                                    </b><br>
-                                    <span style="font-size:12px;color:#d1d5da;">
-                                        Request quantities from the Technical Office for these elements:
-                                    </span>
+                                <div style="background:rgba(231,76,60,0.1); border-left:4px solid #e74c3c; padding:14px;border-radius:8px;margin-bottom:10px;">
+                                    <b style="color:#e74c3c;">🚨 {len(missing_elems)} Tested Elements Missing Quantities</b><br>
+                                    <span style="font-size:12px;color:#d1d5da;">Tested in QA but no execution quantity found!</span>
                                 </div>
                                 """, unsafe_allow_html=True)
                                 st.dataframe(miss_df, use_container_width=True)
                             else:
-                                st.success("✅ All elements have assigned quantities!")
+                                st.success("✅ All tested elements have assigned quantities!")
 
                         with col_c:
                             if covered_elems:
-                                cov_df = pd.DataFrame(covered_elems).sort_values(
-                                    'Executed Qty', ascending=False
-                                )
+                                cov_df = pd.DataFrame(covered_elems).sort_values('Executed Qty (m³)', ascending=False)
                                 st.markdown(f"""
-                                <div style="background:rgba(46,204,113,0.1);
-                                            border-left:4px solid #2ecc71;
-                                            padding:14px;border-radius:8px;margin-bottom:10px;">
-                                    <b style="color:#2ecc71;">
-                                        ✅ {len(covered_elems)} Elements with Quantities
-                                    </b><br>
-                                    <span style="font-size:12px;color:#d1d5da;">
-                                        These elements have received quantities from the Technical Office.
-                                    </span>
+                                <div style="background:rgba(46,204,113,0.1); border-left:4px solid #2ecc71; padding:14px;border-radius:8px;margin-bottom:10px;">
+                                    <b style="color:#2ecc71;">✅ {len(covered_elems)} Elements with Quantities</b><br>
+                                    <span style="font-size:12px;color:#d1d5da;">Properly linked between QA/QC and Execution.</span>
                                 </div>
                                 """, unsafe_allow_html=True)
                                 st.dataframe(cov_df, use_container_width=True)
                     else:
-                        missing_c = []
-                        if not elem_all_col:   missing_c.append("Element (all)")
-                        if not elment_col:     missing_c.append("ELMENT")
-                        if not contractor_col: missing_c.append("Contractor")
-                        if not comp_name_col:  missing_c.append("Company Name")
-                        st.warning(f"⚠️ Missing columns for auditor: {', '.join(missing_c)}")
-
-                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                        st.warning("⚠️ Missing columns for auditor.")
 
                     # ══════════════════════════════════════════════════════
                     # 5. KPI SUMMARY (XLOOKUP / VLOOKUP Logic)
