@@ -3127,7 +3127,7 @@ def render_dashboard():
                         # --- 3. الدمج في شارت واحد ---
                         ch_left, ch_right = st.columns([0.75, 0.25])
                         with ch_left:
-                            from plotly.subplots import make_subplots
+                           
                             fig_d = make_subplots(specs=[[{"secondary_y": True}]])
                             
                             # رسم التارجت والمنفذ
