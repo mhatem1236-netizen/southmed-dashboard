@@ -3315,19 +3315,17 @@ def render_dashboard():
                     else:
                         st.warning("⚠️ Missing columns for auditor.")
 
-                    # ══════════════════════════════════════════════════════
-                    # 5. ADVANCED KPI SUMMARY (Element-Level Matrix)
+                   # ══════════════════════════════════════════════════════
+                    # 5. ADVANCED KPI SUMMARY (Efficiency vs Consistency Matrix)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🎯 Element-Level Performance Matrix")
-                    st.caption("Evaluates Completion % and Hit Rate % for each Element independently to prevent masking poor performance.")
+                    st.caption("Evaluates Execution Efficiency (Total Executed vs Total Expected) against Daily Consistency (Hit Rate %).")
 
                     if contractor_col and exec_qty_m3_col and target_col and elem_all_col:
                         kpi_rows = []
                         
-                        # تجميع الداتا بناءً على المقاول واسم العنصر مع بعض
                         df_valid = df.dropna(subset=[contractor_col, elem_all_col])
                         
-                        # لو مختار مقاول معين من الفلتر اللي فوق، نفلتر الداتا بتاعته بس
                         if sel_contractor != 'All Contractors':
                             df_valid = df_valid[df_valid[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()]
                             
@@ -3339,75 +3337,71 @@ def render_dashboard():
                             
                             if ct.lower() in ['nan', 'none', ''] or el.lower() in ['nan', 'none', '']: continue
                             
-                            # 1. جلب الكمية الكلية (Total Scope) للعنصر ده للمقاول ده تحديداً
-                            scope = 0
-                            if company_col and total_qty_col and company_col in df.columns:
-                                matched = df[(df[company_col].astype(str).str.strip().str.lower() == ct.lower()) & 
-                                             (df[elem_all_col].astype(str).str.strip().str.lower() == el.lower())]
-                                if not matched.empty:
-                                    scope = matched[total_qty_col].max()
-                                    
-                            if pd.isna(scope) or scope == 0:
-                                scope = group[total_qty_col].max() if total_qty_col in group.columns else 0
-                                
-                            # 2. حساب المنفذ
+                            # 1. إجمالي ما تم تنفيذه فعلياً في العنصر ده
                             exec_sum = group[exec_qty_m3_col].sum()
-                            compl = round((exec_sum / scope * 100), 1) if pd.notna(scope) and scope > 0 else 0
                             
-                            # 3. حساب الـ Hit Rate للعنصر ده بس
-                            valid_target = group[group[target_col] > 0]
-                            days_w = len(valid_target)
-                            days_met = int((valid_target[exec_qty_m3_col] >= valid_target[target_col]).sum()) if days_w else 0
+                            # 2. إجمالي "الهدف التراكمي" للأيام اللي اشتغلها في العنصر ده
+                            valid_target_group = group[group[target_col] > 0]
+                            cumulative_target = valid_target_group[target_col].sum()
+                            
+                            # 3. حساب كفاءة التنفيذ (Execution Efficiency)
+                            efficiency_pct = round((exec_sum / cumulative_target * 100), 1) if cumulative_target > 0 else 0
+                            
+                            # 4. حساب الاستمرارية (Hit Rate %)
+                            days_w = len(valid_target_group)
+                            days_met = int((valid_target_group[exec_qty_m3_col] >= valid_target_group[target_col]).sum()) if days_w else 0
                             hit_rate = round((days_met / days_w * 100), 1) if days_w else 0
                             
-                            status = '🟢 Good' if hit_rate >= 70 else ('🟡 Fair' if hit_rate >= 40 else '🔴 Poor')
+                            status = '🟢 Good' if hit_rate >= 70 and efficiency_pct >= 90 else ('🟡 Fair' if hit_rate >= 40 else '🔴 Poor')
                             
-                            if scope > 0 or exec_sum > 0:
+                            if exec_sum > 0 or cumulative_target > 0:
                                 kpi_rows.append({
                                     'Contractor': ct,
                                     'Element': el,
-                                    'Total Scope (m³)': round(scope, 1),
+                                    'Cumulative Target (m³)': round(cumulative_target, 1),
                                     'Executed (m³)': round(exec_sum, 1),
-                                    'Completion %': compl,
+                                    'Execution Efficiency %': efficiency_pct,
                                     'Hit Rate %': hit_rate,
                                     'Status': status,
-                                    'Bubble_Size': max(exec_sum, 100) # عشان حجم الدوائر في الشارت
+                                    'Bubble_Size': max(exec_sum, 100) # لحجم الدائرة
                                 })
 
                         if kpi_rows:
-                            kpi_df = pd.DataFrame(kpi_rows).sort_values(by=['Contractor', 'Completion %'], ascending=[True, False])
+                            kpi_df = pd.DataFrame(kpi_rows).sort_values(by=['Contractor', 'Execution Efficiency %'], ascending=[True, False])
                             
-                            st.markdown("##### 📈 Matrix Chart: Completion vs Hit Rate")
+                            st.markdown("##### 📈 Matrix Chart: Execution Efficiency vs Hit Rate")
                             
-                            # رسم الشارت المتقدم (Quadrant Scatter Plot)
                             fig_kpi = px.scatter(
                                 kpi_df, 
-                                x='Completion %', 
+                                x='Execution Efficiency %', 
                                 y='Hit Rate %',
                                 color='Contractor',
                                 size='Bubble_Size',
                                 text='Element',
                                 hover_name='Contractor',
-                                hover_data={'Contractor': False, 'Element': True, 'Executed (m³)': True, 'Bubble_Size': False},
-                                size_max=40,
+                                hover_data={'Contractor': False, 'Element': True, 'Cumulative Target (m³)': True, 'Executed (m³)': True, 'Bubble_Size': False},
+                                size_max=45,
                                 color_discrete_sequence=NEON_COLORS
                             )
                             
-                            # إضافة خطوط التقاطع (Quadrants) عند نسبة 50%
+                            # خط المنتصف للاستمرارية عند 50% وللكفاءة عند 100%
                             fig_kpi.add_hline(y=50, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
-                            fig_kpi.add_vline(x=50, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
+                            fig_kpi.add_vline(x=100, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
+                            
+                            # تحديد أقصى قيمة للـ X عشان الـ Annotations تتظبط
+                            max_x = max(150, kpi_df['Execution Efficiency %'].max() + 20)
                             
                             # إضافة الـ Annotations التحليلية
-                            fig_kpi.add_annotation(x=85, y=95, text="🌟 Star Elements (High Comp, High Hit)", showarrow=False, font=dict(color="#2ecc71", size=12), bgcolor="rgba(0,0,0,0.5)")
-                            fig_kpi.add_annotation(x=15, y=95, text="🚀 Promising (Low Comp, High Hit)", showarrow=False, font=dict(color="#00d2ff", size=12), bgcolor="rgba(0,0,0,0.5)")
-                            fig_kpi.add_annotation(x=85, y=5, text="⚠️ Warning (High Comp, Low Hit)", showarrow=False, font=dict(color="#f1c40f", size=12), bgcolor="rgba(0,0,0,0.5)")
-                            fig_kpi.add_annotation(x=15, y=5, text="🚨 Critical (Low Comp, Low Hit)", showarrow=False, font=dict(color="#e74c3c", size=12), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=100 + (max_x-100)*0.5, y=95, text="🌟 Elite (Beating Targets Consistently)", showarrow=False, font=dict(color="#2ecc71", size=11), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=50, y=95, text="🐢 Steady but Short (Hitting targets but low total volume)", showarrow=False, font=dict(color="#00d2ff", size=11), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=100 + (max_x-100)*0.5, y=5, text="🚀 Spiky/Erratic (High Volume, but missing daily goals)", showarrow=False, font=dict(color="#f1c40f", size=11), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=50, y=5, text="🚨 Critical (Failing both Volume & Daily Targets)", showarrow=False, font=dict(color="#e74c3c", size=11), bgcolor="rgba(0,0,0,0.5)")
                             
-                            fig_kpi.update_traces(textposition='top center', textfont=dict(color='white', size=11))
+                            fig_kpi.update_traces(textposition='top center', textfont=dict(color='white', size=12, weight='bold'))
                             fig_kpi.update_layout(
                                 height=600, 
-                                xaxis=dict(range=[-10, max(110, kpi_df['Completion %'].max() + 10)]),
-                                yaxis=dict(range=[-10, 110]),
+                                xaxis=dict(range=[-5, max_x], title="Execution Efficiency % (Total Executed vs Cumulative Target)"),
+                                yaxis=dict(range=[-10, 110], title="Target Hit Rate % (Daily Consistency)"),
                                 hovermode='closest',
                                 margin=dict(t=30, b=30, l=30, r=30)
                             )
@@ -3415,12 +3409,12 @@ def render_dashboard():
                             try: fig_kpi = style_3d_glassy(fig_kpi, "scatter")
                             except: pass
                             
-                            st.plotly_chart(fig_kpi, use_container_width=True, key="qty_kpi_scatter")
+                            st.plotly_chart(fig_kpi, use_container_width=True, key="qty_kpi_scatter_efficiency")
                             
                             with st.expander("📋 View Detailed Element Data"):
                                 st.dataframe(kpi_df.drop(columns=['Bubble_Size']), use_container_width=True)
                     else:
-                        st.warning("⚠️ Missing columns (Contractor, Element, Executed Qty, Target) to generate Element Matrix.")
+                        st.warning("⚠️ Missing columns to generate Element Matrix.")
 
                     # ══════════════════════════════════════════════════════
                     # 6. WORST CONTRACTOR ANALYSIS
