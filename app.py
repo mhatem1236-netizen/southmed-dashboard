@@ -3316,71 +3316,111 @@ def render_dashboard():
                         st.warning("⚠️ Missing columns for auditor.")
 
                     # ══════════════════════════════════════════════════════
-                    # 5. KPI SUMMARY (XLOOKUP / VLOOKUP Logic)
+                    # 5. ADVANCED KPI SUMMARY (Element-Level Matrix)
                     # ══════════════════════════════════════════════════════
-                    st.markdown("#### 🎯 KPI Summary")
+                    st.markdown("#### 🎯 Element-Level Performance Matrix")
+                    st.caption("Evaluates Completion % and Hit Rate % for each Element independently to prevent masking poor performance.")
 
-                    if contractor_col and exec_qty_m3_col and target_col:
+                    if contractor_col and exec_qty_m3_col and target_col and elem_all_col:
                         kpi_rows = []
                         
-                        for ct in df[contractor_col].dropna().astype(str).str.strip().unique():
-                            if ct.lower() in ['nan', 'none', '']: continue
+                        # تجميع الداتا بناءً على المقاول واسم العنصر مع بعض
+                        df_valid = df.dropna(subset=[contractor_col, elem_all_col])
+                        
+                        # لو مختار مقاول معين من الفلتر اللي فوق، نفلتر الداتا بتاعته بس
+                        if sel_contractor != 'All Contractors':
+                            df_valid = df_valid[df_valid[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()]
                             
-                            # 1. الداتا اليومية للمقاول (لحساب المنفذ والتارجت)
-                            ct_df = df[df[contractor_col].astype(str).str.strip() == ct]
-
-                            # 2. XLOOKUP / VLOOKUP Logic
-                            # بياخد اسم المقاول (ct) ويبحث عنه في عمود (Company)
+                        grouped = df_valid.groupby([contractor_col, elem_all_col])
+                        
+                        for name, group in grouped:
+                            ct = str(name[0]).strip()
+                            el = str(name[1]).strip()
+                            
+                            if ct.lower() in ['nan', 'none', ''] or el.lower() in ['nan', 'none', '']: continue
+                            
+                            # 1. جلب الكمية الكلية (Total Scope) للعنصر ده للمقاول ده تحديداً
                             scope = 0
                             if company_col and total_qty_col and company_col in df.columns:
-                                # الفلترة دي بتعادل XLOOKUP بالظبط
-                                matched_company_df = df[df[company_col].astype(str).str.strip() == ct]
+                                matched = df[(df[company_col].astype(str).str.strip().str.lower() == ct.lower()) & 
+                                             (df[elem_all_col].astype(str).str.strip().str.lower() == el.lower())]
+                                if not matched.empty:
+                                    scope = matched[total_qty_col].max()
+                                    
+                            if pd.isna(scope) or scope == 0:
+                                scope = group[total_qty_col].max() if total_qty_col in group.columns else 0
                                 
-                                if not matched_company_df.empty:
-                                    # لو المقاول ده شغال في كذا Element، بناخد الكمية بتاعت كل عنصر ونجمعهم
-                                    if elem_all_col and elem_all_col in matched_company_df.columns:
-                                        scope = matched_company_df.groupby(elem_all_col)[total_qty_col].max().sum()
-                                    else:
-                                        # لو مفيش Elements، بتشتغل كـ VLOOKUP عادي بتجيب أعلى/أول قيمة
-                                        scope = matched_company_df[total_qty_col].max()
-
-                            # 3. حساب نسبة الإنجاز (العمود الأزرق)
-                            exec_sum   = ct_df[exec_qty_m3_col].sum()
-                            compl      = round((exec_sum / scope * 100), 1) if scope > 0 else 0
+                            # 2. حساب المنفذ
+                            exec_sum = group[exec_qty_m3_col].sum()
+                            compl = round((exec_sum / scope * 100), 1) if pd.notna(scope) and scope > 0 else 0
                             
-                            # 4. حساب أداء التارجت (العمود البرتقالي)
-                            valid      = ct_df[ct_df[target_col] > 0]
-                            days_w     = len(valid)
-                            days_met   = int((valid[exec_qty_m3_col] >= valid[target_col]).sum()) if days_w else 0
-                            hit_rate   = round(days_met / days_w * 100, 1) if days_w else 0
-                            status     = '🟢 Good' if hit_rate >= 70 else ('🟡 Fair' if hit_rate >= 40 else '🔴 Poor')
-
-                            kpi_rows.append({
-                                'Contractor':        ct,
-                                'Total Scope (m³)':  round(scope, 1),
-                                'Executed (m³)':     round(exec_sum, 1),
-                                'Completion %':      compl,
-                                'Hit Rate %':        hit_rate,
-                                'Status':            status
-                            })
+                            # 3. حساب الـ Hit Rate للعنصر ده بس
+                            valid_target = group[group[target_col] > 0]
+                            days_w = len(valid_target)
+                            days_met = int((valid_target[exec_qty_m3_col] >= valid_target[target_col]).sum()) if days_w else 0
+                            hit_rate = round((days_met / days_w * 100), 1) if days_w else 0
+                            
+                            status = '🟢 Good' if hit_rate >= 70 else ('🟡 Fair' if hit_rate >= 40 else '🔴 Poor')
+                            
+                            if scope > 0 or exec_sum > 0:
+                                kpi_rows.append({
+                                    'Contractor': ct,
+                                    'Element': el,
+                                    'Total Scope (m³)': round(scope, 1),
+                                    'Executed (m³)': round(exec_sum, 1),
+                                    'Completion %': compl,
+                                    'Hit Rate %': hit_rate,
+                                    'Status': status,
+                                    'Bubble_Size': max(exec_sum, 100) # عشان حجم الدوائر في الشارت
+                                })
 
                         if kpi_rows:
-                            kpi_df = pd.DataFrame(kpi_rows).sort_values(
-                                'Hit Rate %', ascending=False
+                            kpi_df = pd.DataFrame(kpi_rows).sort_values(by=['Contractor', 'Completion %'], ascending=[True, False])
+                            
+                            st.markdown("##### 📈 Matrix Chart: Completion vs Hit Rate")
+                            
+                            # رسم الشارت المتقدم (Quadrant Scatter Plot)
+                            fig_kpi = px.scatter(
+                                kpi_df, 
+                                x='Completion %', 
+                                y='Hit Rate %',
+                                color='Contractor',
+                                size='Bubble_Size',
+                                text='Element',
+                                hover_name='Contractor',
+                                hover_data={'Contractor': False, 'Element': True, 'Executed (m³)': True, 'Bubble_Size': False},
+                                size_max=40,
+                                color_discrete_sequence=NEON_COLORS
                             )
-                            st.dataframe(kpi_df, use_container_width=True)
-
-                            fig_kpi = px.bar(
-                                kpi_df, x='Contractor',
-                                y=['Completion %', 'Hit Rate %'],
-                                barmode='group',
-                                color_discrete_sequence=['#00d2ff', '#ffaa00'],
-                                title="Completion % vs Target Hit Rate % per Contractor",
-                                text_auto=True
+                            
+                            # إضافة خطوط التقاطع (Quadrants) عند نسبة 50%
+                            fig_kpi.add_hline(y=50, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
+                            fig_kpi.add_vline(x=50, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
+                            
+                            # إضافة الـ Annotations التحليلية
+                            fig_kpi.add_annotation(x=85, y=95, text="🌟 Star Elements (High Comp, High Hit)", showarrow=False, font=dict(color="#2ecc71", size=12), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=15, y=95, text="🚀 Promising (Low Comp, High Hit)", showarrow=False, font=dict(color="#00d2ff", size=12), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=85, y=5, text="⚠️ Warning (High Comp, Low Hit)", showarrow=False, font=dict(color="#f1c40f", size=12), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=15, y=5, text="🚨 Critical (Low Comp, Low Hit)", showarrow=False, font=dict(color="#e74c3c", size=12), bgcolor="rgba(0,0,0,0.5)")
+                            
+                            fig_kpi.update_traces(textposition='top center', textfont=dict(color='white', size=11))
+                            fig_kpi.update_layout(
+                                height=600, 
+                                xaxis=dict(range=[-10, max(110, kpi_df['Completion %'].max() + 10)]),
+                                yaxis=dict(range=[-10, 110]),
+                                hovermode='closest',
+                                margin=dict(t=30, b=30, l=30, r=30)
                             )
-                            try: fig_kpi = style_3d_glassy(fig_kpi, "bar")
+                            
+                            try: fig_kpi = style_3d_glassy(fig_kpi, "scatter")
                             except: pass
-                            st.plotly_chart(fig_kpi, use_container_width=True, key="qty_kpi_chart")
+                            
+                            st.plotly_chart(fig_kpi, use_container_width=True, key="qty_kpi_scatter")
+                            
+                            with st.expander("📋 View Detailed Element Data"):
+                                st.dataframe(kpi_df.drop(columns=['Bubble_Size']), use_container_width=True)
+                    else:
+                        st.warning("⚠️ Missing columns (Contractor, Element, Executed Qty, Target) to generate Element Matrix.")
 
                     # ══════════════════════════════════════════════════════
                     # 6. WORST CONTRACTOR ANALYSIS
