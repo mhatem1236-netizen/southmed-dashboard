@@ -1651,7 +1651,7 @@ def render_dashboard():
         create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog)
         d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
         create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
-        # ==========================================
+       # ==========================================
         # 🧪 Detailed Test Counts by Type (KPI Cards)
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -1671,11 +1671,61 @@ def render_dashboard():
                 plate_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('PLATE', na=False)])
                 soil_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|SAND|CONE|PROCTOR', na=False)])
 
-        tc1, tc2, tc3 = st.columns(3)
-        tc1.markdown(f'<div style="background-color:#0e1117; border:1px solid #1f2937; border-left:4px solid #f59e0b; padding:15px; border-radius:8px; text-align:center;"><div style="color:#9ca3af; font-size:14px; font-weight:bold; text-transform:uppercase;">DPL</div><div style="color:#ffffff; font-size:28px; font-weight:bold;">{int(dpl_count):,}</div></div>', unsafe_allow_html=True)
-        tc2.markdown(f'<div style="background-color:#0e1117; border:1px solid #1f2937; border-left:4px solid #f59e0b; padding:15px; border-radius:8px; text-align:center;"><div style="color:#9ca3af; font-size:14px; font-weight:bold; text-transform:uppercase;">PLATE LOAD</div><div style="color:#ffffff; font-size:28px; font-weight:bold;">{int(plate_count):,}</div></div>', unsafe_allow_html=True)
-        tc3.markdown(f'<div style="background-color:#0e1117; border:1px solid #1f2937; border-left:4px solid #f59e0b; padding:15px; border-radius:8px; text-align:center;"><div style="color:#9ca3af; font-size:14px; font-weight:bold; text-transform:uppercase;">SOIL</div><div style="color:#ffffff; font-size:28px; font-weight:bold;">{int(soil_count):,}</div></div>', unsafe_allow_html=True)
+        # CSS and Helper Function for Unified Cards
+        st.markdown("""
+        <style>
+        .unified-card {
+            background-color: rgba(10, 20, 33, 0.8); /* تم توحيد اللون ليتماشى مع الوضع المظلم */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px 20px 15px 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            text-align: left;
+            font-family: 'Montserrat', sans-serif;
+            margin-bottom: 10px;
+        }
+        .unified-card-title {
+            color: #8da3b9;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .unified-card-value {
+            color: #ffffff;
+            font-size: 36px;
+            font-weight: 800;
+            margin: 0 0 5px 0;
+            line-height: 1.2;
+        }
+        .unified-card-subtitle {
+            color: #8da3b9;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .unified-card-bar {
+            height: 3px;
+            border-radius: 2px;
+            width: 100%;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
+        def draw_unified_card(title, value, subtitle, bar_color):
+            return f'''
+            <div class="unified-card">
+                <div class="unified-card-title">{title}</div>
+                <div class="unified-card-value">{value}</div>
+                <div class="unified-card-subtitle">➖ {subtitle}</div>
+                <div class="unified-card-bar" style="background-color: {bar_color};"></div>
+            </div>
+            '''
+
+        tc1, tc2, tc3 = st.columns(3)
+        tc1.markdown(draw_unified_card("DPL", f"{int(dpl_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
+        tc2.markdown(draw_unified_card("PLATE LOAD", f"{int(plate_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
+        tc3.markdown(draw_unified_card("SOIL", f"{int(soil_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
         # ==========================================
         # 🏢 Overall Office Workload Analysis
         # ==========================================
