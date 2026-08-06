@@ -1651,7 +1651,7 @@ def render_dashboard():
         create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog)
         d5 = HistoryManager.get_delta_html(current_metrics["Total_Paperwork"], "Total_Paperwork", uploaded_file.name)
         create_card(col5, "Total Paperwork", current_metrics["Total_Paperwork"], delta_html=d5)
-       # ==========================================
+      # ==========================================
         # 🧪 Detailed Test Counts by Type (KPI Cards)
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -1659,23 +1659,28 @@ def render_dashboard():
         
         dpl_count = 0
         plate_count = 0
+        sand_cone_count = 0
         soil_count = 0
         
         if 'Test Type' in filtered_df.columns:
             if num_tests_col:
                 dpl_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)][num_tests_col], errors='coerce').sum()
                 plate_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('PLATE', na=False)][num_tests_col], errors='coerce').sum()
-                soil_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|SAND|CONE|PROCTOR', na=False)][num_tests_col], errors='coerce').sum()
+                # فصلنا الـ SAND CONE لوحده
+                sand_cone_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SAND|CONE', na=False)][num_tests_col], errors='coerce').sum()
+                # خلينا الـ SOIL لوحده (ومعاه الـ PROCTOR لو موجود)
+                soil_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|PROCTOR', na=False)][num_tests_col], errors='coerce').sum()
             else:
                 dpl_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)])
                 plate_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('PLATE', na=False)])
-                soil_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|SAND|CONE|PROCTOR', na=False)])
+                sand_cone_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SAND|CONE', na=False)])
+                soil_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|PROCTOR', na=False)])
 
         # CSS and Helper Function for Unified Cards
         st.markdown("""
         <style>
         .unified-card {
-            background-color: rgba(10, 20, 33, 0.8); /* تم توحيد اللون ليتماشى مع الوضع المظلم */
+            background-color: rgba(10, 20, 33, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             padding: 20px 20px 15px 20px;
@@ -1722,10 +1727,12 @@ def render_dashboard():
             </div>
             '''
 
-        tc1, tc2, tc3 = st.columns(3)
+        # خليناهم 4 أعمدة بدل 3 عشان نعرض الكارت الجديد
+        tc1, tc2, tc3, tc4 = st.columns(4)
         tc1.markdown(draw_unified_card("DPL", f"{int(dpl_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
         tc2.markdown(draw_unified_card("PLATE LOAD", f"{int(plate_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
-        tc3.markdown(draw_unified_card("SOIL", f"{int(soil_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
+        tc3.markdown(draw_unified_card("SAND CONE", f"{int(sand_cone_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
+        tc4.markdown(draw_unified_card("SOIL", f"{int(soil_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
         # ==========================================
         # 🏢 Overall Office Workload Analysis
         # ==========================================
