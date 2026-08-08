@@ -866,21 +866,18 @@ def render_home_page():
     st.markdown('<div class="bi-title">🏢 Battalions Command Hub</div>', unsafe_allow_html=True)
     st.info("Select your Battalion and the specific Zone/File to instantly load your dashboard.")
 
-    # --- التعديل هنا: تحديد مسار الفولدر اللي فيه الكود بتاعك بالظبط ---
+    # 1. تحديد المسار الفعلي للفولدر اللي إنت كارته بإيدك
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     DATA_DIR = os.path.join(BASE_DIR, "Battalions_Data")
 
-    # 1. تعريف مسار الفولدرات
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-        os.makedirs(os.path.join(DATA_DIR, "Battalion_36"), exist_ok=True)
-        os.makedirs(os.path.join(DATA_DIR, "Battalion_73"), exist_ok=True)
-
-    # 2. قراءة الكتائب المتاحة
-    battalions = [d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))]
+    # 2. قراءة الكتائب المتاحة من الفولدر الحقيقي مباشرة (بدون ما نكريت حاجة بالكود)
+    if os.path.exists(DATA_DIR):
+        battalions = [d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))]
+    else:
+        battalions = []
 
     if not battalions:
-        st.warning("No battalion folders found. Admin needs to initialize directories.")
+        st.warning("⚠️ No battalion folders found. Please create them inside the 'Battalions_Data' folder.")
     else:
         # إنشاء أعمدة على عدد الكتائب
         cols = st.columns(len(battalions))
@@ -907,6 +904,7 @@ def render_home_page():
                         file_path = os.path.join(battalion_path, selected_file)
                         st.session_state["analytics_df"] = pd.read_csv(file_path)
                         st.session_state["current_page"] = "dashboard"
+                        st.session_state["file_name_from_hub"] = selected_file # سطر جديد عشان نستخدمه في الداشبورد
                         st.rerun()
                 else:
                     st.markdown("<p style='color:#e74c3c; font-size:13px; text-align:center;'>⚠️ No files uploaded yet</p>", unsafe_allow_html=True)
