@@ -859,6 +859,59 @@ def render_home_page():
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
+    # 🏢 Battalions Command Hub (الكود الجديد هنا)
+    # ==========================================
+    import os
+    
+    st.markdown('<div class="bi-title">🏢 Battalions Command Hub</div>', unsafe_allow_html=True)
+    st.info("Select your Battalion and the specific Zone/File to instantly load your dashboard.")
+
+    # 1. تعريف مسار الفولدرات (الكود هيكريتها لوحدها لو مش موجودة للتجربة)
+    DATA_DIR = "Battalions_Data"
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+        os.makedirs(os.path.join(DATA_DIR, "Battalion_44"), exist_ok=True)
+        os.makedirs(os.path.join(DATA_DIR, "Battalion_45"), exist_ok=True)
+        os.makedirs(os.path.join(DATA_DIR, "Battalion_46"), exist_ok=True)
+
+    # 2. قراءة الكتائب المتاحة
+    battalions = [d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))]
+
+    if not battalions:
+        st.warning("No battalion folders found. Admin needs to initialize directories.")
+    else:
+        # إنشاء أعمدة على عدد الكتائب
+        cols = st.columns(len(battalions))
+        
+        for idx, battalion in enumerate(battalions):
+            with cols[idx]:
+                # تصميم الكارت
+                st.markdown(f"""
+                <div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(255,255,255,0.1); border-top: 4px solid #00d2ff; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); margin-bottom: 15px;">
+                    <div style="font-size: 30px; margin-bottom: 10px;">🛡️</div>
+                    <h3 style="color: #ffffff; margin: 0; font-size: 20px; font-family: 'Montserrat';">{battalion.replace('_', ' ')}</h3>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # قراءة الملفات اللي جوه فولدر الكتيبة دي
+                battalion_path = os.path.join(DATA_DIR, battalion)
+                files = [f for f in os.listdir(battalion_path) if f.endswith('.csv')]
+
+                # لو في ملفات، نعرض قائمة الاختيار وزرار التحليل
+                if files:
+                    selected_file = st.selectbox("📍 Select Zone / Log:", files, key=f"sel_{battalion}")
+                    if st.button("📊 Analyze Data", key=f"btn_{battalion}", type="primary", use_container_width=True):
+                        # لما يدوس، نقرا الملف ونرميه في الـ Session State ونحوله للداشبورد
+                        file_path = os.path.join(battalion_path, selected_file)
+                        st.session_state["analytics_df"] = pd.read_csv(file_path)
+                        st.session_state["current_page"] = "dashboard"
+                        st.rerun()
+                else:
+                    st.markdown("<p style='color:#e74c3c; font-size:13px; text-align:center;'>⚠️ No files uploaded yet</p>", unsafe_allow_html=True)
+
+    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
+    # ==========================================
     # 🗜️ Matrix-to-Flat Data Converter
     # ==========================================
     st.markdown("### 🗜️ Data Transformation Hub (Matrix to Flat Converter)")
