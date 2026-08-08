@@ -1469,29 +1469,43 @@ def render_dashboard():
     
     st.sidebar.divider()
 
+    # كلاس ذكي عشان الداشبورد تعتبر الملف اللي جاي من الكارت كأنه ملف مرفوع
+    class HubFile:
+        def __init__(self, name):
+            self.name = name
+
     uploaded_file = None
+    df = None
+
     if data_source == "Local CSV Upload":
         uploaded_file = st.sidebar.file_uploader("Upload your Project Log (CSV) 📂", type="csv")
 
+    # 🚀 التعديل السحري: لو مفيش ملف اترفع يدوي، بس المدير داس على الكارت
+    if uploaded_file is None and "analytics_df" in st.session_state and st.session_state.get("file_name_from_hub"):
+        uploaded_file = HubFile(st.session_state["file_name_from_hub"])
+        df = st.session_state["analytics_df"].copy()
+        st.sidebar.success(f"🚀 Auto-Loaded from Hub: {uploaded_file.name}")
+
     if uploaded_file is not None:
-        uploaded_file.seek(0)
-        
-        audit_msg = check_audit_trail(uploaded_file)
-        st.sidebar.success(audit_msg, icon="✅")
-        
-        uploaded_file.seek(0)
-        
-        try:
-            df = pd.read_csv(uploaded_file)
-            if df.empty:
-                st.error("⚠️ الملف لا يحتوي على بيانات!")
+        # لو الملف مرفوع من زرار الرفع العادي (نفحصه ونقراه)
+        if hasattr(uploaded_file, 'read'):
+            uploaded_file.seek(0)
+            audit_msg = check_audit_trail(uploaded_file)
+            st.sidebar.success(audit_msg, icon="✅")
+            uploaded_file.seek(0)
+            try:
+                df = pd.read_csv(uploaded_file)
+                if df.empty:
+                    st.error("⚠️ الملف لا يحتوي على بيانات!")
+                    st.stop()
+                st.session_state["analytics_df"] = df.copy()
+                st.session_state["file_name_from_hub"] = uploaded_file.name
+            except Exception as e:
+                st.error(f"❌ خطأ في قراءة الملف: {str(e)}")
+                st.info("💡 تأكد أن الملف بصيغة CSV وأن البيانات منسقة بشكل صحيح.")
                 st.stop()
-        except Exception as e:
-            st.error(f"❌ خطأ في قراءة الملف: {str(e)}")
-            st.info("💡 تأكد أن الملف بصيغة CSV وأن البيانات منسقة بشكل صحيح.")
-            st.stop()
         
-        st.session_state["analytics_df"] = df.copy()
+        # --- 🛠️ Data Cleaning (Global for Dashboard) ---
         
         # --- 🛠️ Data Cleaning (Global for Dashboard) ---
         df.columns = df.columns.str.strip() 
