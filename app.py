@@ -871,8 +871,8 @@ def render_home_page():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
         os.makedirs(os.path.join(DATA_DIR, "Battalion_44"), exist_ok=True)
-        os.makedirs(os.path.join(DATA_DIR, "Battalion_45"), exist_ok=True)
-        os.makedirs(os.path.join(DATA_DIR, "Battalion_46"), exist_ok=True)
+        os.makedirs(os.path.join(DATA_DIR, "Battalion_36"), exist_ok=True)
+        os.makedirs(os.path.join(DATA_DIR, "Battalion_73"), exist_ok=True)
 
     # 2. قراءة الكتائب المتاحة
     battalions = [d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))]
