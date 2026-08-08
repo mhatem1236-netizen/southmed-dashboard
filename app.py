@@ -3118,10 +3118,9 @@ def render_dashboard():
                             lookup_df = df[df[company_col].astype(str).str.strip() == sel_contractor]
                         else:
                             lookup_df = df
-                        if elem_all_col and elem_all_col in lookup_df.columns:
-                            total_scope = lookup_df.groupby(elem_all_col)[total_qty_col].max().sum()
-                        else:
-                            total_scope = lookup_df[total_qty_col].sum()
+                        
+                        # --- التعديل هنا: جمع العمود بالكامل بدون استبعاد أي طبقات ---
+                        total_scope = lookup_df[total_qty_col].sum()
 
                     exec_from_company = 0
                     if company_col and exec_qty_col and company_col in df.columns:
