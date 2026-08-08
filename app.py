@@ -859,18 +859,20 @@ def render_home_page():
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
     # ==========================================
-    # 🏢 Battalions Command Hub (الكود الجديد هنا)
+    # 🏢 Battalions Command Hub
     # ==========================================
     import os
     
     st.markdown('<div class="bi-title">🏢 Battalions Command Hub</div>', unsafe_allow_html=True)
     st.info("Select your Battalion and the specific Zone/File to instantly load your dashboard.")
 
-    # 1. تعريف مسار الفولدرات (الكود هيكريتها لوحدها لو مش موجودة للتجربة)
-    DATA_DIR = "Battalions_Data"
+    # --- التعديل هنا: تحديد مسار الفولدر اللي فيه الكود بتاعك بالظبط ---
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR = os.path.join(BASE_DIR, "Battalions_Data")
+
+    # 1. تعريف مسار الفولدرات
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
-        os.makedirs(os.path.join(DATA_DIR, "Battalion_44"), exist_ok=True)
         os.makedirs(os.path.join(DATA_DIR, "Battalion_36"), exist_ok=True)
         os.makedirs(os.path.join(DATA_DIR, "Battalion_73"), exist_ok=True)
 
