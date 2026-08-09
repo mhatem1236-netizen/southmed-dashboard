@@ -3775,6 +3775,102 @@ def render_dashboard():
                             st.info("No DPL or PLATE LOAD data found for this contractor.")
                     else:
                         st.warning("⚠️ Missing columns for tests analysis.")
+                    # ══════════════════════════════════════════════════════
+                    # 8. ADVANCED DPL ANALYTICS MODULE (NEW)
+                    # ══════════════════════════════════════════════════════
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    st.markdown("#### 🎯 DPL Deep Analytics Matrix")
+                    st.caption("Comprehensive analysis of Dynamic Cone Penetrometer (DPL) test averages per company and element.")
+                    
+                    if comp_name_col and 'AVERAGE VALUE' in df.columns and test_type_col in df.columns:
+                        # فلترة الداتا للـ DPL فقط واستبعاد القيم الفارغة
+                        dpl_data = df[df[test_type_col].astype(str).str.upper().str.contains('DPL', na=False)].copy()
+                        dpl_data['AVERAGE VALUE'] = pd.to_numeric(dpl_data['AVERAGE VALUE'], errors='coerce')
+                        dpl_data = dpl_data.dropna(subset=['AVERAGE VALUE', comp_name_col])
+                        
+                        if not dpl_data.empty:
+                            # --- 1. Line Chart & Table (All Companies) ---
+                            st.markdown("##### 🏢 Average DPL Performance by Company")
+                            
+                            comp_dpl_avg = dpl_data.groupby(comp_name_col)['AVERAGE VALUE'].mean().reset_index()
+                            comp_dpl_avg = comp_dpl_avg.sort_values('AVERAGE VALUE', ascending=False)
+                            comp_dpl_avg.columns = ['Contractor / Company Name', 'Avg DPL Value']
+                            
+                            col_chart, col_table = st.columns([0.65, 0.35])
+                            
+                            with col_chart:
+                                fig_dpl_line = px.line(comp_dpl_avg, x='Contractor / Company Name', y='Avg DPL Value', 
+                                                       markers=True, title="Trend of Average DPL by Company", 
+                                                       color_discrete_sequence=['#00d2ff'])
+                                fig_dpl_line.update_traces(line=dict(width=3), marker=dict(size=10, color='#ffaa00', line=dict(color='white', width=2)))
+                                try: fig_dpl_line = style_3d_glassy(fig_dpl_line, "line")
+                                except: pass
+                                st.plotly_chart(fig_dpl_line, use_container_width=True, key="dpl_line_overall")
+                                
+                            with col_table:
+                                st.dataframe(comp_dpl_avg, use_container_width=True, hide_index=True)
+                                csv_dpl = comp_dpl_avg.to_csv(index=False).encode('utf-8-sig')
+                                st.download_button(label="📥 Download DPL Averages", data=csv_dpl, 
+                                                   file_name=f"DPL_Averages_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv", 
+                                                   mime="text/csv", type="primary", use_container_width=True)
+
+                            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                            
+                            # --- 2. Filter & Deep Dive per Company ---
+                            st.markdown("##### 🔍 Interactive Deep Dive: Contractor Specific")
+                            dpl_companies = ['-- Select Contractor --'] + sorted(dpl_data[comp_name_col].unique().tolist())
+                            selected_dpl_comp = st.selectbox("Select a Contractor to investigate DPL metrics:", dpl_companies, key="dpl_deep_comp_sel")
+                            
+                            if selected_dpl_comp != '-- Select Contractor --':
+                                filtered_dpl = dpl_data[dpl_data[comp_name_col] == selected_dpl_comp]
+                                
+                                deep_c1, deep_c2 = st.columns(2)
+                                
+                                with deep_c1:
+                                    if elment_col:
+                                        elem_avg = filtered_dpl.groupby(elment_col)['AVERAGE VALUE'].mean().reset_index()
+                                        elem_avg.columns = ['Element', 'Avg DPL']
+                                        elem_avg = elem_avg.sort_values('Avg DPL', ascending=False)
+                                        fig_elem = px.bar(elem_avg, x='Element', y='Avg DPL', text_auto='.2f', 
+                                                          title=f"Avg DPL per Element for {selected_dpl_comp}",
+                                                          color='Avg DPL', color_continuous_scale='Blues')
+                                        try: fig_elem = style_3d_glassy(fig_elem, "bar")
+                                        except: pass
+                                        st.plotly_chart(fig_elem, use_container_width=True, key="dpl_elem_bar")
+                                    else:
+                                        st.info("Element column not found.")
+                                
+                                with deep_c2:
+                                    if 'sample status' in filtered_dpl.columns:
+                                        filtered_dpl['Status'] = filtered_dpl['sample status'].str.upper()
+                                        status_counts = filtered_dpl['Status'].value_counts().reset_index()
+                                        status_counts.columns = ['Status', 'Count']
+                                        fig_stat = px.pie(status_counts, names='Status', values='Count', 
+                                                          title=f"DPL Approval Rate for {selected_dpl_comp}", hole=0.4,
+                                                          color='Status', color_discrete_map=STATUS_COLORS)
+                                        fig_stat.update_traces(textinfo='percent+value')
+                                        try: fig_stat = style_3d_glassy(fig_stat, "pie")
+                                        except: pass
+                                        st.plotly_chart(fig_stat, use_container_width=True, key="dpl_status_pie")
+                                
+                                if date_test_col and date_test_col in filtered_dpl.columns:
+                                    filtered_dpl['Month'] = filtered_dpl[date_test_col].dt.strftime('%b %Y')
+                                    filtered_dpl['Month_Sort'] = filtered_dpl[date_test_col].dt.to_period('M')
+                                    monthly_dpl = filtered_dpl.groupby(['Month_Sort', 'Month'])['AVERAGE VALUE'].mean().reset_index()
+                                    monthly_dpl = monthly_dpl.sort_values('Month_Sort')
+                                    
+                                    if not monthly_dpl.empty:
+                                        fig_month = px.line(monthly_dpl, x='Month', y='AVERAGE VALUE', markers=True,
+                                                            title=f"Monthly Average DPL Trend for {selected_dpl_comp}",
+                                                            color_discrete_sequence=['#2ecc71'])
+                                        fig_month.update_traces(line=dict(width=3), marker=dict(size=10, color='white', line=dict(color='#2ecc71', width=2)))
+                                        try: fig_month = style_3d_glassy(fig_month, "line")
+                                        except: pass
+                                        st.plotly_chart(fig_month, use_container_width=True, key="dpl_month_line")
+                        else:
+                            st.info("No DPL records found with valid Average Values.")
+                    else:
+                        st.warning("⚠️ Missing Required Columns (Company Name, AVERAGE VALUE, or Test Type) for DPL Analytics.")    
         st.markdown('<div class="bi-title">🔍 Advanced Element Quality Auditor</div>', unsafe_allow_html=True)
         bh_col_name = next((col for col in filtered_df.columns if str(col).strip().upper() in ['ELEMENT', 'ELMENT', 'BH', 'LOCATION']), None)
         zone_col_name = next((col for col in filtered_df.columns if 'ZONE' in str(col).strip().upper() or 'AREA' in str(col).strip().upper()), None)
