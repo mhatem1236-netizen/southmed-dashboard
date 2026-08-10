@@ -3704,10 +3704,11 @@ def render_dashboard():
                             else:
                                 score_momentum = 50 # محايد لو الداتا قليلة
                                 
-                            # 4. Volume Delivery (Weight: 15%)
-                            # نسبة المنفذ من إجمالي المطلوب للشركة
-                            if total_qty_col and total_qty_col in group.columns:
-                                tot_req = pd.to_numeric(group[total_qty_col], errors='coerce').max()
+                           # 4. Volume Delivery (Weight: 15%)
+                            # نسبة إجمالي المنفذ إلى إجمالي الكميات المطلوبة للعناصر التي يعمل بها المقاول
+                            if total_qty_col and total_qty_col in group.columns and elem_all_col and elem_all_col in group.columns:
+                                # بنجيب الكمية الإجمالية لكل عنصر لوحده باستخدام max عشان التكرار، وبعدين نجمعهم
+                                tot_req = group.groupby(elem_all_col)[total_qty_col].max().sum()
                                 vol_delivery = (total_exec / tot_req * 100) if pd.notna(tot_req) and tot_req > 0 else 0
                             else:
                                 vol_delivery = 0
