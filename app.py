@@ -3370,20 +3370,19 @@ def render_dashboard():
                                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                             )
                             
-                            if time_view == "Weekly":
-                                # ✅ دمج أسابيع التنفيذ + أسابيع الـ DPL في ترتيب واحد
-                                # عشان الأسبوع اللي فيه DPL بس يظهر في مكانه الصحيح مش في آخر المحور
-                                frames = []
-                                if not weekly_exec.empty: frames.append(weekly_exec[['Proj_Week', 'Week_Label']])
-                                if not weekly_dpl.empty: frames.append(weekly_dpl[['Proj_Week', 'Week_Label']])
-                                week_order = (
-                                    pd.concat(frames).drop_duplicates(subset='Proj_Week')
-                                    .sort_values('Proj_Week')['Week_Label'].tolist()
-                                    if frames else []
-                                )
-                                fig_d.update_xaxes(categoryorder='array', categoryarray=week_order, title_text=x_title)
-                            else:
-                                fig_d.update_xaxes(title_text=x_title)
+                        if time_view == "Weekly":
+                            all_labels = weekly_exec['Week_Label'].tolist() if not weekly_exec.empty else []
+                            fig_d.update_xaxes(
+                                categoryorder='array',
+                                categoryarray=all_labels,
+                                tickmode='array',
+                                tickvals=all_labels[::2],      # 👈 اعرض ليبل كل أسبوعين بس
+                                tickangle=0,                   # 👈 ليبلات أفقية مقروءة بدل الوقفية
+                                title_text=x_title
+                            )
+                            fig_d.update_layout(margin=dict(b=80))   # مساحة لليبلين (سطرين) تحت الشارت
+                        else:
+                            fig_d.update_xaxes(title_text=x_title, tickangle=-45)
                                 
                             fig_d.update_yaxes(title_text="Quantity (m³)", secondary_y=False)
                             fig_d.update_yaxes(title_text="Number of DPL Tests", secondary_y=True, showgrid=False)
