@@ -3201,8 +3201,11 @@ def render_dashboard():
                    # ══════════════════════════════════════════════════════
                     # 3. CHART: Daily Executed vs Target Rate + DPL Tests (Unified Timeline by Element)
                     # ══════════════════════════════════════════════════════
-                    st.markdown("#### 🚀 Daily Executed vs Target Rate & DPL Tests")
+                    st.markdown("#### 🚀 Weekly Executed vs Target Rate & DPL Tests")
                     st.caption("Execution mapped via 'Contractor' & 'Date (Daily)'. DPL mapped via 'Company Name' & 'Date ( test)'.")
+
+                    # إضافة الزرار الجانبي للتحكم في خط الـ DPL
+                    show_dpl_line = st.sidebar.toggle("📉 Show DPL Tests Line", value=True)
 
                     # اكتشاف عمود تاريخ الاختبار
                     date_test_col = next((c for c in df.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
@@ -3211,7 +3214,7 @@ def render_dashboard():
 
                     if date_daily_col and target_col and exec_qty_m3_col and contractor_col and date_test_col and comp_name_col and elem_all_col and elment_col:
                         
-                        # --- جلب العناصر المتاحة للمقاول ده عشان الفلتر الجديد ---
+                        # --- جلب العناصر المتاحة للمقاول ده ---
                         if sel_contractor != 'All Contractors':
                             available_elements = df[df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()][elem_all_col].dropna().astype(str).str.strip().unique()
                         else:
@@ -3219,7 +3222,6 @@ def render_dashboard():
                             
                         available_elements = sorted([e for e in available_elements if e.lower() not in ['nan', 'none', '']])
                         
-                        # الفلتر الذكي الخاص بالشارت ده بس
                         sel_elem_chart = st.selectbox("📍 Filter Timeline by Element:", ["All Elements"] + available_elements, key="chart_elem_filter")
 
                         # --- 1. مسار الكميات (Execution Data) ---
@@ -3228,19 +3230,27 @@ def render_dashboard():
                         else:
                             df_exec = df.copy()
                             
-                        # تطبيق فلتر الـ Element على الكميات
                         if sel_elem_chart != 'All Elements':
                             df_exec = df_exec[df_exec[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()]
                             
                         df_exec[date_daily_col] = pd.to_datetime(df_exec[date_daily_col], dayfirst=True, errors='coerce')
                         df_exec = df_exec.dropna(subset=[date_daily_col])
                         
+                        # حسابات يومية للجدول الجديد (عشان نحسب سقوط التارجت بدقة)
                         daily_exec = df_exec.groupby([date_daily_col]).agg(
                             Executed=(exec_qty_m3_col, 'sum'),
                             Target=(target_col, 'max')
                         ).reset_index()
                         daily_exec.rename(columns={date_daily_col: 'Date'}, inplace=True)
                         daily_exec = daily_exec.sort_values('Date')
+                        
+                        # حسابات أسبوعية للشارت (تجميع الأسبوع بينتهي الخميس)
+                        weekly_exec = df_exec.groupby(pd.Grouper(key=date_daily_col, freq='W-THU')).agg(
+                            Executed=(exec_qty_m3_col, 'sum'),
+                            Target=(target_col, 'sum')
+                        ).reset_index()
+                        weekly_exec.rename(columns={date_daily_col: 'Date'}, inplace=True)
+                        weekly_exec = weekly_exec[weekly_exec['Executed'] > 0].sort_values('Date')
 
                         # --- 2. مسار الجودة (DPL Data) ---
                         if sel_contractor != 'All Contractors':
@@ -3248,12 +3258,18 @@ def render_dashboard():
                         else:
                             df_qa = df.copy()
                             
-                        # تطبيق فلتر الـ Element على الجودة
                         if sel_elem_chart != 'All Elements':
                             df_qa = df_qa[df_qa[elment_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()]
                             
                         df_qa[date_test_col] = pd.to_datetime(df_qa[date_test_col], dayfirst=True, errors='coerce')
                         df_qa = df_qa.dropna(subset=[date_test_col])
+                        
+                        # 🔥 التعديل: ربط الـ DPL بالعناصر اللي ليها كميات فقط
+                        valid_exec_elements = df_exec[elem_all_col].dropna().astype(str).str.strip().str.lower().unique()
+                        if len(valid_exec_elements) > 0:
+                            df_qa = df_qa[df_qa[elment_col].astype(str).str.strip().str.lower().isin(valid_exec_elements)]
+                        else:
+                            df_qa = pd.DataFrame(columns=df_qa.columns)
                         
                         mask_dpl = df_qa[test_type_col].astype(str).str.upper().str.contains('DPL')
                         df_dpl = df_qa[mask_dpl].copy()
@@ -3263,41 +3279,43 @@ def render_dashboard():
                                 df_dpl[num_tests_col] = df_dpl[num_tests_col].astype(str).str.replace(',', '', regex=False)
                             df_dpl[num_tests_col] = pd.to_numeric(df_dpl[num_tests_col], errors='coerce').fillna(0)
                             
-                            daily_dpl = df_dpl.groupby(date_test_col)[num_tests_col].sum().reset_index()
-                            daily_dpl.rename(columns={date_test_col: 'Date', num_tests_col: 'DPL Tests'}, inplace=True)
-                            daily_dpl = daily_dpl.sort_values('Date')
+                            # تجميع DPL بالأسابيع
+                            weekly_dpl = df_dpl.groupby(pd.Grouper(key=date_test_col, freq='W-THU'))[num_tests_col].sum().reset_index()
+                            weekly_dpl.rename(columns={date_test_col: 'Date', num_tests_col: 'DPL Tests'}, inplace=True)
+                            weekly_dpl = weekly_dpl[weekly_dpl['DPL Tests'] > 0].sort_values('Date')
                         else:
-                            daily_dpl = pd.DataFrame(columns=['Date', 'DPL Tests'])
+                            weekly_dpl = pd.DataFrame(columns=['Date', 'DPL Tests'])
 
                         # --- 3. الدمج في شارت واحد ---
                         ch_left, ch_right = st.columns([0.75, 0.25])
                         with ch_left:
                             fig_d = make_subplots(specs=[[{"secondary_y": True}]])
                             
-                            if not daily_exec.empty:
-                                fig_d.add_trace(go.Scatter(
-                                    x=daily_exec['Date'], y=daily_exec['Target'],
-                                    name='Target Daily Rate', mode='lines',
-                                    line=dict(color='#e74c3c', width=3, dash='dash'),
-                                    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Target: %{y:,.1f} m³'
-                                ), secondary_y=False)
-                                
+                            if not weekly_exec.empty:
                                 fig_d.add_trace(go.Bar(
-                                    x=daily_exec['Date'], y=daily_exec['Executed'],
+                                    x=weekly_exec['Date'], y=weekly_exec['Executed'],
                                     name=f'Execution (m³)', marker_color='#00d2ff', opacity=0.85,
-                                    hovertemplate='<b>Execution</b><br>Date: %{x|%Y-%m-%d}<br>Executed Qty: %{y:,.1f} m³'
+                                    hovertemplate='<b>Execution</b><br>Week: %{x|%W}<br>Executed Qty: %{y:,.1f} m³'
                                 ), secondary_y=False)
                                 
-                            if not daily_dpl.empty:
                                 fig_d.add_trace(go.Scatter(
-                                    x=daily_dpl['Date'], y=daily_dpl['DPL Tests'],
+                                    x=weekly_exec['Date'], y=weekly_exec['Target'],
+                                    name='Target Weekly Rate', mode='lines',
+                                    line=dict(color='#e74c3c', width=3, dash='dash'),
+                                    hovertemplate='<b>Target</b><br>Week: %{x|%W}<br>Target: %{y:,.1f} m³'
+                                ), secondary_y=False)
+                                
+                            # إظهار أو إخفاء الخط الأصفر بناءً على الزرار الجانبي
+                            if not weekly_dpl.empty and show_dpl_line:
+                                fig_d.add_trace(go.Scatter(
+                                    x=weekly_dpl['Date'], y=weekly_dpl['DPL Tests'],
                                     name=f'DPL Tests', mode='markers+lines',
                                     line=dict(color='#ffaa00', width=2),
                                     marker=dict(symbol='diamond', size=8, color='white', line=dict(color='#ffaa00', width=2)),
-                                    hovertemplate='<b>DPL</b><br>Date: %{x|%Y-%m-%d}<br>DPL Tests: %{y}'
+                                    hovertemplate='<b>DPL</b><br>Week: %{x|%W}<br>DPL Tests: %{y}'
                                 ), secondary_y=True)
 
-                            chart_title = f"Unified Timeline: Execution vs Target vs DPL ({sel_contractor})"
+                            chart_title = f"Weekly Timeline: Execution vs Target vs DPL ({sel_contractor})"
                             if sel_elem_chart != 'All Elements':
                                 chart_title += f" ➔ Element: {sel_elem_chart}"
                                 
@@ -3306,11 +3324,16 @@ def render_dashboard():
                                 height=450, hovermode='x unified', margin=dict(l=0, r=0, t=40, b=0),
                                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                             )
+                            # إعدادات المحور للأسابيع
+                            fig_d.update_xaxes(
+                                tickformat="Week %W<br>%b %Y",
+                                title_text="Project Weeks"
+                            )
                             fig_d.update_yaxes(title_text="Quantity (m³)", secondary_y=False)
                             fig_d.update_yaxes(title_text="Number of DPL Tests", secondary_y=True, showgrid=False)
                             try: fig_d = style_3d_glassy(fig_d, "bar")
                             except: pass
-                            st.plotly_chart(fig_d, use_container_width=True, key="qty_daily_chart_unified")
+                            st.plotly_chart(fig_d, use_container_width=True, key="qty_weekly_chart_unified")
                             
                         with ch_right:
                             st.markdown("**Performance Summary**")
@@ -3318,48 +3341,57 @@ def render_dashboard():
                             met = int((daily_exec['Executed'] >= daily_exec['Target']).sum()) if not daily_exec.empty else 0
                             hit_rate = round((met / days * 100), 1) if days else 0
                             total_exec = daily_exec['Executed'].sum() if not daily_exec.empty else 0
-                            total_dpl = daily_dpl['DPL Tests'].sum() if not daily_dpl.empty else 0
+                            total_dpl = weekly_dpl['DPL Tests'].sum() if not weekly_dpl.empty else 0
                             
                             st.markdown(f"""
                             <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; border-left:4px solid #00d2ff; margin-bottom:15px;">
-                                <div style="color:#8da3b9; font-size:12px;">Total Executed (m³)</div>
-                                <div style="color:#ffffff; font-size:20px; font-weight:bold;">{total_exec:,.1f}</div>
+                                <div style="color:{ui['text_muted']}; font-size:12px;">Total Executed (m³)</div>
+                                <div style="color:{ui['text_main']}; font-size:20px; font-weight:bold;">{total_exec:,.1f}</div>
                                 <hr style="border-color:rgba(255,255,255,0.1); margin:10px 0;">
-                                <div style="color:#8da3b9; font-size:12px;">Total DPL Tests</div>
+                                <div style="color:{ui['text_muted']}; font-size:12px;">Total DPL Tests</div>
                                 <div style="color:#ffaa00; font-size:20px; font-weight:bold;">{int(total_dpl):,}</div>
                                 <hr style="border-color:rgba(255,255,255,0.1); margin:10px 0;">
-                                <div style="color:#8da3b9; font-size:12px;">Target Hit Rate</div>
+                                <div style="color:{ui['text_muted']}; font-size:12px;">Target Hit Rate</div>
                                 <div style="color:#2ecc71; font-size:20px; font-weight:bold;">{hit_rate}%</div>
                             </div>
                             """, unsafe_allow_html=True)
-                            
-                            # --- AI Peak Analysis Card ---
-                            if not daily_exec.empty and not daily_dpl.empty:
-                                daily_exec['Month'] = daily_exec['Date'].dt.to_period('M')
-                                daily_dpl['Month'] = daily_dpl['Date'].dt.to_period('M')
-                                
-                                monthly_exec = daily_exec.groupby('Month')['Executed'].sum().reset_index()
-                                monthly_dpl = daily_dpl.groupby('Month')['DPL Tests'].sum().reset_index()
-                                
-                                peak_merge = pd.merge(monthly_exec, monthly_dpl, on='Month', how='outer').fillna(0)
-                                if not peak_merge.empty:
-                                    peak_row = peak_merge.loc[peak_merge['Executed'].idxmax()]
-                                    peak_month_str = peak_row['Month'].strftime('%B %Y')
-                                    peak_exec = peak_row['Executed']
-                                    peak_dpl = peak_row['DPL Tests']
-                                    
-                                    elem_text = f"for <b>{sel_elem_chart}</b>" if sel_elem_chart != 'All Elements' else "overall"
-                                    
-                                    st.markdown(f"""
-                                    <div style="background:rgba(231, 76, 60, 0.1); border-left:4px solid #e74c3c; padding:15px; border-radius:8px;">
-                                        <div style="color:#e74c3c; font-size:12px; font-weight:bold; margin-bottom:5px;">🔥 PEAK PERFORMANCE</div>
-                                        <div style="color:#d1d5da; font-size:13px; line-height:1.5;">
-                                            Highest execution {elem_text} occurred in <b style="color:#ffaa00;">{peak_month_str}</b> with <b style="color:#00d2ff;">{peak_exec:,.0f} m³</b> poured. 
-                                            <br>This was supported by <b style="color:#ffaa00;">{int(peak_dpl)} DPL tests</b>.
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
 
+                        # --- الجدول الجديد: Time & Pacing Tracker ---
+                        st.markdown("##### ⏳ Duration & Pacing Tracker")
+                        if not daily_exec.empty:
+                            daily_exec_pos = daily_exec[daily_exec['Executed'] > 0]
+                            if not daily_exec_pos.empty:
+                                min_d = daily_exec_pos['Date'].min()
+                                max_d = daily_exec_pos['Date'].max()
+                                t_duration = (max_d - min_d).days + 1
+                                a_days = len(daily_exec_pos)
+                                m_days = len(daily_exec_pos[daily_exec_pos['Executed'] < daily_exec_pos['Target']])
+                                avg_tar = daily_exec_pos['Target'].replace(0, np.nan).mean()
+                                
+                                ideal_dur = round(total_exec / avg_tar, 1) if pd.notna(avg_tar) and avg_tar > 0 else 0
+                                var_dur = t_duration - ideal_dur
+                                
+                                tracker_df = pd.DataFrame([{
+                                    'Contractor': sel_contractor,
+                                    'Element': sel_elem_chart,
+                                    'Actual Active Days': a_days,
+                                    'Total Spanned Days': t_duration,
+                                    'Days Missed Target': m_days,
+                                    'Ideal Duration': ideal_dur,
+                                    'Delay Variance': round(var_dur, 1),
+                                    'Last Exec Date': max_d.strftime('%Y-%m-%d')
+                                }])
+                                
+                                def highlight_var(val):
+                                    if isinstance(val, (int, float)):
+                                        if val > 5: return 'color: #e74c3c; font-weight: bold'
+                                        elif val < 0: return 'color: #2ecc71; font-weight: bold'
+                                    return ''
+                                    
+                                st.dataframe(tracker_df.style.map(highlight_var, subset=['Delay Variance']), use_container_width=True, hide_index=True)
+                            else:
+                                st.info("No active execution days found.")
+                                
                     else:
                         st.warning("⚠️ Missing columns to plot unified chart.")
                     # ══════════════════════════════════════════════════════
