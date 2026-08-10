@@ -3376,20 +3376,20 @@ def render_dashboard():
                                 categoryorder='array',
                                 categoryarray=all_labels,
                                 tickmode='array',
-                                tickvals=all_labels[::2],      # 👈 اعرض ليبل كل أسبوعين بس
-                                tickangle=0,                   # 👈 ليبلات أفقية مقروءة بدل الوقفية
+                                tickvals=all_labels[::2],
+                                tickangle=0,
                                 title_text=x_title
                             )
-                            fig_d.update_layout(margin=dict(b=80))   # مساحة لليبلين (سطرين) تحت الشارت
+                            fig_d.update_layout(margin=dict(b=80))
                         else:
                             fig_d.update_xaxes(title_text=x_title, tickangle=-45)
-                                
+
+                        # تم نقل هذه الأوامر للخارج لتعمل مع Weekly و Daily معاً
                             fig_d.update_yaxes(title_text="Quantity (m³)", secondary_y=False)
                             fig_d.update_yaxes(title_text="Number of DPL Tests", secondary_y=True, showgrid=False)
                             try: fig_d = style_3d_glassy(fig_d, "bar")
                             except: pass
                             st.plotly_chart(fig_d, use_container_width=True, key="qty_dynamic_chart")
-                            
                         with ch_right:
                             st.markdown("**Performance Summary**")
                             days = len(daily_exec)
