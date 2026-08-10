@@ -3718,7 +3718,10 @@ def render_dashboard():
                             min_date = group[date_daily_col].min()
                             max_date = group[date_daily_col].max()
                             spanned_days = (max_date - min_date).days + 1
-                            active_days = len(group[group[exec_qty_m3_col] > 0])
+                            
+                            # التعديل هنا: استخدام nunique() لعد الأيام الفريدة فقط، وليس عدد الصفوف
+                            active_days = group[group[exec_qty_m3_col] > 0][date_daily_col].nunique()
+                            
                             active_rate = (active_days / spanned_days * 100) if spanned_days > 0 else 0
                             score_active = min(100, active_rate)
                             
