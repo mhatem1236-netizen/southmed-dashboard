@@ -3705,15 +3705,15 @@ def render_dashboard():
                                 score_momentum = 50 # محايد لو الداتا قليلة
                                 
                            # 4. Volume Delivery (Weight: 15%)
-                            # نسبة إجمالي المنفذ إلى إجمالي الكميات المطلوبة للعناصر التي يعمل بها المقاول
-                            if total_qty_col and total_qty_col in group.columns and elem_all_col and elem_all_col in group.columns:
-                                # بنجيب الكمية الإجمالية لكل عنصر لوحده باستخدام max عشان التكرار، وبعدين نجمعهم
-                                tot_req = group.groupby(elem_all_col)[total_qty_col].max().sum()
+                            # نسبة المنفذ على الإجمالي (مطابقة لكروت الـ Main KPIs)
+                            if company_col and total_qty_col and company_col in df.columns:
+                                # بنروح للداتا الأصلية df عشان نجمع التارجت الكلي للمقاول (من عمود Company)
+                                tot_req = df[df[company_col].astype(str).str.strip() == ct][total_qty_col].sum()
                                 vol_delivery = (total_exec / tot_req * 100) if pd.notna(tot_req) and tot_req > 0 else 0
                             else:
                                 vol_delivery = 0
+                                
                             score_volume = min(100, vol_delivery)
-                            
                             # 5. Active Days Rate (Weight: 5%)
                             min_date = group[date_daily_col].min()
                             max_date = group[date_daily_col].max()
