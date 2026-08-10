@@ -3249,12 +3249,14 @@ def render_dashboard():
                         daily_exec['Proj_Week'] = ((daily_exec[date_daily_col] - min_proj_date).dt.days // 7) + 1
                         
                         weekly_exec = daily_exec.groupby('Proj_Week').agg(
-                            Executed=('Executed', 'sum'),
-                            Target=('Target', 'sum'),
-                            Start_Date=(date_daily_col, 'min')
-                        ).reset_index()
-                        weekly_exec['Week_Label'] = "Wk " + weekly_exec['Proj_Week'].astype(str) + "<br>" + weekly_exec['Start_Date'].dt.strftime('%b %y')
+                          Executed=('Executed', 'sum'),
+                          Target=('Target', 'sum'),
+                                ).reset_index()
 
+                        weekly_exec['Week_Label'] = (
+                         "Wk " + weekly_exec['Proj_Week'].astype(str) + "<br>" +
+                         (min_proj_date + pd.to_timedelta((weekly_exec['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
+                                )
                         # --- 2. مسار الجودة (DPL Data) ---
                         df_qa = df[df[comp_name_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else df.copy()
                         if sel_elem_chart != 'All Elements':
@@ -3281,9 +3283,12 @@ def render_dashboard():
                             
                             if not daily_dpl.empty:
                                 daily_dpl['Proj_Week'] = ((daily_dpl['Date'] - min_proj_date).dt.days // 7) + 1
-                                weekly_dpl = daily_dpl.groupby('Proj_Week').agg({'DPL Tests': 'sum', 'Date': 'min'}).reset_index()
-                                weekly_dpl['Week_Label'] = "Wk " + weekly_dpl['Proj_Week'].astype(str) + "<br>" + weekly_dpl['Date'].dt.strftime('%b %y')
-
+                                weekly_dpl = daily_dpl.groupby('Proj_Week').agg({'DPL Tests': 'sum'}).reset_index()
+    # ✅ نفس معادلة الـ Execution بالظبط ← نفس الأسبوع = نفس الليبل دائماً
+                                weekly_dpl['Week_Label'] = (
+                                "Wk " + weekly_dpl['Proj_Week'].astype(str) + "<br>" +
+                                 (min_proj_date + pd.to_timedelta((weekly_dpl['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
+    )
                         # --- التجهيز المسبق لجدول التتبع (عشان نطلع الـ AI Alert) ---
                         duration_rows = []
                         if sel_contractor != 'All Contractors':
@@ -3366,7 +3371,17 @@ def render_dashboard():
                             )
                             
                             if time_view == "Weekly":
-                                fig_d.update_xaxes(categoryorder='array', categoryarray=weekly_exec['Week_Label'].tolist(), title_text=x_title)
+                                # ✅ دمج أسابيع التنفيذ + أسابيع الـ DPL في ترتيب واحد
+                                # عشان الأسبوع اللي فيه DPL بس يظهر في مكانه الصحيح مش في آخر المحور
+                                frames = []
+                                if not weekly_exec.empty: frames.append(weekly_exec[['Proj_Week', 'Week_Label']])
+                                if not weekly_dpl.empty: frames.append(weekly_dpl[['Proj_Week', 'Week_Label']])
+                                week_order = (
+                                    pd.concat(frames).drop_duplicates(subset='Proj_Week')
+                                    .sort_values('Proj_Week')['Week_Label'].tolist()
+                                    if frames else []
+                                )
+                                fig_d.update_xaxes(categoryorder='array', categoryarray=week_order, title_text=x_title)
                             else:
                                 fig_d.update_xaxes(title_text=x_title)
                                 
