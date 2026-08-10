@@ -3632,127 +3632,156 @@ def render_dashboard():
                         st.warning("⚠️ Missing columns to generate Element Matrix.")
 
                     # ══════════════════════════════════════════════════════
-                    # 6. WORST CONTRACTOR ANALYSIS
+                    # 6. CONTRACTOR SCORECARD & VERDICT ENGINE (AI DECISION)
                     # ══════════════════════════════════════════════════════
-                    st.markdown("#### 🏆 Worst Performer — By Sector")
-                    st.caption(
-                        "Identifies the lowest performing contractor using the mean and standard deviation "
-                        "of daily quantities vs target."
-                    )
-
-                    if contractor_col and target_col and exec_qty_m3_col:
-                        df_w = df.copy()
-                        df_w[target_col]      = pd.to_numeric(df_w[target_col],      errors='coerce').fillna(0)
-                        df_w[exec_qty_m3_col] = pd.to_numeric(df_w[exec_qty_m3_col], errors='coerce').fillna(0)
-                        df_w = df_w[df_w[target_col] > 0].copy()
-                        df_w['perf_ratio'] = df_w[exec_qty_m3_col] / df_w[target_col]
-
-                        def sector_ranking(data):
-                            result = (
-                                data.groupby(contractor_col)['perf_ratio']
-                                .agg(
-                                    Avg_Perf='mean',
-                                    Std_Perf='std',
-                                    Days='count'
-                                )
-                                .reset_index()
-                            )
-                            result['Avg_Perf_%']  = (result['Avg_Perf'] * 100).round(1)
-                            result['Std_%']       = (result['Std_Perf'].fillna(0) * 100).round(1)
-                            result['Total (m³)']  = data.groupby(contractor_col)[exec_qty_m3_col].sum().values
-                            result['Days Below']  = data.groupby(contractor_col).apply(
-                                lambda x: int((x[exec_qty_m3_col] < x[target_col]).sum())
-                            ).values
-                            return result.sort_values('Avg_Perf_%')
-
-                        def show_sector_cards(perf, sector_name):
-                            if perf.empty: return
-                            worst = perf.iloc[0]
-                            best  = perf.iloc[-1]
-                            w_col, b_col = st.columns(2)
-                            w_col.markdown(f"""
-                            <div style="background:rgba(231,76,60,0.1);
-                                        border-left:5px solid #e74c3c;
-                                        border-radius:12px;padding:16px;margin-bottom:12px;">
-                                <div style="color:#e74c3c;font-size:11px;font-weight:600;
-                                            text-transform:uppercase;margin-bottom:6px;">
-                                    🔴 Worst Contractor — {sector_name}
-                                </div>
-                                <div style="color:#fff;font-size:18px;font-weight:700;">
-                                    {worst[contractor_col]}
-                                </div>
-                                <div style="color:#8da3b9;font-size:12px;margin-top:6px;">
-                                    Avg Performance:
-                                    <b style="color:#e74c3c">{worst['Avg_Perf_%']:.1f}%</b>
-                                    of Target<br>
-                                    Std Deviation:
-                                    <b style="color:#ffaa00">±{worst['Std_%']:.1f}%</b><br>
-                                    Days Below Target:
-                                    <b style="color:#e74c3c">{int(worst['Days Below'])}</b>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            b_col.markdown(f"""
-                            <div style="background:rgba(46,204,113,0.1);
-                                        border-left:5px solid #2ecc71;
-                                        border-radius:12px;padding:16px;margin-bottom:12px;">
-                                <div style="color:#2ecc71;font-size:11px;font-weight:600;
-                                            text-transform:uppercase;margin-bottom:6px;">
-                                    🟢 Best Contractor — {sector_name}
-                                </div>
-                                <div style="color:#fff;font-size:18px;font-weight:700;">
-                                    {best[contractor_col]}
-                                </div>
-                                <div style="color:#8da3b9;font-size:12px;margin-top:6px;">
-                                    Avg Performance:
-                                    <b style="color:#2ecc71">{best['Avg_Perf_%']:.1f}%</b>
-                                    of Target<br>
-                                    Std Deviation:
-                                    <b style="color:#ffaa00">±{best['Std_%']:.1f}%</b><br>
-                                    Days Below Target:
-                                    <b style="color:#2ecc71">{int(best['Days Below'])}</b>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-
-                            fig_w = px.bar(
-                                perf.sort_values('Avg_Perf_%'),
-                                x=contractor_col, y='Avg_Perf_%',
-                                error_y='Std_%',
-                                color='Avg_Perf_%',
-                                color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'],
-                                range_color=[0, 150],
-                                title=f"{sector_name} — Contractor Performance vs Target",
-                                text_auto=True,
-                                hover_data=['Days', 'Days Below', 'Total (m³)']
-                            )
-                            fig_w.add_hline(
-                                y=100, line_dash="dash", line_color="#ffaa00",
-                                annotation_text="100% Target",
-                                annotation_position="top right"
-                            )
-                            try: fig_w = style_3d_glassy(fig_w, "bar")
-                            except: pass
-                            st.plotly_chart(
-                                fig_w, use_container_width=True,
-                                key=f"worst_{sector_name.replace(' ','_').replace('/','_')}"
-                            )
-
-                        if sector_col and sector_col in df_w.columns:
-                            for sec in sorted(df_w[sector_col].dropna().astype(str).unique()):
-                                sec_data = df_w[df_w[sector_col].astype(str) == sec]
-                                if sec_data.empty: continue
-                                st.markdown(f"**📍 {sec}**")
-                                perf = sector_ranking(sec_data)
-                                show_sector_cards(perf, sec)
-                                st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-                        else:
-                            st.info("No Sector column found — showing overall ranking.")
-                            perf_all = sector_ranking(df_w)
-                            show_sector_cards(perf_all, "Overall")
-
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    st.markdown("#### 🏆 Contractor Performance Scorecard")
+                    st.caption("إطار تقييم هندسي شامل يعتمد على 5 معايير لتقييم المقاولين وتحديد الموثوقية.")
 
+                    if contractor_col and target_col and exec_qty_m3_col and date_daily_col:
+                        # تجهيز الداتا للتقييم
+                        df_score = df.copy()
+                        df_score[target_col]      = pd.to_numeric(df_score[target_col], errors='coerce').fillna(0)
+                        df_score[exec_qty_m3_col] = pd.to_numeric(df_score[exec_qty_m3_col], errors='coerce').fillna(0)
+                        df_score[date_daily_col]  = pd.to_datetime(df_score[date_daily_col], dayfirst=True, errors='coerce')
+                        df_score = df_score.dropna(subset=[contractor_col, date_daily_col])
+
+                        scorecard_rows = []
+                        
+                        for ct, group in df_score.groupby(contractor_col):
+                            ct = str(ct).strip()
+                            if ct.lower() in ['nan', 'none', '']: continue
+                            
+                            group = group.sort_values(date_daily_col)
+                            total_exec = group[exec_qty_m3_col].sum()
+                            
+                            # تفادي القسمة على صفر للمقاولين اللي معملوش حاجة
+                            if total_exec <= 0: continue
+                                
+                            # 1. Target Achievement (Weight: 35%)
+                            valid_target_days = group[group[target_col] > 0]
+                            total_valid_days = len(valid_target_days)
+                            if total_valid_days > 0:
+                                hit_days = len(valid_target_days[valid_target_days[exec_qty_m3_col] >= valid_target_days[target_col]])
+                                hit_rate = hit_days / total_valid_days
+                            else:
+                                hit_rate = 0
+                            score_target = min(100, hit_rate * 100)
+                            
+                            # 2. Consistency (Weight: 25%)
+                            # 1 - (Std / Mean)
+                            if total_valid_days > 2:
+                                mean_perf = valid_target_days[exec_qty_m3_col].mean()
+                                std_perf = valid_target_days[exec_qty_m3_col].std()
+                                cov = (std_perf / mean_perf) if mean_perf > 0 else 1
+                                consistency = max(0, 1 - cov)
+                            else:
+                                consistency = 0
+                            score_consistency = min(100, consistency * 100)
+                            
+                            # 3. Momentum (Weight: 20%)
+                            # استخدام Linear Regression مبسط لمعرفة الميل (Slope)
+                            if total_valid_days > 3:
+                                y = (valid_target_days[exec_qty_m3_col] / valid_target_days[target_col]).replace([np.inf, -np.inf], 0).fillna(0).values
+                                x = np.arange(len(y))
+                                slope, _ = np.polyfit(x, y, 1)
+                                # تطبيع الميل لنسبة مئوية (ميل إيجابي = سكور عالي)
+                                momentum = 50 + (slope * 500) # معادلة تقريبية لتحويل الميل لسكور
+                                score_momentum = max(0, min(100, momentum))
+                            else:
+                                score_momentum = 50 # محايد لو الداتا قليلة
+                                
+                            # 4. Volume Delivery (Weight: 15%)
+                            # نسبة المنفذ من إجمالي المطلوب للشركة
+                            if total_qty_col and total_qty_col in group.columns:
+                                tot_req = pd.to_numeric(group[total_qty_col], errors='coerce').max()
+                                vol_delivery = (total_exec / tot_req * 100) if pd.notna(tot_req) and tot_req > 0 else 0
+                            else:
+                                vol_delivery = 0
+                            score_volume = min(100, vol_delivery)
+                            
+                            # 5. Active Days Rate (Weight: 5%)
+                            min_date = group[date_daily_col].min()
+                            max_date = group[date_daily_col].max()
+                            spanned_days = (max_date - min_date).days + 1
+                            active_days = len(group[group[exec_qty_m3_col] > 0])
+                            active_rate = (active_days / spanned_days * 100) if spanned_days > 0 else 0
+                            score_active = min(100, active_rate)
+                            
+                            # --- Final Weighted Score ---
+                            # الأوزان: 35%، 25%، 20%، 15%، 5%
+                            final_score = (
+                                (score_target * 0.35) + 
+                                (score_consistency * 0.25) + 
+                                (score_momentum * 0.20) + 
+                                (score_volume * 0.15) + 
+                                (score_active * 0.05)
+                            )
+                            
+                            # تحديد القرار (Verdict)
+                            if final_score >= 70:
+                                verdict = "🟢 Reliable"
+                            elif final_score >= 40:
+                                verdict = "🟡 Watch List"
+                            else:
+                                verdict = "🔴 Critical"
+                                
+                            scorecard_rows.append({
+                                'Contractor': ct,
+                                'Final Score': round(final_score, 1),
+                                'Verdict': verdict,
+                                'Target Achv. (35%)': f"{score_target:.1f}%",
+                                'Consistency (25%)': f"{score_consistency:.1f}%",
+                                'Momentum (20%)': f"{score_momentum:.1f}%",
+                                'Vol Delivery (15%)': f"{score_volume:.1f}%",
+                                'Active Rate (5%)': f"{score_active:.1f}%"
+                            })
+                            
+                        if scorecard_rows:
+                            score_df = pd.DataFrame(scorecard_rows).sort_values('Final Score', ascending=False)
+                            
+                            # تصميم الكروت التوضيحية
+                            st.markdown("""
+                            <style>
+                            .v-box { padding: 15px; border-radius: 10px; text-align: center; border: 1px solid; }
+                            .v-g { background: rgba(46,204,113,0.1); border-color: #2ecc71; }
+                            .v-a { background: rgba(241,196,15,0.1); border-color: #f1c40f; }
+                            .v-r { background: rgba(231,76,60,0.1); border-color: #e74c3c; }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            vc1, vc2, vc3 = st.columns(3)
+                            vc1.markdown(f'<div class="v-box v-g"><h4 style="color:#2ecc71; margin:0;">🟢 Reliable Contractor</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score ≥ 70 — يشتغل فوق الهدف باستمرار، انحراف منخفض. يستحق زيادة الأعمال.</p></div>', unsafe_allow_html=True)
+                            vc2.markdown(f'<div class="v-box v-a"><h4 style="color:#f1c40f; margin:0;">🟡 Watch List</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score 40-70 — أداء متذبذب أو أقل من الهدف. يحتاج متابعة أسبوعية.</p></div>', unsafe_allow_html=True)
+                            vc3.markdown(f'<div class="v-box v-r"><h4 style="color:#e74c3c; margin:0;">🔴 Critical — Intervention</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score < 40 — خطر على الجدول الزمني. يحتاج تدخل فوري.</p></div>', unsafe_allow_html=True)
+                            
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            
+                            # رسم الشارت النهائي للسكور
+                            fig_score = px.bar(
+                                score_df, x='Contractor', y='Final Score', text='Final Score',
+                                color='Final Score', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'],
+                                range_color=[0, 100], title="Contractor Overall Performance Score (Out of 100)"
+                            )
+                            fig_score.add_hline(y=70, line_dash="dash", line_color="#2ecc71", annotation_text="Reliable Threshold")
+                            fig_score.add_hline(y=40, line_dash="dash", line_color="#e74c3c", annotation_text="Critical Threshold")
+                            fig_score.update_traces(textposition='outside')
+                            try: fig_score = style_3d_glassy(fig_score, "bar")
+                            except: pass
+                            st.plotly_chart(fig_score, use_container_width=True, key="scorecard_bar_chart")
+                            
+                            # عرض الجدول والتلوين
+                            def color_verdict(val):
+                                if 'Reliable' in str(val): return 'color: #2ecc71; font-weight: bold'
+                                elif 'Watch' in str(val): return 'color: #f1c40f; font-weight: bold'
+                                elif 'Critical' in str(val): return 'color: #e74c3c; font-weight: bold'
+                                return ''
+                                
+                            st.dataframe(score_df.style.map(color_verdict, subset=['Verdict']), use_container_width=True, hide_index=True)
+                        else:
+                            st.info("لا توجد بيانات كافية لحساب تقييم المقاولين.")
+                    else:
+                        st.warning("⚠️ أعمدة التقييم غير مكتملة.")
                    # ══════════════════════════════════════════════════════
                     # 7. DPL & PLATE LOAD TESTS (Strict Lookup in Company Name)
                     # ══════════════════════════════════════════════════════
