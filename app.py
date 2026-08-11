@@ -40,6 +40,32 @@ if "chat_history" not in st.session_state:
 if "current_page" not in st.session_state:
     st.session_state["current_page"] = "home"
 
+if "language" not in st.session_state:
+    st.session_state["language"] = "EN"
+
+# ==========================================
+# 1.5 Translation Dictionary (القاموس)
+# ==========================================
+TRANSLATIONS = {
+    "Mega Infrastructure Command Center": "مركز قيادة البنية التحتية العملاقة",
+    "Main Dashboard": "لوحة القيادة الرئيسية",
+    "Advanced Analytics Hub": "مركز التحليلات المتقدمة",
+    "Total Submittals": "إجمالي الطلبات (Submittals)",
+    "Total Tests": "إجمالي الاختبارات",
+    "Avg. Dur (Days)": "متوسط التأخير (أيام)",
+    "Total Paperwork": "إجمالي الورقيات",
+    "Logout": "تسجيل الخروج",
+    "UI/UX Mode": "مظهر الشاشة",
+    "Data Source": "مصدر البيانات",
+    "Language / اللغة": "Language / اللغة",
+    # تقدر تزود أي كلمة براحتك هنا بعدين
+}
+
+def _t(text):
+    if st.session_state.get("language") == "AR":
+        return TRANSLATIONS.get(text, text)
+    return text
+
 # ==========================================
 # 2. Dynamic UI/UX CSS Injection
 # ==========================================
@@ -1331,6 +1357,15 @@ def render_dashboard():
         st.rerun()
     if theme_col2.button("☀️ Light"):
         st.session_state["theme"] = "Light"
+        st.rerun()
+    st.sidebar.divider()
+    st.sidebar.markdown(f"### 🌍 {_t('Language / اللغة')}")
+    lang_col1, lang_col2 = st.sidebar.columns(2)
+    if lang_col1.button("🇬🇧 EN", use_container_width=True, key="lang_en"):
+        st.session_state["language"] = "EN"
+        st.rerun()
+    if lang_col2.button("🇪🇬 عربي", use_container_width=True, key="lang_ar"):
+        st.session_state["language"] = "AR"
         st.rerun()
     st.sidebar.divider()
 
