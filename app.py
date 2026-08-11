@@ -3517,8 +3517,10 @@ def render_dashboard():
                         )
                     else:
                         st.info("No active execution data for duration tracking.")
-            else:
-                    st.warning("⚠️ Missing columns to plot unified chart.")
+                    # السيكشنات 4-8 دلوقتي بره الـ else — بتظهر دايماً
+                    # الـ warning بيظهر بس لو في columns ناقصة في الـ chart
+                    if not (date_daily_col and target_col and exec_qty_m3_col and contractor_col):
+                        st.warning("⚠️ Missing columns for the unified chart above.")
                     # ══════════════════════════════════════════════════════
                     # 4. ELEMENT COVERAGE AUDIT (Linking QA to Execution)
                     # ══════════════════════════════════════════════════════
