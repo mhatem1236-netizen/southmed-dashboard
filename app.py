@@ -11,6 +11,11 @@ import pytz
 import base64
 import hashlib
 import sqlite3
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
+import io
 
 # ==========================================
 # 1. System Configuration & Constants
@@ -1319,7 +1324,85 @@ def render_alerts_module(df):
                 time.sleep(1.5)
             st.success("✅ Test Alert Sent Successfully!")
             st.balloons()
+# ==========================================
+# 12.5 PowerPoint Generator Engine
+# ==========================================
+def generate_executive_pptx(metrics, figs_dict, file_name):
+    prs = Presentation()
+    
+    # دالة فرعية لتلوين الشريحة باللون الداكن (Dark Theme)
+    def apply_dark_theme(slide):
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = RGBColor(10, 20, 33) # نفس لون الداشبورد
+        if slide.shapes.title:
+            slide.shapes.title.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 210, 255)
+            slide.shapes.title.text_frame.paragraphs[0].font.bold = True
 
+    # 1. شريحة الغلاف (Title Slide)
+    title_slide_layout = prs.slide_layouts[0]
+    slide1 = prs.slides.add_slide(title_slide_layout)
+    apply_dark_theme(slide1)
+    title = slide1.shapes.title
+    subtitle = slide1.placeholders[1]
+    
+    title.text = "Mega Infrastructure Command Center\nExecutive Performance Brief"
+    subtitle.text = f"Dataset: {file_name}\nGenerated on: {datetime.now(EGYPT_TZ).strftime('%Y-%m-%d %H:%M')}\nConfidential & Proprietary"
+    subtitle.text_frame.paragraphs[0].font.color.rgb = RGBColor(141, 163, 185)
+
+    # 2. شريحة الملخص التنفيذي (Executive KPIs)
+    kpi_layout = prs.slide_layouts[1]
+    slide2 = prs.slides.add_slide(kpi_layout)
+    apply_dark_theme(slide2)
+    slide2.shapes.title.text = "1. Executive Key Performance Indicators"
+    
+    # إضافة نصوص الـ KPIs
+    txBox = slide2.shapes.add_textbox(Inches(1), Inches(2), Inches(8), Inches(3))
+    tf = txBox.text_frame
+    tf.text = "Overall Project Status Summary:"
+    tf.paragraphs[0].font.color.rgb = RGBColor(255, 170, 0)
+    tf.paragraphs[0].font.size = Pt(24)
+    
+    kpis = [
+        f"📌 Total Submittals Logged: {metrics.get('Total_Requests', 0):,}",
+        f"🧪 Total Field Tests Executed: {metrics.get('Total_Tests', 0):,}",
+        f"⏱️ Average Sector Delay: {metrics.get('Avg_Duration', 0)} Days",
+        f"📈 Average DPL Value: {metrics.get('Avg_DPL', 0)}"
+    ]
+    for kpi in kpis:
+        p = tf.add_paragraph()
+        p.text = kpi
+        p.font.color.rgb = RGBColor(255, 255, 255)
+        p.font.size = Pt(20)
+        p.level = 1
+
+    # 3. حلقة تكرارية لطباعة كل الشارتات (كل شارت في شريحة)
+    blank_layout = prs.slide_layouts[5] # شريحة عنوان فقط
+    
+    for chart_title, fig in figs_dict.items():
+        if fig is None: continue
+        slide = prs.slides.add_slide(blank_layout)
+        apply_dark_theme(slide)
+        slide.shapes.title.text = chart_title
+        
+        # تحويل الشارت لصورة PNG ولزقها في الشريحة
+        try:
+            # تكبير الخطوط والمقاسات عشان تناسب الباوربوينت
+            fig.update_layout(width=900, height=500, paper_bgcolor='rgba(10, 20, 33, 1)', plot_bgcolor='rgba(10, 20, 33, 1)')
+            img_bytes = fig.to_image(format="png", engine="kaleido")
+            img_stream = io.BytesIO(img_bytes)
+            slide.shapes.add_picture(img_stream, Inches(0.5), Inches(1.8), width=Inches(9))
+        except Exception as e:
+            p = slide.shapes.add_textbox(Inches(1), Inches(3), Inches(8), Inches(1)).text_frame.add_paragraph()
+            p.text = f"Could not render chart: {str(e)}"
+            p.font.color.rgb = RGBColor(231, 76, 60)
+
+    # حفظ الملف في الميموري
+    ppt_stream = io.BytesIO()
+    prs.save(ppt_stream)
+    ppt_stream.seek(0)
+    return ppt_stream
 # ==========================================
 # 13. Main Dashboard Application
 # ==========================================
@@ -1335,7 +1418,7 @@ def render_dashboard():
         'shadow': '0 5px 15px rgba(0,0,0,0.4)' if is_dark else '0 5px 15px rgba(0,0,0,0.08)',
         'highlight_bg': 'rgba(0,210,255,0.05)' if is_dark else 'rgba(41, 128, 185, 0.08)'
     }
-    
+    exported_figs = {}
     if os.path.exists("5.jpg"):
         try:
             st.image("5.jpg", use_container_width=True)
@@ -1852,6 +1935,7 @@ def render_dashboard():
                 fig_office = style_3d_glassy(fig_office, chart_type="bar")
             except: pass
             st.plotly_chart(fig_office, use_container_width=True, key="overall_office_work_chart")
+            exported_figs["4. Office Workload Analysis"] = fig_office
         else:
             st.info("Requires 'Done BY' and 'Test Type' columns for Office Workload Analysis.")
 
@@ -1873,6 +1957,7 @@ def render_dashboard():
                 fig_class_ov = style_3d_glassy(fig_class_ov, chart_type="pie")
             except: pass
             st.plotly_chart(fig_class_ov, use_container_width=True, key="overall_classification_chart")
+            exported_figs["5. Overall Soil Classifications"] = fig_class_ov
         else:
             st.info("Requires 'Classification' column for Overall Soil Classifications Analysis.")
 
@@ -1911,7 +1996,7 @@ def render_dashboard():
             ))
             fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20), font={'family': 'Montserrat'})
             st.plotly_chart(fig_gauge, use_container_width=True, key="overall_gauge_main")
-
+            exported_figs["1. Overall Approval Index"] = fig_gauge 
         with s_col:
             if sim_days_saved > 0:
                 total_time_recovered = sim_days_saved * total_requests_count
@@ -2021,6 +2106,7 @@ def render_dashboard():
             fig_vol = style_3d_glassy(fig_vol, chart_type="bar")
             ch_col, txt_col = st.columns([0.7, 0.3])
             ch_col.plotly_chart(fig_vol, use_container_width=True, key="vol_analysis")
+            exported_figs["6. Testing Intensity by Month"] = fig_vol
             with txt_col:
                 st.markdown("#### 💡 AI Production Insights")
                 if not monthly_summary.empty:
@@ -2080,6 +2166,7 @@ def render_dashboard():
             
             fig_combo = style_3d_glassy(fig_combo, chart_type="combo")
             st.plotly_chart(fig_combo, use_container_width=True, key="combo_timeline")
+            exported_figs["7. Volume vs Rejection Timeline"] = fig_combo
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
@@ -2128,6 +2215,7 @@ def render_dashboard():
                 
                 fig_spc = style_3d_glassy(fig_spc, chart_type="line")
                 st.plotly_chart(fig_spc, use_container_width=True, key="spc_chart")
+                exported_figs["8. SPC Control Chart Analysis"] = fig_spc
                 
                 if out_of_control_count > 0:
                     st.warning(f"⚠️ **Process Alert:** {out_of_control_count} out of {total_points} samples ({100-control_percentage:.1f}%) are outside control limits.")
@@ -2195,6 +2283,7 @@ def render_dashboard():
                 fig_pareto.update_yaxes(title_text="Cumulative %", secondary_y=True, range=[0, 100])
                 fig_pareto = style_3d_glassy(fig_pareto, chart_type="combo")
                 st.plotly_chart(fig_pareto, use_container_width=True, key="pareto_comb")
+                exported_figs["9. Pareto Analysis (80-20 Rule)"] = fig_pareto
                 
                 st.markdown("#### 🎯 Strategic Insights")
                 insight_col1, insight_col2 = st.columns(2)
@@ -2232,6 +2321,7 @@ def render_dashboard():
             latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
             p1, p2 = st.columns([0.7, 0.3])
             p1.plotly_chart(fig_pred, use_container_width=True, key="pred_risk")
+            exported_figs["10. Duration Forecasting & Trend"] = fig_pred
             with p2:
                 st.info("**AI Risk Assessment:**")
                 if latest_trend > current_metrics["Avg_Duration"]:
@@ -3495,7 +3585,7 @@ def render_dashboard():
                             try: fig_d = style_3d_glassy(fig_d, "bar")
                             except: pass
                             st.plotly_chart(fig_d, use_container_width=True, key="qty_dynamic_chart")
-                            
+                            exported_figs["2. Execution Timeline"] = fig_d
                         with ch_right:
                             st.markdown("**Performance Summary**")
                             days = len(daily_exec)
@@ -3747,7 +3837,7 @@ def render_dashboard():
                             except: pass
                             
                             st.plotly_chart(fig_kpi, use_container_width=True, key="qty_kpi_scatter_eii")
-                            
+                            exported_figs["3. Execution Intensity Matrix"] = fig_kpi
                             with st.expander("📋 View Detailed Engineering Data (Speed & EII)"):
                                 st.dataframe(kpi_df.drop(columns=['Bubble_Size']), use_container_width=True)
                     else:
@@ -3895,6 +3985,7 @@ def render_dashboard():
                             try: fig_score = style_3d_glassy(fig_score, "bar")
                             except: pass
                             st.plotly_chart(fig_score, use_container_width=True, key="scorecard_bar_chart")
+                            exported_figs["11. Contractor Performance Scorecard"] = fig_score
                             
                             # عرض الجدول والتلوين
                             def color_verdict(val):
@@ -3995,6 +4086,7 @@ def render_dashboard():
                             try: fig_tests = style_3d_glassy(fig_tests, "bar")
                             except: pass
                             st.plotly_chart(fig_tests, use_container_width=True, key="dpl_pl_chart_strict")
+                            exported_figs["12. DPL vs Plate Load per Contractor"] = fig_tests
 
                             with st.expander("📋 Full Table"):
                                 st.dataframe(test_df, use_container_width=True)
@@ -4062,6 +4154,7 @@ def render_dashboard():
                                 try: fig_dpl_line = style_3d_glassy(fig_dpl_line, "line")
                                 except: pass
                                 st.plotly_chart(fig_dpl_line, use_container_width=True, key="dpl_line_overall")
+                                exported_figs["13. DPL Performance & Consistency"] = fig_dpl_line
                                 
                             with col_table:
                                 # تنسيق الأرقام لـ 3 علامات عشرية
@@ -4322,7 +4415,26 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         with st.expander("📂 View Complete Operational Records (Raw Data)"):
             st.dataframe(filtered_df, use_container_width=True)
-
+# ==========================================
+        # 📥 PPTX Download Button
+        # ==========================================
+        st.markdown('<div class="bi-title">📊 PowerPoint Executive Deck</div>', unsafe_allow_html=True)
+        st.info("💡 **Meeting Mode:** Generate a fully formatted, Dark-Themed PowerPoint presentation containing your live KPIs and interactive charts.")
+        
+        if st.button("📥 Generate & Download PPTX", type="primary", use_container_width=True):
+            with st.spinner("📸 AI is capturing high-resolution charts and building your slides... Please wait (10-15 seconds)..."):
+                try:
+                    ppt_file = generate_executive_pptx(current_metrics, exported_figs, uploaded_file.name)
+                    st.download_button(
+                        label="✅ Download Ready! Click to Save .pptx",
+                        data=ppt_file,
+                        file_name=f"KK_Executive_Deck_{datetime.now(EGYPT_TZ).strftime('%Y%m%d_%H%M')}.pptx",
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        use_container_width=True
+                    )
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"❌ Error generating PowerPoint: {str(e)}. Make sure 'kaleido' is installed.")
         # Back to Home Button
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
