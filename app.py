@@ -3371,7 +3371,15 @@ def render_dashboard():
                             )
                             
                         if time_view == "Weekly":
-                            all_labels = weekly_exec['Week_Label'].tolist() if not weekly_exec.empty else []
+                            # التعديل: دمج أسابيع التنفيذ وأسابيع الـ DPL لضمان عدم سقوط أي أسبوع
+                            df_weeks_exec = weekly_exec[['Proj_Week', 'Week_Label']] if not weekly_exec.empty else pd.DataFrame(columns=['Proj_Week', 'Week_Label'])
+                            df_weeks_dpl = weekly_dpl[['Proj_Week', 'Week_Label']] if not weekly_dpl.empty else pd.DataFrame(columns=['Proj_Week', 'Week_Label'])
+                            
+                            # تجميعهم، مسح المتكرر، وترتيبهم تصاعدياً برقم الأسبوع
+                            all_weeks_df = pd.concat([df_weeks_exec, df_weeks_dpl]).drop_duplicates(subset=['Proj_Week']).sort_values('Proj_Week')
+                            
+                            all_labels = all_weeks_df['Week_Label'].tolist() if not all_weeks_df.empty else []
+                            
                             fig_d.update_xaxes(
                                 type='category',
                                 categoryorder='array',
