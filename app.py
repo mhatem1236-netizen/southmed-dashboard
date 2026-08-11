@@ -3984,10 +3984,10 @@ def render_dashboard():
 # --- 1. Line Chart & Table (All Companies) ---
                             st.markdown("##### 🏢 DPL Performance & Consistency by Company")
                             
-                            # إضافة زر الاختيار بين المتوسط والانحراف المعياري
+                            # إضافة زر الاختيار بين المتوسط ومعامل الاستمرارية
                             metric_choice = st.radio(
                                 "📊 اختر معيار القياس (Metric):", 
-                                ["المتوسط (Average - Performance)", "الانحراف المعياري (Std Dev - Consistency)"], 
+                                ["المتوسط (Average - Performance)", "الاستمرارية (Consistency = Std / Mean)"], 
                                 horizontal=True
                             )
                             
@@ -3999,13 +3999,20 @@ def render_dashboard():
                                 line_color = '#00d2ff'
                                 marker_color = '#ffaa00'
                             else:
-                                # حساب الانحراف المعياري (Standard Deviation) للثبات
-                                comp_dpl_stat = dpl_data.groupby(comp_name_col)['AVERAGE VALUE'].std().fillna(0).reset_index()
-                                # الترتيب تصاعدي: الانحراف الأقل (الأكثر ثباتاً) يظهر الأول
-                                comp_dpl_stat = comp_dpl_stat.sort_values('AVERAGE VALUE', ascending=True)
-                                metric_name = 'Std Dev (Consistency)'
-                                chart_title = "DPL Consistency by Company (Lower = More Consistent)"
-                                line_color = '#2ecc71' # لون أخضر للدلالة على الاستقرار
+                                # حساب المتوسط والانحراف المعياري معاً
+                                agg_df = dpl_data.groupby(comp_name_col)['AVERAGE VALUE'].agg(['std', 'mean']).fillna(0).reset_index()
+                                
+                                # حساب الاستمرارية (معامل الاختلاف CV) = الانحراف المعياري / المتوسط
+                                # بنستخدم np.where عشان نتجنب الـ Error بتاع القسمة على صفر
+                                agg_df['Consistency'] = np.where(agg_df['mean'] > 0, agg_df['std'] / agg_df['mean'], 0)
+                                
+                                comp_dpl_stat = agg_df[[comp_name_col, 'Consistency']].copy()
+                                # الترتيب تصاعدي: النسبة الأقل تعني تشتت أقل واستمرارية أعلى في الجودة
+                                comp_dpl_stat = comp_dpl_stat.sort_values('Consistency', ascending=True)
+                                
+                                metric_name = 'Consistency (CV)'
+                                chart_title = "DPL Consistency by Company (Lower Ratio = More Consistent)"
+                                line_color = '#2ecc71' # أخضر للدلالة على الاستقرار
                                 marker_color = '#e74c3c'
                             
                             comp_dpl_stat.columns = ['Contractor / Company Name', metric_name]
@@ -4022,10 +4029,10 @@ def render_dashboard():
                                 st.plotly_chart(fig_dpl_line, use_container_width=True, key="dpl_line_overall")
                                 
                             with col_table:
-                                # تنسيق الأرقام لـ 3 علامات عشرية لسهولة قراءة الانحراف
+                                # تنسيق الأرقام لـ 3 علامات عشرية
                                 st.dataframe(comp_dpl_stat.style.format({metric_name: "{:.3f}"}), use_container_width=True, hide_index=True)
                                 csv_dpl = comp_dpl_stat.to_csv(index=False).encode('utf-8-sig')
-                                st.download_button(label=f"📥 Download {metric_name}", data=csv_dpl, 
+                                st.download_button(label=f"📥 Download Data", data=csv_dpl, 
                                                    file_name=f"DPL_Metrics_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv", 
                                                    mime="text/csv", type="primary", use_container_width=True)
 
