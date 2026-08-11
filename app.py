@@ -3981,29 +3981,52 @@ def render_dashboard():
                         dpl_data = dpl_data.dropna(subset=['AVERAGE VALUE', comp_name_col])
                         
                         if not dpl_data.empty:
-                            # --- 1. Line Chart & Table (All Companies) ---
-                            st.markdown("##### 🏢 Average DPL Performance by Company")
+# --- 1. Line Chart & Table (All Companies) ---
+                            st.markdown("##### 🏢 DPL Performance & Consistency by Company")
                             
-                            comp_dpl_avg = dpl_data.groupby(comp_name_col)['AVERAGE VALUE'].mean().reset_index()
-                            comp_dpl_avg = comp_dpl_avg.sort_values('AVERAGE VALUE', ascending=False)
-                            comp_dpl_avg.columns = ['Contractor / Company Name', 'Avg DPL Value']
+                            # إضافة زر الاختيار بين المتوسط والانحراف المعياري
+                            metric_choice = st.radio(
+                                "📊 اختر معيار القياس (Metric):", 
+                                ["المتوسط (Average - Performance)", "الانحراف المعياري (Std Dev - Consistency)"], 
+                                horizontal=True
+                            )
+                            
+                            if metric_choice == "المتوسط (Average - Performance)":
+                                comp_dpl_stat = dpl_data.groupby(comp_name_col)['AVERAGE VALUE'].mean().reset_index()
+                                comp_dpl_stat = comp_dpl_stat.sort_values('AVERAGE VALUE', ascending=False)
+                                metric_name = 'Avg DPL Value'
+                                chart_title = "Trend of Average DPL by Company"
+                                line_color = '#00d2ff'
+                                marker_color = '#ffaa00'
+                            else:
+                                # حساب الانحراف المعياري (Standard Deviation) للثبات
+                                comp_dpl_stat = dpl_data.groupby(comp_name_col)['AVERAGE VALUE'].std().fillna(0).reset_index()
+                                # الترتيب تصاعدي: الانحراف الأقل (الأكثر ثباتاً) يظهر الأول
+                                comp_dpl_stat = comp_dpl_stat.sort_values('AVERAGE VALUE', ascending=True)
+                                metric_name = 'Std Dev (Consistency)'
+                                chart_title = "DPL Consistency by Company (Lower = More Consistent)"
+                                line_color = '#2ecc71' # لون أخضر للدلالة على الاستقرار
+                                marker_color = '#e74c3c'
+                            
+                            comp_dpl_stat.columns = ['Contractor / Company Name', metric_name]
                             
                             col_chart, col_table = st.columns([0.65, 0.35])
                             
                             with col_chart:
-                                fig_dpl_line = px.line(comp_dpl_avg, x='Contractor / Company Name', y='Avg DPL Value', 
-                                                       markers=True, title="Trend of Average DPL by Company", 
-                                                       color_discrete_sequence=['#00d2ff'])
-                                fig_dpl_line.update_traces(line=dict(width=3), marker=dict(size=10, color='#ffaa00', line=dict(color='white', width=2)))
+                                fig_dpl_line = px.line(comp_dpl_stat, x='Contractor / Company Name', y=metric_name, 
+                                                       markers=True, title=chart_title, 
+                                                       color_discrete_sequence=[line_color])
+                                fig_dpl_line.update_traces(line=dict(width=3), marker=dict(size=10, color=marker_color, line=dict(color='white', width=2)))
                                 try: fig_dpl_line = style_3d_glassy(fig_dpl_line, "line")
                                 except: pass
                                 st.plotly_chart(fig_dpl_line, use_container_width=True, key="dpl_line_overall")
                                 
                             with col_table:
-                                st.dataframe(comp_dpl_avg, use_container_width=True, hide_index=True)
-                                csv_dpl = comp_dpl_avg.to_csv(index=False).encode('utf-8-sig')
-                                st.download_button(label="📥 Download DPL Averages", data=csv_dpl, 
-                                                   file_name=f"DPL_Averages_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv", 
+                                # تنسيق الأرقام لـ 3 علامات عشرية لسهولة قراءة الانحراف
+                                st.dataframe(comp_dpl_stat.style.format({metric_name: "{:.3f}"}), use_container_width=True, hide_index=True)
+                                csv_dpl = comp_dpl_stat.to_csv(index=False).encode('utf-8-sig')
+                                st.download_button(label=f"📥 Download {metric_name}", data=csv_dpl, 
+                                                   file_name=f"DPL_Metrics_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv", 
                                                    mime="text/csv", type="primary", use_container_width=True)
 
                             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
