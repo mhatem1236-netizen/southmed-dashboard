@@ -3198,6 +3198,7 @@ def render_dashboard():
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 # ══════════════════════════════════════════════════════
+                   # ══════════════════════════════════════════════════════
                     # 3. CHART: Daily Executed vs Target Rate + DPL Tests (Unified Timeline by Element)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🚀 Execution vs Target Rate & DPL Tests")
@@ -3225,15 +3226,74 @@ def render_dashboard():
                         with col_f2:
                             time_view = st.radio("⏱️ Chart Granularity:", ["Weekly", "Daily"], horizontal=True)
 
-                        # --- 1. مسار الكميات (Execution Data) ---
-                        df_exec = df[df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else df.copy()
+                        # 💡 ====== الفكرة العبقرية: اكتشاف المقاولين المشتركين وتحليل حصة كل مقاول ====== 💡
+                        selected_sub_contractor = "Combined"
+                        
                         if sel_elem_chart != 'All Elements':
-                            df_exec = df_exec[df_exec[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()]
+                            # نبحث في الداتا كلها عن العنصر ده مين اشتغله (كميات وجودة)
+                            exec_mask = df[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()
+                            qa_mask = df[elment_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()
                             
+                            df_elem_exec = df[exec_mask]
+                            df_elem_qa = df[qa_mask]
+                            
+                            c_exec = df_elem_exec[contractor_col].dropna().unique().tolist()
+                            c_qa = df_elem_qa[comp_name_col].dropna().unique().tolist()
+                            
+                            # دمج أسماء المقاولين بدون تكرار
+                            shared_contractors = sorted(list(set(c_exec + c_qa)))
+                            shared_contractors = [c for c in shared_contractors if str(c).strip().lower() not in ['nan', 'none', '']]
+                            
+                            # لو لقينا أكتر من مقاول اشتغل في نفس العنصر
+                            if len(shared_contractors) > 1:
+                                
+                                # حساب حصة كل مقاول (كميات + DPL) لعرضها للمدير
+                                breakdown_html = ""
+                                for c in shared_contractors:
+                                    # حساب كمية المقاول
+                                    c_qty = df_elem_exec[df_elem_exec[contractor_col].astype(str).str.strip().str.lower() == c.lower()][exec_qty_m3_col].sum()
+                                    
+                                    # حساب اختبارات DPL للمقاول
+                                    c_dpl_mask = (df_elem_qa[comp_name_col].astype(str).str.strip().str.lower() == c.lower()) & (df_elem_qa[test_type_col].astype(str).str.upper().str.contains('DPL'))
+                                    if num_tests_col and num_tests_col in df_elem_qa.columns:
+                                        c_dpl_df = df_elem_qa[c_dpl_mask].copy()
+                                        c_dpl_df[num_tests_col] = pd.to_numeric(c_dpl_df[num_tests_col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
+                                        c_dpl = c_dpl_df[num_tests_col].sum()
+                                    else:
+                                        c_dpl = len(df_elem_qa[c_dpl_mask])
+                                        
+                                    # تنسيق النتيجة
+                                    breakdown_html += f"<li style='margin-bottom: 5px;'><b>{c}:</b> نفذ <span style='color:#00d2ff;'>{c_qty:,.1f} m³</span> | وقام بعمل <span style='color:#ffaa00;'>{int(c_dpl)} اختبار DPL</span></li>"
+                                
+                                st.markdown(f"""
+                                <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                    <b style="color: #f1c40f; font-size: 16px;">🧠 AI Cross-Contractor Insight (Workload Split):</b><br>
+                                    <span style="color: #d1d5da; font-size: 14px;">تم العمل على العنصر <b>{sel_elem_chart}</b> بواسطة <b>{len(shared_contractors)} شركات مختلفة</b>. إليك كشف حساب الكميات والجودة لكل شركة:</span>
+                                    <ul style="color: #ffffff; font-size: 14px; margin-top: 10px; background: rgba(0,0,0,0.2); padding: 10px 30px; border-radius: 5px;">
+                                        {breakdown_html}
+                                    </ul>
+                                    <span style="color: #d1d5da; font-size: 12px;">اختر من الأسفل طريقة عرض الشارت (مدمج أم شركة محددة).</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                sub_opts = ["🔗 Combined View (Full Timeline)"] + shared_contractors
+                                sub_choice = st.radio("🛠️ Isolate Contractor or View Combined:", sub_opts, horizontal=True)
+                                
+                                if sub_choice != "🔗 Combined View (Full Timeline)":
+                                    selected_sub_contractor = sub_choice
+
+                        # --- 1. مسار الكميات (Execution Data) ---
+                        if sel_elem_chart == 'All Elements':
+                            df_exec = df[df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else df.copy()
+                        else:
+                            df_exec = df[df[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()].copy()
+                            if selected_sub_contractor != "Combined":
+                                df_exec = df_exec[df_exec[contractor_col].astype(str).str.strip().str.lower() == selected_sub_contractor.lower()]
+
                         df_exec[date_daily_col] = pd.to_datetime(df_exec[date_daily_col], dayfirst=True, errors='coerce')
                         df_exec = df_exec.dropna(subset=[date_daily_col])
                         
-                        # التجميع اليومي الصحيح (عشان لو مختار All Elements يجمع التارجت بتاع كل عنصر لوحده في نفس اليوم من غير تكرار)
+                        # التجميع اليومي الصحيح 
                         daily_elem_exec = df_exec.groupby([date_daily_col, elem_all_col]).agg(
                             Executed=(exec_qty_m3_col, 'sum'),
                             Target=(target_col, 'max')
@@ -3244,8 +3304,8 @@ def render_dashboard():
                             Target=('Target', 'sum')
                         ).reset_index().sort_values(date_daily_col)
 
-                        # حساب الأسابيع المنطقية من أول يوم شغل للمقاول ده
-                        min_proj_date = daily_exec[date_daily_col].min()
+                        # حساب الأسابيع المنطقية
+                        min_proj_date = daily_exec[date_daily_col].min() if not daily_exec.empty else pd.Timestamp.now()
                         daily_exec['Proj_Week'] = ((daily_exec[date_daily_col] - min_proj_date).dt.days // 7) + 1
                         
                         weekly_exec = daily_exec.groupby('Proj_Week').agg(
@@ -3253,15 +3313,20 @@ def render_dashboard():
                           Target=('Target', 'sum'),
                                 ).reset_index()
 
-                        weekly_exec['Week_Label'] = (
-                         "Wk " + weekly_exec['Proj_Week'].astype(str) + "<br>" +
-                         (min_proj_date + pd.to_timedelta((weekly_exec['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
-                                )
+                        if not weekly_exec.empty:
+                            weekly_exec['Week_Label'] = (
+                             "Wk " + weekly_exec['Proj_Week'].astype(str) + "<br>" +
+                             (min_proj_date + pd.to_timedelta((weekly_exec['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
+                                    )
+
                         # --- 2. مسار الجودة (DPL Data) ---
-                        df_qa = df[df[comp_name_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else df.copy()
-                        if sel_elem_chart != 'All Elements':
-                            df_qa = df_qa[df_qa[elment_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()]
-                            
+                        if sel_elem_chart == 'All Elements':
+                            df_qa = df[df[comp_name_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else df.copy()
+                        else:
+                            df_qa = df[df[elment_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()].copy()
+                            if selected_sub_contractor != "Combined":
+                                df_qa = df_qa[df_qa[comp_name_col].astype(str).str.strip().str.lower() == selected_sub_contractor.lower()]
+                                
                         df_qa[date_test_col] = pd.to_datetime(df_qa[date_test_col], dayfirst=True, errors='coerce')
                         df_qa = df_qa.dropna(subset=[date_test_col])
                         
@@ -3284,11 +3349,11 @@ def render_dashboard():
                             if not daily_dpl.empty:
                                 daily_dpl['Proj_Week'] = ((daily_dpl['Date'] - min_proj_date).dt.days // 7) + 1
                                 weekly_dpl = daily_dpl.groupby('Proj_Week').agg({'DPL Tests': 'sum'}).reset_index()
-    # ✅ نفس معادلة الـ Execution بالظبط ← نفس الأسبوع = نفس الليبل دائماً
                                 weekly_dpl['Week_Label'] = (
                                 "Wk " + weekly_dpl['Proj_Week'].astype(str) + "<br>" +
                                  (min_proj_date + pd.to_timedelta((weekly_dpl['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
-    )
+                                )
+
                         # --- التجهيز المسبق لجدول التتبع (عشان نطلع الـ AI Alert) ---
                         duration_rows = []
                         if sel_contractor != 'All Contractors':
@@ -3304,7 +3369,9 @@ def render_dashboard():
                             min_d = group_exec[date_daily_col].min()
                             max_d = group_exec[date_daily_col].max()
                             t_duration = (max_d - min_d).days + 1
-                            a_days = len(group_exec[date_daily_col].unique())
+                            
+                            # حساب الأيام الفعلية بدقة (تفادي الأيام الساقطة)
+                            a_days = group_exec[date_daily_col].nunique()
                             
                             d_t = group_exec.groupby(date_daily_col).agg(Target=(target_col, 'max'), Exec=(exec_qty_m3_col, 'sum'))
                             m_days = len(d_t[d_t['Exec'] < d_t['Target']])
@@ -3328,11 +3395,17 @@ def render_dashboard():
                             fig_d = make_subplots(specs=[[{"secondary_y": True}]])
                             
                             if time_view == "Weekly":
-                                x_data_exec = weekly_exec['Week_Label'] if not weekly_exec.empty else []
-                                y_exec = weekly_exec['Executed'] if not weekly_exec.empty else []
-                                y_target = weekly_exec['Target'] if not weekly_exec.empty else []
-                                x_data_dpl = weekly_dpl['Week_Label'] if not weekly_dpl.empty else []
-                                y_dpl = weekly_dpl['DPL Tests'] if not weekly_dpl.empty else []
+                                df_weeks_exec = weekly_exec[['Proj_Week', 'Week_Label', 'Executed', 'Target']] if not weekly_exec.empty else pd.DataFrame(columns=['Proj_Week', 'Week_Label', 'Executed', 'Target'])
+                                df_weeks_dpl = weekly_dpl[['Proj_Week', 'Week_Label', 'DPL Tests']] if not weekly_dpl.empty else pd.DataFrame(columns=['Proj_Week', 'Week_Label', 'DPL Tests'])
+                                
+                                # دمج البيانات لضمان عدم سقوط أسابيع (الزجزاج)
+                                all_weeks_df = pd.merge(df_weeks_exec, df_weeks_dpl, on=['Proj_Week', 'Week_Label'], how='outer').sort_values('Proj_Week').fillna(0)
+                                
+                                x_data_exec = all_weeks_df['Week_Label'].tolist() if not all_weeks_df.empty else []
+                                y_exec = all_weeks_df['Executed'].tolist() if not all_weeks_df.empty else []
+                                y_target = all_weeks_df['Target'].tolist() if not all_weeks_df.empty else []
+                                x_data_dpl = all_weeks_df['Week_Label'].tolist() if not all_weeks_df.empty else []
+                                y_dpl = all_weeks_df['DPL Tests'].tolist() if not all_weeks_df.empty else []
                                 x_title = "Project Weeks (from actual start date)"
                             else:
                                 x_data_exec = daily_exec[date_daily_col] if not daily_exec.empty else []
@@ -3370,33 +3443,24 @@ def render_dashboard():
                                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                             )
                             
-                        if time_view == "Weekly":
-                            # التعديل: دمج أسابيع التنفيذ وأسابيع الـ DPL لضمان عدم سقوط أي أسبوع
-                            df_weeks_exec = weekly_exec[['Proj_Week', 'Week_Label']] if not weekly_exec.empty else pd.DataFrame(columns=['Proj_Week', 'Week_Label'])
-                            df_weeks_dpl = weekly_dpl[['Proj_Week', 'Week_Label']] if not weekly_dpl.empty else pd.DataFrame(columns=['Proj_Week', 'Week_Label'])
-                            
-                            # تجميعهم، مسح المتكرر، وترتيبهم تصاعدياً برقم الأسبوع
-                            all_weeks_df = pd.concat([df_weeks_exec, df_weeks_dpl]).drop_duplicates(subset=['Proj_Week']).sort_values('Proj_Week')
-                            
-                            all_labels = all_weeks_df['Week_Label'].tolist() if not all_weeks_df.empty else []
-                            
-                            fig_d.update_xaxes(
-                                type='category',
-                                categoryorder='array',
-                                categoryarray=all_labels,
-                                tickangle=0,
-                                title_text=x_title
-                            )
-                            fig_d.update_layout(margin=dict(b=80))
-                        else:
-                            fig_d.update_xaxes(title_text=x_title, tickangle=-45)
+                            if time_view == "Weekly":
+                                fig_d.update_xaxes(
+                                    type='category',
+                                    categoryorder='array',
+                                    categoryarray=x_data_exec,
+                                    tickangle=0,
+                                    title_text=x_title
+                                )
+                                fig_d.update_layout(margin=dict(b=80))
+                            else:
+                                fig_d.update_xaxes(title_text=x_title, tickangle=-45)
                                 
-                        # 👇 ⚠️ السطور دي رجعت لورا عشان تكون بره الـ else وتتنفذ دايماً ⚠️ 👇
-                        fig_d.update_yaxes(title_text="Quantity (m³)", secondary_y=False)
-                        fig_d.update_yaxes(title_text="Number of DPL Tests", secondary_y=True, showgrid=False)
-                        try: fig_d = style_3d_glassy(fig_d, "bar")
-                        except: pass
-                        st.plotly_chart(fig_d, use_container_width=True, key="qty_dynamic_chart")
+                            fig_d.update_yaxes(title_text="Quantity (m³)", secondary_y=False)
+                            fig_d.update_yaxes(title_text="Number of DPL Tests", secondary_y=True, showgrid=False)
+                            try: fig_d = style_3d_glassy(fig_d, "bar")
+                            except: pass
+                            st.plotly_chart(fig_d, use_container_width=True, key="qty_dynamic_chart")
+                            
                         with ch_right:
                             st.markdown("**Performance Summary**")
                             days = len(daily_exec)
@@ -3431,30 +3495,30 @@ def render_dashboard():
                                     </div>
                                     """, unsafe_allow_html=True)
 
-                        # --- 4. جدول الأصفار النظيف (Tracker Table) ---
-                        st.markdown("##### ⏳ Duration & Pacing Tracker")
-                        if not tracker_df.empty:
-                            if sel_elem_chart != 'All Elements':
-                                display_tracker = tracker_df[tracker_df['Element'] == sel_elem_chart]
-                            else:
-                                display_tracker = tracker_df
-                            
-                            def highlight_var(val):
-                                if isinstance(val, (int, float)):
-                                    if val > 5: return 'color: #e74c3c; font-weight: bold'
-                                    elif val < 0: return 'color: #2ecc71; font-weight: bold'
-                                return ''
-                                
-                            # تنسيق الأرقام العشرية لمنع الأصفار الزيادة
-                            st.dataframe(
-                                display_tracker.style.format({'Ideal Duration': '{:.1f}', 'Delay Variance': '{:.1f}'})
-                                .map(highlight_var, subset=['Delay Variance']),
-                                use_container_width=True, hide_index=True
-                            )
+                    # --- 4. جدول الأصفار النظيف (Tracker Table) ---
+                    st.markdown("##### ⏳ Duration & Pacing Tracker")
+                    if not tracker_df.empty:
+                        if sel_elem_chart != 'All Elements':
+                            display_tracker = tracker_df[tracker_df['Element'] == sel_elem_chart]
                         else:
-                            st.info("No active execution data for duration tracking.")
+                            display_tracker = tracker_df
+                        
+                        def highlight_var(val):
+                            if isinstance(val, (int, float)):
+                                if val > 5: return 'color: #e74c3c; font-weight: bold'
+                                elif val < 0: return 'color: #2ecc71; font-weight: bold'
+                            return ''
+                            
+                        # تنسيق الأرقام العشرية لمنع الأصفار الزيادة
+                        st.dataframe(
+                            display_tracker.style.format({'Ideal Duration': '{:.1f}', 'Delay Variance': '{:.1f}'})
+                            .map(highlight_var, subset=['Delay Variance']),
+                            use_container_width=True, hide_index=True
+                        )
                     else:
-                        st.warning("⚠️ Missing columns to plot unified chart.")
+                        st.info("No active execution data for duration tracking.")
+            else:
+                    st.warning("⚠️ Missing columns to plot unified chart.")
                     # ══════════════════════════════════════════════════════
                     # 4. ELEMENT COVERAGE AUDIT (Linking QA to Execution)
                     # ══════════════════════════════════════════════════════
