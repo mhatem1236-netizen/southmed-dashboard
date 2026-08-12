@@ -3143,7 +3143,7 @@ def render_dashboard():
 # ضيف الكود ده جوه: with tab_quantities:
 # ==========================================
 
-               with tab_quantities:
+                with tab_quantities:
                     st.markdown("### 📊 Quantities Rate & Execution Analytics")
                     
                     # السطر السحري اللي هيمنع الإيرور:
