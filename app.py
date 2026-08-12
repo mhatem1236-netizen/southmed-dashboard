@@ -1613,6 +1613,9 @@ def render_dashboard():
             uploaded_file.seek(0)
             try:
                 df = pd.read_csv(uploaded_file)
+                
+                # فلتر بيمسح أي صف مفيهوش على الأقل 3 خلايا مليانة بالبيانات
+                df = df.dropna(thresh=3)
                 if df.empty:
                     st.error("⚠️ الملف لا يحتوي على بيانات!")
                     st.stop()
