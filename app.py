@@ -32,7 +32,7 @@ STATUS_COLORS = {
     'REJECTED': '#e74c3c'
 }
 
-USERS_DB_FILE = "users_db.csv"
+
 LOGIN_LOGS_FILE = "login_logs.csv"
 AUDIT_LOG_FILE = "audit_trail.csv"
 
