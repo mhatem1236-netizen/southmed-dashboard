@@ -538,17 +538,19 @@ class HistoryManager:
 def create_card(column, label, value, delta_html="", progress=None):
     if progress is not None:
         prog_color = "#2ecc71" if progress > 80 else ("#f1c40f" if progress > 50 else "#e74c3c")
-        prog_html = f'<div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 15px;"><div class="prog-fill" style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 10px;"></div></div>'
+        prog_html = f'<div class="prog-bg" style="height: 6px; background: rgba(127,140,141,0.2); border-radius: 10px; margin-top: 15px;"><div class="prog-fill" style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 10px; transition: width 1s ease-in-out;"></div></div>'
     else:
         prog_html = ""
-    column.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-label">{label}</div>
-            <div class="metric-value">{value}</div>
-            {delta_html}
-            {prog_html}
-        </div>
-        """, unsafe_allow_html=True)
+        
+# إزالة المسافات هنا مهمة جداً عشان الكود يترسم صح وميظهرش كنص
+    html_content = f"""<div class="metric-card">
+<div class="metric-label">{label}</div>
+<div class="metric-value">{value}</div>
+{delta_html}
+{prog_html}
+</div>"""
+    
+    column.markdown(html_content, unsafe_allow_html=True)
 
 def ai_assistant(query, data_summary):
     query = query.lower()
@@ -1750,15 +1752,22 @@ def render_dashboard():
             if num_tests_col:
                 dpl_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)][num_tests_col], errors='coerce').sum()
                 plate_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('PLATE', na=False)][num_tests_col], errors='coerce').sum()
-                # فصلنا الـ SAND CONE لوحده
                 sand_cone_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SAND|CONE', na=False)][num_tests_col], errors='coerce').sum()
-                # خلينا الـ SOIL لوحده (ومعاه الـ PROCTOR لو موجود)
                 soil_count = pd.to_numeric(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|PROCTOR', na=False)][num_tests_col], errors='coerce').sum()
             else:
                 dpl_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)])
                 plate_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('PLATE', na=False)])
                 sand_cone_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SAND|CONE', na=False)])
                 soil_count = len(filtered_df[filtered_df['Test Type'].astype(str).str.upper().str.contains('SOIL|PROCTOR', na=False)])
+
+        tc1, tc2, tc3, tc4 = st.columns(4)
+        
+        neutral_delta = '<div class="delta-neutral">➖ No change</div>'
+        
+        create_card(tc1, "DPL", f"{int(dpl_count):,}", delta_html=neutral_delta)
+        create_card(tc2, "PLATE LOAD", f"{int(plate_count):,}", delta_html=neutral_delta)
+        create_card(tc3, "SAND CONE", f"{int(sand_cone_count):,}", delta_html=neutral_delta)
+        create_card(tc4, "SOIL", f"{int(soil_count):,}", delta_html=neutral_delta)
 
         # CSS and Helper Function for Unified Cards
         st.markdown("""
