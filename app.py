@@ -1904,29 +1904,7 @@ def render_dashboard():
             narrative += f"Attention is required for <b>{worst_office_name}</b>, which currently flags the highest processing delays across the logged sectors."
         st.markdown(f"<div style='font-size: 15px; color: {ui['text_main']}; line-height: 1.6; background: {ui['highlight_bg']}; padding: 20px; border-radius: 10px; border-left: 4px solid #00d2ff; margin-bottom: 25px;'>{narrative}</div>", unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🤖 Live Anomaly & Root Cause Detector</div>', unsafe_allow_html=True)
-        anomalies = []
-        if 'Company Name' in filtered_df.columns and 'DURATION' in filtered_df.columns:
-            comp_dur = filtered_df.groupby('Company Name')['DURATION'].mean()
-            for comp, dur in comp_dur.items():
-                if dur > avg_duration_value + 5:
-                    anomalies.append(f"⚠️ <b>Anomaly Detected:</b> <b>{comp}</b> is showing severe delays ({dur:.1f} days) compared to the global average ({avg_duration_value:.1f} days).")
-        if 'sample status' in filtered_df.columns and 'Test Type' in filtered_df.columns:
-            rejections_df = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])]
-            if not rejections_df.empty:
-                top_fail_test = rejections_df['Test Type'].value_counts().idxmax()
-                top_fail_comp = rejections_df['Company Name'].value_counts().idxmax() if 'Company Name' in rejections_df.columns else "Unknown"
-                fail_pct = (len(rejections_df) / total_requests_count * 100) if total_requests_count > 0 else 0
-                if fail_pct > 10:
-                    anomalies.append(f"🔍 <b>Root Cause Insight:</b> Global rejection rate is high ({fail_pct:.1f}%). The primary contributor is the <b>{top_fail_test}</b> test, most frequently failing under contractor <b>{top_fail_comp}</b>.")
-        if anomalies:
-            for anomaly in anomalies:
-                st.markdown(f'<div style="background: rgba(231,76,60,0.1); border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: {ui["text_main"]};">{anomaly}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div style="background: rgba(46,204,113,0.1); border-left: 4px solid #2ecc71; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: {ui["text_main"]};">✅ No severe workflow anomalies or critical bottlenecks detected in the current data scope.</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-
+       
         st.markdown('<div class="bi-title">🏆 Benchmark Engine</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns:
             bm_comp = st.selectbox("Select Contractor for Benchmarking against Global Averages:", companies, key="bm_engine")
