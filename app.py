@@ -1223,80 +1223,154 @@ def render_alerts_module(df):
             st.success("✅ Test Alert Sent Successfully!")
             st.balloons()
 # ==========================================
-# 12.5 PowerPoint Generator Engine
+# 12.5 PowerPoint Generator Engine (Tactical Premium Edition)
 # ==========================================
 def generate_executive_pptx(metrics, figs_dict, file_name):
+    from pptx import Presentation
+    from pptx.util import Inches, Pt
+    from pptx.dml.color import RGBColor
+    from pptx.enum.text import PP_ALIGN
+    from pptx.enum.shapes import MSO_SHAPE
+    import io
+    from datetime import datetime
+
     prs = Presentation()
     
-    # دالة فرعية لتلوين الشريحة باللون الداكن (Dark Theme)
-    def apply_dark_theme(slide):
+    # 1. ضبط مقاس العرض لـ 16:9 Widescreen الحديث
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
+
+    # 2. باليتة ألوان مركز القيادة
+    BG_COLOR = RGBColor(10, 14, 23)       # أسود راداري
+    CYAN = RGBColor(0, 210, 255)          # أزرق سيبراني
+    AMBER = RGBColor(255, 170, 0)         # برتقالي تحذيري
+    WHITE = RGBColor(240, 245, 250)       # أبيض ناصع
+    MUTED = RGBColor(100, 116, 139)       # رمادي صامت للفوتر
+
+    # دالة فرعية لتصميم الشريحة الاحترافي
+    def style_tactical_slide(slide, title_text=None):
+        # تلوين الخلفية
         background = slide.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = RGBColor(10, 20, 33) # نفس لون الداشبورد
-        if slide.shapes.title:
-            slide.shapes.title.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 210, 255)
-            slide.shapes.title.text_frame.paragraphs[0].font.bold = True
+        fill.fore_color.rgb = BG_COLOR
+        
+        # شريط نيون علوي
+        top_line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(13.333), Inches(0.08))
+        top_line.fill.solid()
+        top_line.fill.fore_color.rgb = CYAN
+        top_line.line.color.rgb = CYAN
+        
+        # شريط تذييل (Footer) سفلي
+        bottom_line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(7.1), Inches(13.333), Inches(0.02))
+        bottom_line.fill.solid()
+        bottom_line.fill.fore_color.rgb = MUTED
+        bottom_line.line.color.rgb = MUTED
 
-    # 1. شريحة الغلاف (Title Slide)
-    title_slide_layout = prs.slide_layouts[0]
-    slide1 = prs.slides.add_slide(title_slide_layout)
-    apply_dark_theme(slide1)
-    title = slide1.shapes.title
-    subtitle = slide1.placeholders[1]
-    
-    title.text = "Mega Infrastructure Command Center\nExecutive Performance Brief"
-    subtitle.text = f"Dataset: {file_name}\nGenerated on: {datetime.now(EGYPT_TZ).strftime('%Y-%m-%d %H:%M')}\nConfidential & Proprietary"
-    subtitle.text_frame.paragraphs[0].font.color.rgb = RGBColor(141, 163, 185)
+        footer = slide.shapes.add_textbox(Inches(0.5), Inches(7.15), Inches(12), Inches(0.3))
+        tf = footer.text_frame
+        p = tf.paragraphs[0]
+        p.text = f"CONFIDENTIAL | KK ENGINEERING COMMAND CENTER | DATASET: {file_name}"
+        p.font.size = Pt(10)
+        p.font.color.rgb = MUTED
+        p.font.name = "Arial"
 
-    # 2. شريحة الملخص التنفيذي (Executive KPIs)
-    kpi_layout = prs.slide_layouts[1]
-    slide2 = prs.slides.add_slide(kpi_layout)
-    apply_dark_theme(slide2)
-    slide2.shapes.title.text = "1. Executive Key Performance Indicators"
+        # ضبط العنوان لو موجود
+        if title_text:
+            title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(12.333), Inches(0.8))
+            tf_title = title_box.text_frame
+            p_title = tf_title.paragraphs[0]
+            p_title.text = title_text.upper()
+            p_title.font.size = Pt(32)
+            p_title.font.bold = True
+            p_title.font.color.rgb = CYAN
+            p_title.font.name = "Arial"
+
+    # شريحة فاضية تماماً هنبني عليها
+    blank_layout = prs.slide_layouts[6] 
+
+    # ==========================================
+    # الشريحة الأولى: الغلاف (Cover Slide)
+    # ==========================================
+    slide1 = prs.slides.add_slide(blank_layout)
+    style_tactical_slide(slide1)
+
+    title_box = slide1.shapes.add_textbox(Inches(1), Inches(2.5), Inches(11.333), Inches(2))
+    tf = title_box.text_frame
+    p = tf.paragraphs[0]
+    p.text = "MEGA INFRASTRUCTURE\nCOMMAND CENTER"
+    p.font.size = Pt(54)
+    p.font.bold = True
+    p.font.color.rgb = CYAN
+    p.alignment = PP_ALIGN.CENTER
+
+    sub_box = slide1.shapes.add_textbox(Inches(1), Inches(4.5), Inches(11.333), Inches(1.5))
+    tf_sub = sub_box.text_frame
+    p_sub = tf_sub.paragraphs[0]
+    p_sub.text = f"EXECUTIVE PERFORMANCE BRIEF\nGenerated: {datetime.now(EGYPT_TZ).strftime('%Y-%m-%d %H:%M')}"
+    p_sub.font.size = Pt(20)
+    p_sub.font.color.rgb = AMBER
+    p_sub.alignment = PP_ALIGN.CENTER
+
+    # ==========================================
+    # الشريحة الثانية: ملخص الـ KPIs
+    # ==========================================
+    slide2 = prs.slides.add_slide(blank_layout)
+    style_tactical_slide(slide2, "1. Executive Key Performance Indicators")
     
-    # إضافة نصوص الـ KPIs
-    txBox = slide2.shapes.add_textbox(Inches(1), Inches(2), Inches(8), Inches(3))
-    tf = txBox.text_frame
-    tf.text = "Overall Project Status Summary:"
-    tf.paragraphs[0].font.color.rgb = RGBColor(255, 170, 0)
-    tf.paragraphs[0].font.size = Pt(24)
+    kpi_box = slide2.shapes.add_textbox(Inches(1.5), Inches(2), Inches(10), Inches(4))
+    tf_kpi = kpi_box.text_frame
     
+    p_kpi_title = tf_kpi.paragraphs[0]
+    p_kpi_title.text = "OVERALL SECTOR STATUS:"
+    p_kpi_title.font.size = Pt(28)
+    p_kpi_title.font.color.rgb = AMBER
+    p_kpi_title.font.bold = True
+
     kpis = [
-        f"📌 Total Submittals Logged: {metrics.get('Total_Requests', 0):,}",
-        f"🧪 Total Field Tests Executed: {metrics.get('Total_Tests', 0):,}",
-        f"⏱️ Average Sector Delay: {metrics.get('Avg_Duration', 0)} Days",
-        f"📈 Average DPL Value: {metrics.get('Avg_DPL', 0)}"
+        f"► Total Submittals Logged:  {metrics.get('Total_Requests', 0):,}",
+        f"► Total Field Tests Executed:  {metrics.get('Total_Tests', 0):,}",
+        f"► Average Sector Delay:  {metrics.get('Avg_Duration', 0)} Days",
+        f"► Average DPL Value:  {metrics.get('Avg_DPL', 0)}"
     ]
     for kpi in kpis:
-        p = tf.add_paragraph()
+        p = tf_kpi.add_paragraph()
         p.text = kpi
-        p.font.color.rgb = RGBColor(255, 255, 255)
-        p.font.size = Pt(20)
+        p.font.size = Pt(24)
+        p.font.color.rgb = WHITE
         p.level = 1
+        p.space_before = Pt(20)
 
-    # 3. حلقة تكرارية لطباعة كل الشارتات (كل شارت في شريحة)
-    blank_layout = prs.slide_layouts[5] # شريحة عنوان فقط
-    
+    # ==========================================
+    # الشرائح الباقية: الشارتات (Charts)
+    # ==========================================
     for chart_title, fig in figs_dict.items():
         if fig is None: continue
         slide = prs.slides.add_slide(blank_layout)
-        apply_dark_theme(slide)
-        slide.shapes.title.text = chart_title
+        style_tactical_slide(slide, chart_title)
         
-        # تحويل الشارت لصورة PNG ولزقها في الشريحة
         try:
-            # تكبير الخطوط والمقاسات عشان تناسب الباوربوينت
-            fig.update_layout(width=900, height=500, paper_bgcolor='rgba(10, 20, 33, 1)', plot_bgcolor='rgba(10, 20, 33, 1)')
-            img_bytes = fig.to_image(format="png", engine="kaleido")
+            # 1. إخفاء عنوان الشارت الأصلي عشان كتبناه في الشريحة نفسها
+            # 2. خلفية شفافة عشان تندمج مع لون الشريحة
+            fig.update_layout(
+                width=1200, 
+                height=550, 
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)',
+                title=None,
+                font=dict(color='#ffffff', size=16)
+            )
+            # scale=2.0 عشان الصورة تطلع 4K ومتبكسلش على الشاشات الكبيرة
+            img_bytes = fig.to_image(format="png", engine="kaleido", scale=2.0)
             img_stream = io.BytesIO(img_bytes)
-            slide.shapes.add_picture(img_stream, Inches(0.5), Inches(1.8), width=Inches(9))
+            
+            # توسيط الصورة في الشريحة (Center Alignment)
+            slide.shapes.add_picture(img_stream, Inches(0.66), Inches(1.5), width=Inches(12))
         except Exception as e:
-            p = slide.shapes.add_textbox(Inches(1), Inches(3), Inches(8), Inches(1)).text_frame.add_paragraph()
-            p.text = f"Could not render chart: {str(e)}"
-            p.font.color.rgb = RGBColor(231, 76, 60)
+            p_err = slide.shapes.add_textbox(Inches(2), Inches(3), Inches(9), Inches(1)).text_frame.add_paragraph()
+            p_err.text = f"Could not render chart: {str(e)}"
+            p_err.font.color.rgb = RGBColor(231, 76, 60)
 
-    # حفظ الملف في الميموري
     ppt_stream = io.BytesIO()
     prs.save(ppt_stream)
     ppt_stream.seek(0)
