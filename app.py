@@ -312,12 +312,12 @@ def style_3d_glassy(fig, chart_type="bar"):
     # 🧠 ذكاء تحديد الألوان بناءً على المود
     if is_dark:
         font_color = "#e2e8f0"
-        grid_color = 'rgba(255, 255, 255, 0.05)' # شبكة بيضاء شفافة للدارك
+        grid_color = 'rgba(255, 255, 255, 0.05)' 
         hover_bg = "rgba(15, 23, 42, 0.95)"
         title_color = "#00d2ff"
     else:
         font_color = "#334155" # رمادي غامق مقروء جداً لللايت
-        grid_color = 'rgba(0, 0, 0, 0.1)' # شبكة سوداء شفافة لللايت
+        grid_color = 'rgba(0, 0, 0, 0.1)' 
         hover_bg = "rgba(255, 255, 255, 0.95)"
         title_color = "#0ea5e9"
 
@@ -332,7 +332,12 @@ def style_3d_glassy(fig, chart_type="bar"):
             font=dict(size=12, color=font_color),
             bgcolor="rgba(0,0,0,0)"
         ),
-        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter, sans-serif", bordercolor=title_color)
+        # 🔥 الإصلاح هنا: إجبار الـ Tooltip إنه ياخد لون الخط المظبوط (font_color)
+        hoverlabel=dict(
+            bgcolor=hover_bg, 
+            bordercolor=title_color,
+            font=dict(size=14, family="Inter, sans-serif", color=font_color)
+        )
     )
     
     # شبكة واضحة
@@ -342,7 +347,7 @@ def style_3d_glassy(fig, chart_type="bar"):
     if chart_type in ["bar", "histogram"]:
         fig.update_traces(marker_line_color='rgba(255, 255, 255, 0.5)' if is_dark else 'rgba(0,0,0,0.2)', marker_line_width=1.5, opacity=0.9)
     elif chart_type == "pie":
-        fig.update_traces(marker=dict(line=dict(color='#0a0e17' if is_dark else '#ffffff', width=3)), hoverinfo="label+percent+value")
+        fig.update_traces(marker=dict(line=dict(color='#0a0e17' if is_dark else '#ffffff', width=3)))
     elif chart_type == "line" or chart_type == "scatter":
         fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=2)))
         
