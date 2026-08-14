@@ -1813,19 +1813,17 @@ def render_dashboard():
                 
             class_work_df = class_work_df.sort_values('Number of Tests', ascending=False)
             
-            # 🔥 تكبير الفتحة لـ 0.70 عشان تبقى حلقة رفيعة ديجيتال
             fig_class_ov = px.pie(
                 class_work_df, names='Classification', values='Number of Tests', 
                 hole=0.70, color_discrete_sequence=TACTICAL_PALETTE,
                 title="Distribution of Soil Classifications (Overall)"
             )
             
-            # إخراج النصوص بره الحلقة بخطوط توجيه (Leader lines)
+            # إخراج النصوص بره الحلقة (لغينا الـ pull عشان تبقى حلقة رادار مثالية)
             fig_class_ov.update_traces(
                 textposition='outside', 
-                textinfo='percent+label',
-                hovertemplate='<b>Classification:</b> %{label}<br>Tests: %{value}<br>Percentage: %{percent}',
-                pull=[0.05 if i == 0 else 0 for i in range(len(class_work_df))] # سحب أكبر شريحة لبرة شوية
+                textinfo='label+percent',
+                hovertemplate='<b>Classification:</b> %{label}<br>Tests: %{value}<br>Percentage: %{percent}'
             )
             
             # إضافة كلمة في قلب الدونات
@@ -1833,7 +1831,10 @@ def render_dashboard():
                 annotations=[dict(text='SOIL<br>CLASS', x=0.5, y=0.5, font_size=24, font_family="Rajdhani", font_color='#00d2ff', showarrow=False)]
             )
             
-            try: fig_class_ov = style_3d_glassy(fig_class_ov, chart_type="pie")
+            try: 
+                fig_class_ov = style_3d_glassy(fig_class_ov, chart_type="pie")
+                # 🔥 السر هنا: تزويد مساحة فاضية (Margins) فوق وتحت عشان الكلام اللي بره الدونات ياخد راحته وميتقصش
+                fig_class_ov.update_layout(margin=dict(t=100, b=80, l=40, r=40))
             except: pass
             
             st.plotly_chart(fig_class_ov, use_container_width=True, key="overall_classification_chart")
