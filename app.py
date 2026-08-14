@@ -1842,24 +1842,7 @@ def render_dashboard():
         else:
             st.info("Requires 'Classification' column for Overall Soil Classifications Analysis.")
 
-        st.markdown('<div class="bi-title" style="margin-top: 20px;">⚖️ 360° Accountability Board (Eye in the Sky)</div>', unsafe_allow_html=True)
-        acc_c1, acc_c2 = st.columns(2)
-        acc_c1.markdown(f"""
-            <div class="leaderboard-card" style="border-left: 6px solid #2ecc71; background: {ui['card_bg']};">
-                <div style="color: #2ecc71; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px;">🏆 Top Performing Contractor</div>
-                <div style="color: {ui['text_main']}; font-size: 28px; font-weight: 800; font-family: 'Montserrat';">{global_best_comp}</div>
-                <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 5px;">Maintains highest Quality Yield at <b style="color: #2ecc71;">{global_best_rate:.1f}%</b>.</div>
-            </div>
-        """, unsafe_allow_html=True)
-        acc_c2.markdown(f"""
-            <div class="leaderboard-card" style="border-left: 6px solid #e74c3c; background: {ui['card_bg']};">
-                <div style="color: #e74c3c; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px;">🚨 Critical Bottleneck (Highest Delay)</div>
-                <div style="color: {ui['text_main']}; font-size: 28px; font-weight: 800; font-family: 'Montserrat';">{global_worst_comp}</div>
-                <div style="color: {ui['text_muted']}; font-size: 14px; margin-top: 5px;">Causes sector slowdown with <b style="color: #e74c3c;">{global_worst_delay:.1f} Days</b> avg delay.</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+       
 
         g_col, s_col = st.columns([0.4, 0.6])
         with g_col:
