@@ -1844,36 +1844,82 @@ def render_dashboard():
 
        
 
+# ==========================================
+        # 🎯 Quality & Yield Simulator Section
+        # ==========================================
+        st.markdown('<div class="bi-title">🎯 Yield & Optimization Simulator</div>', unsafe_allow_html=True)
+
         g_col, s_col = st.columns([0.4, 0.6])
         with g_col:
-            gauge_font_color = "white" if is_dark else "#2C3E50"
-            gauge_bg = "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)"
-            
+            # 🧠 تغيير اللون بذكاء حسب جودة الشغل
+            if overall_rate >= 85:
+                gauge_color = "#2ecc71"  # أخضر فسفوري (ممتاز)
+                status_text = "OPTIMAL"
+            elif overall_rate >= 60:
+                gauge_color = "#f1c40f"  # أصفر تحذيري (متوسط)
+                status_text = "WARNING"
+            else:
+                gauge_color = "#e74c3c"  # أحمر حرج (خطر)
+                status_text = "CRITICAL"
+
             fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number", value=overall_rate,
-                title={'text': "Overall Approval Index", 'font': {'size': 20, 'color': gauge_font_color}},
-                number={'suffix': "%", 'font': {'size': 40, 'color': gauge_font_color}},
-                gauge={'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"}, 
-                       'bar': {'color': "#00d2ff", 'thickness': 0.25}, 
-                       'bgcolor': gauge_bg, 
-                       'steps': [{'range': [0, 60], 'color': "#e74c3c"}, {'range': [60, 85], 'color': "#f1c40f"}, {'range': [85, 100], 'color': "#2ecc71"}]}
+                mode="gauge+number", 
+                value=overall_rate,
+                number={'suffix': "%", 'font': {'size': 55, 'color': gauge_color, 'family': 'Rajdhani'}},
+                gauge={
+                    'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': "rgba(0, 210, 255, 0.3)", 'tickfont': {'family': 'Rajdhani', 'size': 14, 'color': '#8da3b9'}},
+                    'bar': {'color': gauge_color, 'thickness': 0.8},
+                    'bgcolor': "rgba(15, 23, 42, 0.5)" if is_dark else "rgba(240, 245, 250, 0.8)",
+                    'borderwidth': 2,
+                    'bordercolor': "rgba(0, 210, 255, 0.1)",
+                    'steps': [
+                        {'range': [0, 60], 'color': "rgba(231, 76, 60, 0.1)"},
+                        {'range': [60, 85], 'color': "rgba(241, 196, 15, 0.1)"},
+                        {'range': [85, 100], 'color': "rgba(46, 204, 113, 0.1)"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "white", 'width': 4},
+                        'thickness': 0.9,
+                        'value': 90 # الهدف الدائم 90%
+                    }
+                }
             ))
-            fig_gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=250, margin=dict(l=20, r=20, t=40, b=20), font={'family': 'Montserrat'})
+            
+            fig_gauge.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)", 
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=280, 
+                margin=dict(l=30, r=30, t=10, b=10),
+            )
+            
+            # كارت تكتيكي بيحوي العداد جواه
+            st.markdown(f"""
+            <div style="background: {ui['card_bg']}; border: 1px solid {ui['border_color']}; border-radius: 4px; padding: 20px; text-align: center; box-shadow: {ui['shadow']};">
+                <div style="color: #00d2ff; font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: -10px;">Overall Approval Index</div>
+            """, unsafe_allow_html=True)
+            
             st.plotly_chart(fig_gauge, use_container_width=True, key="overall_gauge_main")
+            
+            st.markdown(f"""
+                <div style="margin-top: -30px; font-family: 'Rajdhani'; font-size: 16px; color: {gauge_color}; font-weight: bold; letter-spacing: 2px;">STATUS: {status_text}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
             exported_figs["1. Overall Approval Index"] = fig_gauge 
+            
         with s_col:
             if sim_days_saved > 0:
                 total_time_recovered = sim_days_saved * total_requests_count
                 st.markdown(f"""
-                    <div class="simulator-card">
+                    <div class="simulator-card" style="height: 100%; min-height: 350px; display: flex; flex-direction: column; justify-content: center;">
                         <h4 style="color: #2ecc71; margin: 0; text-transform: uppercase; font-size: 16px; letter-spacing: 1px;">✨ Simulated Optimization Impact</h4>
-                        <p style="font-size: 38px; font-weight: 800; color: {ui['text_main']}; margin: 5px 0;">{total_time_recovered:,} <span style="font-size:16px; color:{ui['text_muted']}; font-weight:500;">Project Days Saved</span></p>
-                        <p style="font-size: 14px; color: {ui['text_muted']}; margin: 0; line-height: 1.6;">Reducing paperwork cycle times by {sim_days_saved} days across all active submittals accelerates overall sector handovers.</p>
+                        <p style="font-size: 38px; font-weight: 800; color: {ui['text_main']}; margin: 15px 0;">{total_time_recovered:,} <span style="font-size:16px; color:{ui['text_muted']}; font-weight:500;">Project Days Saved</span></p>
+                        <p style="font-size: 14px; color: {ui['text_muted']}; margin: 0; line-height: 1.6;">Reducing paperwork cycle times by <b style="color:#00d2ff;">{sim_days_saved} days</b> across all active submittals accelerates overall sector handovers.</p>
                     </div>
                     """, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
-                    <div class="simulator-card" style="border-color: {ui['border_color']}; background: {ui['card_bg']};">
+                    <div class="simulator-card" style="border-color: {ui['border_color']}; background: {ui['card_bg']}; height: 100%; min-height: 350px; display: flex; flex-direction: column; justify-content: center;">
                         <h4 style="color: {ui['text_muted']}; margin: 0; font-size: 18px;">🎛️ Optimization Simulator Inactive</h4>
                         <p style="font-size: 14px; color: {ui['text_muted']}; margin-top: 15px;">Use the slider in the sidebar to simulate the impact of reducing administrative delays.</p>
                     </div>
