@@ -357,35 +357,50 @@ def authenticate_user(email, password):
 
 # ==========================================
 # 5. 3D Glassy Chart Styling Function
-# ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
-    template = "plotly_dark" if is_dark else "plotly_white"
-    font_color = "#d1d5da" if is_dark else "#2C3E50"
-    grid_color = 'rgba(255,255,255,0.05)' if is_dark else 'rgba(0,0,0,0.1)'
-    line_color = 'rgba(255, 255, 255, 0.4)' if is_dark else 'rgba(0, 0, 0, 0.2)'
-    marker_line = 'white' if is_dark else '#2C3E50'
+    
+    # ألوان تكتيكية متوهجة
+    font_color = "#e2e8f0" if is_dark else "#0f172a"
+    grid_color = 'rgba(0, 210, 255, 0.1)' if is_dark else 'rgba(15, 23, 42, 0.1)'
+    hover_bg = "rgba(15, 23, 42, 0.95)" if is_dark else "rgba(255, 255, 255, 0.95)"
 
     fig.update_layout(
-        template=template,
-        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Rajdhani, sans-serif", color=font_color, size=14),
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter", color=font_color, size=12),
-        margin=dict(t=50, b=20, l=20, r=20),
-        title_font=dict(family="Montserrat", size=16, color=font_color),
-        legend=dict(font=dict(color=font_color))
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=50, b=30, l=20, r=20),
+        title_font=dict(size=20, color="#00d2ff", family="Rajdhani, sans-serif"),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+            font=dict(size=12, color=font_color),
+            bgcolor="rgba(0,0,0,0)"
+        ),
+        hoverlabel=dict(
+            bgcolor=hover_bg, font_size=14, font_family="Inter, sans-serif", bordercolor="#00d2ff"
+        )
     )
     
-    if chart_type in ["bar", "pie", "histogram", "treemap"]:
-        fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85)
-    elif chart_type == "line":
-        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color=marker_line, width=1.5)), selector=dict(type='scatter'))
-    elif chart_type == "combo":
-        fig.update_traces(marker=dict(line=dict(color=line_color, width=1.5)), opacity=0.85, selector=dict(type='bar'))
-        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color=marker_line, width=1.5)), selector=dict(type='scatter'))
+    # شبكة رادار تكتيكية (Dotted Grid)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, griddash='dot', zerolinecolor=grid_color)
+    fig.update_xaxes(showgrid=False, zerolinecolor=grid_color)
+    
+    if chart_type in ["bar", "histogram"]:
+        # حواف مضيئة للأعمدة
+        fig.update_traces(
+            marker_line_color='rgba(255, 255, 255, 0.5)' if is_dark else 'rgba(0,0,0,0.2)',
+            marker_line_width=1.5,
+            opacity=0.9
+        )
+    elif chart_type == "pie":
+        # فواصل سوداء حادة بين شرائح الدونات
+        fig.update_traces(
+            marker=dict(line=dict(color='#0a0e17' if is_dark else '#ffffff', width=3)),
+            hoverinfo="label+percent+value"
+        )
+    elif chart_type == "line" or chart_type == "scatter":
+        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=2)))
         
-    fig.update_xaxes(showgrid=False, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, title_font=dict(family="Inter", color=font_color), tickfont=dict(color=font_color))
     return fig
 
 # ==========================================
@@ -1807,6 +1822,9 @@ def render_dashboard():
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🏢 Overall Office Workload Analysis</div>', unsafe_allow_html=True)
+        # ألوان نيون نقية وعالية الجودة
+        TACTICAL_PALETTE = ['#00d2ff', '#ffaa00', '#00ff87', '#ff007f', '#a200ff']
+        
         if 'Done BY' in filtered_df.columns and 'Test Type' in filtered_df.columns:
             if num_tests_col:
                 office_work_df = filtered_df.groupby(['Done BY', 'Test Type'])[num_tests_col].sum().reset_index()
@@ -1814,14 +1832,20 @@ def render_dashboard():
             else:
                 office_work_df = filtered_df.groupby(['Done BY', 'Test Type']).size().reset_index(name='Number of Tests')
                 
-            fig_office = px.bar(office_work_df, x='Done BY', y='Number of Tests', color='Test Type', barmode='group', title="Test Distribution per Office (Done BY)", color_discrete_sequence=NEON_COLORS, text_auto=True)
-            try:
-                fig_office = style_3d_glassy(fig_office, chart_type="bar")
+            fig_office = px.bar(
+                office_work_df, x='Done BY', y='Number of Tests', color='Test Type', 
+                barmode='group', title="Test Distribution per Office (Log Scale)", 
+                color_discrete_sequence=TACTICAL_PALETTE, text_auto='.2s'
+            )
+            
+            # 🔥 السحر هنا: تحويل المحور الصادي لـ Logarithmic عشان الأعمدة الصغيرة تبان جنب العمود الـ 28 ألف
+            fig_office.update_yaxes(type='log', title_text="Number of Tests (Log Scale)")
+            fig_office.update_traces(textposition='outside')
+            
+            try: fig_office = style_3d_glassy(fig_office, chart_type="bar")
             except: pass
+            
             st.plotly_chart(fig_office, use_container_width=True, key="overall_office_work_chart")
-            exported_figs["4. Office Workload Analysis"] = fig_office
-        else:
-            st.info("Requires 'Done BY' and 'Test Type' columns for Office Workload Analysis.")
 
         # ==========================================
         # 🪨 Overall Soil Classifications
@@ -1835,11 +1859,30 @@ def render_dashboard():
                 class_work_df = filtered_df.groupby('Classification').size().reset_index(name='Number of Tests')
                 
             class_work_df = class_work_df.sort_values('Number of Tests', ascending=False)
-            fig_class_ov = px.pie(class_work_df, names='Classification', values='Number of Tests', title="Distribution of Soil Classifications (Overall)", hole=0.4, color_discrete_sequence=NEON_COLORS)
-            fig_class_ov.update_traces(textinfo='label+percent', hovertemplate='<b>Classification:</b> %{label}<br>Tests: %{value}<br>Percentage: %{percent}')
-            try:
-                fig_class_ov = style_3d_glassy(fig_class_ov, chart_type="pie")
+            
+            # 🔥 تكبير الفتحة لـ 0.70 عشان تبقى حلقة رفيعة ديجيتال
+            fig_class_ov = px.pie(
+                class_work_df, names='Classification', values='Number of Tests', 
+                hole=0.70, color_discrete_sequence=TACTICAL_PALETTE,
+                title="Distribution of Soil Classifications (Overall)"
+            )
+            
+            # إخراج النصوص بره الحلقة بخطوط توجيه (Leader lines)
+            fig_class_ov.update_traces(
+                textposition='outside', 
+                textinfo='percent+label',
+                hovertemplate='<b>Classification:</b> %{label}<br>Tests: %{value}<br>Percentage: %{percent}',
+                pull=[0.05 if i == 0 else 0 for i in range(len(class_work_df))] # سحب أكبر شريحة لبرة شوية
+            )
+            
+            # إضافة كلمة في قلب الدونات
+            fig_class_ov.update_layout(
+                annotations=[dict(text='SOIL<br>CLASS', x=0.5, y=0.5, font_size=24, font_family="Rajdhani", font_color='#00d2ff', showarrow=False)]
+            )
+            
+            try: fig_class_ov = style_3d_glassy(fig_class_ov, chart_type="pie")
             except: pass
+            
             st.plotly_chart(fig_class_ov, use_container_width=True, key="overall_classification_chart")
             exported_figs["5. Overall Soil Classifications"] = fig_class_ov
         else:
