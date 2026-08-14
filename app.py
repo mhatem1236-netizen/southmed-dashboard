@@ -31,9 +31,8 @@ STATUS_COLORS = {
     'REVISE': '#f1c40f', 
     'REJECTED': '#e74c3c'
 }
-
-
-LOGIN_LOGS_FILE = "login_logs.csv"
+USERS_DB_FILE = "users_db_v2.csv"
+LOGIN_LOGS_FILE = "login_logs_v2.csv"
 AUDIT_LOG_FILE = "audit_trail.csv"
 
 if "theme" not in st.session_state:
