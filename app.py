@@ -78,33 +78,36 @@ def inject_custom_css():
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     
     if is_dark:
-        # 🌙 وضع العمليات الليلية (Stealth Ops)
-        bg_main = "#0a0e17"  # أسود راداري
+        # 🌙 Stealth Ops (Dark)
+        bg_main = "#0a0e17"
         bg_sidebar = "#0f1623"
         card_bg = "rgba(15, 23, 42, 0.85)"
         card_border = "rgba(0, 210, 255, 0.2)"
         card_shadow = "0 8px 32px rgba(0, 0, 0, 0.6)"
-        text_main = "#e2e8f0"  # رمادي فاتح مريح للعين
+        text_main = "#e2e8f0"
         text_muted = "#94a3b8"
-        accent_color = "#00d2ff" # أزرق سيبراني
+        accent_color = "#00d2ff"
         accent_glow = "0 0 10px rgba(0, 210, 255, 0.3)"
         input_bg = "rgba(30, 41, 59, 0.8)"
+        btn_bg = accent_color
+        btn_text = bg_main
     else:
-        # ☀️ وضع القيادة النهارية (Daytime HQ)
-        bg_main = "#f1f5f9"  # رمادي ثلجي مريح
+        # ☀️ Daytime HQ (Light)
+        bg_main = "#f8fafc"
         bg_sidebar = "#ffffff"
         card_bg = "#ffffff"
-        card_border = "rgba(15, 23, 42, 0.1)"
-        card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)"
-        text_main = "#0f172a"  # كحلي/فحمي شديد التباين
-        text_muted = "#64748b"
-        accent_color = "#0f172a" # كحلي تكتيكي
-        accent_glow = "none" # بدون توهج لراحة العين
-        input_bg = "#f8fafc"
+        card_border = "rgba(148, 163, 184, 0.3)"
+        card_shadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+        text_main = "#0f172a"
+        text_muted = "#475569"
+        accent_color = "#0ea5e9" # أزرق صريح للـ Light Mode
+        accent_glow = "none"
+        input_bg = "#ffffff"
+        btn_bg = accent_color
+        btn_text = "#ffffff"
 
     custom_css = f"""
     <style>
-    /* استدعاء خطوط مركز القيادة */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap');
     
     #MainMenu {{visibility: hidden;}}
@@ -112,34 +115,30 @@ def inject_custom_css():
     [data-testid="stHeader"] {{background: transparent !important;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
-    html, body, [class*="css"] {{ 
-        color: {text_main} !important; 
-        font-family: 'Inter', sans-serif; 
-    }}
+    html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
     
-    /* العناوين والأرقام بخط ديجيتال عسكري */
     h1, h2, h3, h4, h5, h6, .metric-value, .bi-title, .login-title {{ 
         font-family: 'Rajdhani', sans-serif !important; 
         letter-spacing: 0.5px;
+        color: {text_main} !important;
     }}
     p, .stMarkdown, label {{ color: {text_main} !important; }}
     
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.4s ease; }}
     
-    /* تضبيط حقول الإدخال */
-    [data-testid="stTextInput"] input,
-    [data-testid="stSelectbox"] div,
-    [data-testid="stMultiselect"] div {{
+    /* Input Fields */
+    [data-testid="stTextInput"] input, [data-testid="stSelectbox"] div, [data-testid="stMultiselect"] div {{
         background-color: {input_bg} !important;
         color: {text_main} !important;
         border: 1px solid {card_border} !important;
         border-radius: 4px !important;
     }}
     
+    /* Buttons Fix */
     [data-testid="stButton"] button {{
-        background: {accent_color} !important;
-        color: {bg_main} !important;
+        background: {btn_bg} !important;
+        color: {btn_text} !important;
         border: none !important;
         font-weight: 700 !important;
         font-family: 'Rajdhani', sans-serif !important;
@@ -147,80 +146,29 @@ def inject_custom_css():
         letter-spacing: 1px;
         border-radius: 4px !important;
     }}
+    [data-testid="stButton"] button:hover {{ opacity: 0.9 !important; transform: translateY(-1px) !important; box-shadow: {accent_glow}; }}
     
-    [data-testid="stButton"] button:hover {{
-        opacity: 0.8 !important;
-        transform: translateY(-2px) !important;
-        box-shadow: {accent_glow};
-    }}
-    
-    /* تصميم الكروت (Tactical Panels) */
+    /* Cards Fix */
     .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {{
         background: {card_bg} !important;
         padding: 20px;
-        border-radius: 4px; /* زوايا شبه حادة */
+        border-radius: 4px;
         border: 1px solid {card_border};
         border-top: 3px solid {accent_color};
         box-shadow: {card_shadow};
         margin-bottom: 15px;
-        backdrop-filter: blur(10px);
-        position: relative;
         transition: all 0.3s ease;
     }}
     
-    /* تأثير أقواس التنشين (Targeting Brackets) */
-    .metric-card:hover, .navigation-card:hover {{
-        transform: translateY(-3px);
-        box-shadow: {accent_glow};
-    }}
-    .metric-card::before, .metric-card::after {{
-        content: ''; position: absolute; width: 15px; height: 15px; transition: all 0.3s; opacity: 0;
-    }}
-    .metric-card::before {{ top: 5px; left: 5px; border-top: 2px solid {accent_color}; border-left: 2px solid {accent_color}; }}
-    .metric-card::after {{ bottom: 5px; right: 5px; border-bottom: 2px solid {accent_color}; border-right: 2px solid {accent_color}; }}
-    .metric-card:hover::before, .metric-card:hover::after {{ opacity: 1; }}
-    
-    .bi-title {{
-        color: {text_main} !important;
-        font-size: 28px;
-        font-weight: 700;
-        margin-top: 30px;
-        margin-bottom: 20px;
-        text-transform: uppercase;
-        border-bottom: 1px solid {card_border};
-        padding-bottom: 10px;
-    }}
-    
+    .bi-title {{ font-size: 28px; font-weight: 700; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid {card_border}; padding-bottom: 10px; }}
     .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; text-transform: uppercase; }}
     .metric-value {{ color: {accent_color} !important; font-size: 38px; font-weight: 700; line-height: 1.2; text-shadow: {accent_glow}; }}
     
-    .delta-up {{ color: #2ecc71 !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
-    .delta-down {{ color: #e74c3c !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
-    .delta-neutral {{ color: {text_muted} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
+    .gradient-divider {{ height: 1px; background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
     
-    .gradient-divider {{
-        height: 1px;
-        background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%);
-        margin: 40px 0;
-        border: none;
-        opacity: 0.5;
-    }}
+    /* User Tag Fix */
+    div[style*="background:rgba(255,170,0,0.1)"] {{ background: {card_bg} !important; border-color: {card_border} !important; }}
     
-    .ticker-wrap {{ background: {card_bg}; border-radius: 4px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid {accent_color}; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
-    .ticker {{ display: inline-block; padding-right: 100%; animation: ticker 35s linear infinite; }}
-    @keyframes ticker {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
-    .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; text-transform: uppercase; font-family: 'Rajdhani', sans-serif; }}
-    .ticker-item span {{ color: {accent_color}; font-weight: 800; font-size: 16px; }}
-    
-    .chat-container {{ background: {card_bg}; padding: 20px; border-radius: 4px; border: 1px solid {card_border}; margin-bottom: 20px; max-height: 400px; overflow-y: auto; font-family: 'Inter', sans-serif; }}
-    .user-msg {{ background: rgba(0, 210, 255, 0.1); padding: 15px; border-radius: 4px; margin-bottom: 10px; text-align: right; border-right: 3px solid #00d2ff; }}
-    .ai-msg {{ background: rgba(255, 170, 0, 0.05); padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }}
-    
-    .live-indicator {{ display: flex; align-items: center; gap: 8px; }}
-    .live-dot {{ width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }}
-    @keyframes pulse {{ 0%, 100% {{ opacity: 1; transform: scale(1); }} 50% {{ opacity: 0.5; transform: scale(1.2); }} }}
-    
-    /* تأثير خطوط المسح (Scanlines) خفيف جداً في الـ Dark Mode فقط */
     {"[data-testid='stAppViewContainer']::after { content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; opacity: 0.15; }" if is_dark else ""}
     </style>
     """
@@ -357,47 +305,44 @@ def authenticate_user(email, password):
 
 # ==========================================
 # 5. 3D Glassy Chart Styling Function
+# ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     
-    # ألوان تكتيكية متوهجة
-    font_color = "#e2e8f0" if is_dark else "#0f172a"
-    grid_color = 'rgba(0, 210, 255, 0.1)' if is_dark else 'rgba(15, 23, 42, 0.1)'
-    hover_bg = "rgba(15, 23, 42, 0.95)" if is_dark else "rgba(255, 255, 255, 0.95)"
+    # 🧠 ذكاء تحديد الألوان بناءً على المود
+    if is_dark:
+        font_color = "#e2e8f0"
+        grid_color = 'rgba(255, 255, 255, 0.05)' # شبكة بيضاء شفافة للدارك
+        hover_bg = "rgba(15, 23, 42, 0.95)"
+        title_color = "#00d2ff"
+    else:
+        font_color = "#334155" # رمادي غامق مقروء جداً لللايت
+        grid_color = 'rgba(0, 0, 0, 0.1)' # شبكة سوداء شفافة لللايت
+        hover_bg = "rgba(255, 255, 255, 0.95)"
+        title_color = "#0ea5e9"
 
     fig.update_layout(
         font=dict(family="Rajdhani, sans-serif", color=font_color, size=14),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(t=50, b=30, l=20, r=20),
-        title_font=dict(size=20, color="#00d2ff", family="Rajdhani, sans-serif"),
+        title_font=dict(size=20, color=title_color, family="Rajdhani, sans-serif"),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
             font=dict(size=12, color=font_color),
             bgcolor="rgba(0,0,0,0)"
         ),
-        hoverlabel=dict(
-            bgcolor=hover_bg, font_size=14, font_family="Inter, sans-serif", bordercolor="#00d2ff"
-        )
+        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter, sans-serif", bordercolor=title_color)
     )
     
-    # شبكة رادار تكتيكية (Dotted Grid)
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, griddash='dot', zerolinecolor=grid_color)
-    fig.update_xaxes(showgrid=False, zerolinecolor=grid_color)
+    # شبكة واضحة
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, griddash='dot', zerolinecolor=grid_color, tickfont=dict(color=font_color))
+    fig.update_xaxes(showgrid=False, zerolinecolor=grid_color, tickfont=dict(color=font_color))
     
     if chart_type in ["bar", "histogram"]:
-        # حواف مضيئة للأعمدة
-        fig.update_traces(
-            marker_line_color='rgba(255, 255, 255, 0.5)' if is_dark else 'rgba(0,0,0,0.2)',
-            marker_line_width=1.5,
-            opacity=0.9
-        )
+        fig.update_traces(marker_line_color='rgba(255, 255, 255, 0.5)' if is_dark else 'rgba(0,0,0,0.2)', marker_line_width=1.5, opacity=0.9)
     elif chart_type == "pie":
-        # فواصل سوداء حادة بين شرائح الدونات
-        fig.update_traces(
-            marker=dict(line=dict(color='#0a0e17' if is_dark else '#ffffff', width=3)),
-            hoverinfo="label+percent+value"
-        )
+        fig.update_traces(marker=dict(line=dict(color='#0a0e17' if is_dark else '#ffffff', width=3)), hoverinfo="label+percent+value")
     elif chart_type == "line" or chart_type == "scatter":
         fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=2)))
         
