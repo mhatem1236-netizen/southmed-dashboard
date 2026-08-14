@@ -1769,63 +1769,7 @@ def render_dashboard():
         create_card(tc3, "SAND CONE", f"{int(sand_cone_count):,}", delta_html=neutral_delta)
         create_card(tc4, "SOIL", f"{int(soil_count):,}", delta_html=neutral_delta)
 
-        # CSS and Helper Function for Unified Cards
-        st.markdown("""
-        <style>
-        .unified-card {
-            background-color: rgba(10, 20, 33, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 20px 20px 15px 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-            text-align: left;
-            font-family: 'Montserrat', sans-serif;
-            margin-bottom: 10px;
-        }
-        .unified-card-title {
-            color: #8da3b9;
-            font-size: 13px;
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-        .unified-card-value {
-            color: #ffffff;
-            font-size: 36px;
-            font-weight: 800;
-            margin: 0 0 5px 0;
-            line-height: 1.2;
-        }
-        .unified-card-subtitle {
-            color: #8da3b9;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-        .unified-card-bar {
-            height: 3px;
-            border-radius: 2px;
-            width: 100%;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        def draw_unified_card(title, value, subtitle, bar_color):
-            return f'''
-            <div class="unified-card">
-                <div class="unified-card-title">{title}</div>
-                <div class="unified-card-value">{value}</div>
-                <div class="unified-card-subtitle">➖ {subtitle}</div>
-                <div class="unified-card-bar" style="background-color: {bar_color};"></div>
-            </div>
-            '''
-
-        # خليناهم 4 أعمدة بدل 3 عشان نعرض الكارت الجديد
-        tc1, tc2, tc3, tc4 = st.columns(4)
-        tc1.markdown(draw_unified_card("DPL", f"{int(dpl_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
-        tc2.markdown(draw_unified_card("PLATE LOAD", f"{int(plate_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
-        tc3.markdown(draw_unified_card("SAND CONE", f"{int(sand_cone_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
-        tc4.markdown(draw_unified_card("SOIL", f"{int(soil_count):,}", "No change", "#f39c12"), unsafe_allow_html=True)
+        
         # ==========================================
         # 🏢 Overall Office Workload Analysis
         # ==========================================
