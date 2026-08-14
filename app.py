@@ -72,275 +72,156 @@ def _t(text):
     return text
 
 # ==========================================
-# 2. Dynamic UI/UX CSS Injection
+# 2. Tactical UI/UX CSS Injection (Dual Mode)
 # ==========================================
 def inject_custom_css():
-    is_dark = st.session_state["theme"] == "Dark"
+    is_dark = st.session_state.get("theme", "Dark") == "Dark"
     
     if is_dark:
-        bg_main = "radial-gradient(circle at top right, #0b1a2e, #050a11)"
-        bg_sidebar = "rgba(5, 10, 17, 0.95)"
-        card_bg = "linear-gradient(145deg, rgba(20, 35, 54, 0.6), rgba(10, 20, 33, 0.9))"
-        card_border = "rgba(255, 170, 0, 0.15)"
-        card_shadow = "0 10px 30px rgba(0, 0, 0, 0.4)"
-        text_main = "#ffffff"
-        text_muted = "#8da3b9"
-        title_color = "#ffaa00"
-        input_bg = "rgba(30, 45, 65, 0.8)"
-        button_bg = "linear-gradient(135deg, #00d2ff, #008cba)"
-        button_text = "#ffffff"
-        hover_bg = "rgba(0, 210, 255, 0.1)"
+        # 🌙 وضع العمليات الليلية (Stealth Ops)
+        bg_main = "#0a0e17"  # أسود راداري
+        bg_sidebar = "#0f1623"
+        card_bg = "rgba(15, 23, 42, 0.85)"
+        card_border = "rgba(0, 210, 255, 0.2)"
+        card_shadow = "0 8px 32px rgba(0, 0, 0, 0.6)"
+        text_main = "#e2e8f0"  # رمادي فاتح مريح للعين
+        text_muted = "#94a3b8"
+        accent_color = "#00d2ff" # أزرق سيبراني
+        accent_glow = "0 0 10px rgba(0, 210, 255, 0.3)"
+        input_bg = "rgba(30, 41, 59, 0.8)"
     else:
-        bg_main = "#F4F7F6"
+        # ☀️ وضع القيادة النهارية (Daytime HQ)
+        bg_main = "#f1f5f9"  # رمادي ثلجي مريح
         bg_sidebar = "#ffffff"
         card_bg = "#ffffff"
-        card_border = "rgba(0, 0, 0, 0.12)"
-        card_shadow = "0 8px 25px rgba(0, 0, 0, 0.08)"
-        text_main = "#1a1a1a"
-        text_muted = "#4a5568"
-        title_color = "#2980B9"
-        input_bg = "#f8f9fa"
-        button_bg = "linear-gradient(135deg, #2980B9, #1a5276)"
-        button_text = "#ffffff"
-        hover_bg = "rgba(41, 128, 185, 0.08)"
+        card_border = "rgba(15, 23, 42, 0.1)"
+        card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)"
+        text_main = "#0f172a"  # كحلي/فحمي شديد التباين
+        text_muted = "#64748b"
+        accent_color = "#0f172a" # كحلي تكتيكي
+        accent_glow = "none" # بدون توهج لراحة العين
+        input_bg = "#f8fafc"
 
     custom_css = f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@400;700;800&display=swap');
+    /* استدعاء خطوط مركز القيادة */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap');
     
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stHeader"] {{background: transparent !important;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
-    html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
-    h1, h2, h3, h4, h5, h6, .login-title {{ font-family: 'Montserrat', sans-serif !important; color: {text_main} !important; }}
+    html, body, [class*="css"] {{ 
+        color: {text_main} !important; 
+        font-family: 'Inter', sans-serif; 
+    }}
+    
+    /* العناوين والأرقام بخط ديجيتال عسكري */
+    h1, h2, h3, h4, h5, h6, .metric-value, .bi-title, .login-title {{ 
+        font-family: 'Rajdhani', sans-serif !important; 
+        letter-spacing: 0.5px;
+    }}
     p, .stMarkdown, label {{ color: {text_main} !important; }}
     
-    [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.3s ease; }}
-    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.3s ease; }}
+    [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
+    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.4s ease; }}
     
+    /* تضبيط حقول الإدخال */
     [data-testid="stTextInput"] input,
     [data-testid="stSelectbox"] div,
     [data-testid="stMultiselect"] div {{
         background-color: {input_bg} !important;
         color: {text_main} !important;
         border: 1px solid {card_border} !important;
+        border-radius: 4px !important;
     }}
     
     [data-testid="stButton"] button {{
-        background: {button_bg} !important;
-        color: {button_text} !important;
+        background: {accent_color} !important;
+        color: {bg_main} !important;
         border: none !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
+        font-family: 'Rajdhani', sans-serif !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-radius: 4px !important;
     }}
     
     [data-testid="stButton"] button:hover {{
-        opacity: 0.9 !important;
+        opacity: 0.8 !important;
         transform: translateY(-2px) !important;
+        box-shadow: {accent_glow};
     }}
     
-    ::-webkit-scrollbar {{
-        width: 8px;
-        height: 8px;
-    }}
-    ::-webkit-scrollbar-track {{
-        background: rgba(0,0,0,0.1);
-        border-radius: 10px;
-    }}
-    ::-webkit-scrollbar-thumb {{
-        background: linear-gradient(180deg, #00d2ff, #ffaa00);
-        border-radius: 10px;
-    }}
-    ::-webkit-scrollbar-thumb:hover {{
-        background: linear-gradient(180deg, #ffaa00, #00d2ff);
-    }}
-    
-    .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card {{
+    /* تصميم الكروت (Tactical Panels) */
+    .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {{
         background: {card_bg} !important;
-        padding: 25px;
-        border-radius: 16px;
+        padding: 20px;
+        border-radius: 4px; /* زوايا شبه حادة */
         border: 1px solid {card_border};
+        border-top: 3px solid {accent_color};
         box-shadow: {card_shadow};
         margin-bottom: 15px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        backdrop-filter: blur(10px);
         position: relative;
-        overflow: hidden;
+        transition: all 0.3s ease;
     }}
     
-    .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover {{
-        transform: translateY(-5px) scale(1.02) !important;
-        box-shadow: 0 20px 40px rgba(0, 210, 255, 0.3) !important;
-        border-color: #00d2ff !important;
+    /* تأثير أقواس التنشين (Targeting Brackets) */
+    .metric-card:hover, .navigation-card:hover {{
+        transform: translateY(-3px);
+        box-shadow: {accent_glow};
     }}
-    
-    .metric-card::before, .leaderboard-card::before {{
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-        transition: left 0.5s;
+    .metric-card::before, .metric-card::after {{
+        content: ''; position: absolute; width: 15px; height: 15px; transition: all 0.3s; opacity: 0;
     }}
-    
-    .metric-card:hover::before, .leaderboard-card:hover::before {{
-        left: 100%;
-    }}
+    .metric-card::before {{ top: 5px; left: 5px; border-top: 2px solid {accent_color}; border-left: 2px solid {accent_color}; }}
+    .metric-card::after {{ bottom: 5px; right: 5px; border-bottom: 2px solid {accent_color}; border-right: 2px solid {accent_color}; }}
+    .metric-card:hover::before, .metric-card:hover::after {{ opacity: 1; }}
     
     .bi-title {{
-        background: linear-gradient(135deg, #00d2ff 0%, #ffaa00 50%, #ff007f 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-size: 26px;
-        font-weight: 800;
-        margin-top: 40px;
+        color: {text_main} !important;
+        font-size: 28px;
+        font-weight: 700;
+        margin-top: 30px;
         margin-bottom: 20px;
-        position: relative;
+        text-transform: uppercase;
+        border-bottom: 1px solid {card_border};
+        padding-bottom: 10px;
     }}
     
-    .bi-title::after {{
-        content: '';
-        position: absolute;
-        bottom: -5px;
-        left: 0;
-        width: 0;
-        height: 3px;
-        background: linear-gradient(90deg, #00d2ff, #ffaa00);
-        transition: width 0.5s ease;
-    }}
-    
-    .bi-title:hover::after {{
-        width: 100%;
-    }}
-    
-    .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; font-family: 'Montserrat', sans-serif; }}
-    .metric-value {{ color: {text_main} !important; font-size: 36px; font-weight: 800; font-family: 'Montserrat', sans-serif; }}
+    .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; text-transform: uppercase; }}
+    .metric-value {{ color: {accent_color} !important; font-size: 38px; font-weight: 700; line-height: 1.2; text-shadow: {accent_glow}; }}
     
     .delta-up {{ color: #2ecc71 !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-down {{ color: #e74c3c !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     .delta-neutral {{ color: {text_muted} !important; font-size: 14px; font-weight: bold; margin-top: 8px; }}
     
     .gradient-divider {{
-        height: 2px;
-        background: linear-gradient(90deg, transparent 0%, #00d2ff 20%, #ffaa00 50%, #00d2ff 80%, transparent 100%);
-        background-size: 200% 100%;
-        animation: shimmer-divider 3s linear infinite;
+        height: 1px;
+        background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%);
         margin: 40px 0;
         border: none;
         opacity: 0.5;
     }}
     
-    @keyframes shimmer-divider {{
-        0% {{ background-position: 200% 0; }}
-        100% {{ background-position: -200% 0; }}
-    }}
-    
-    .ticker-wrap {{ background: {card_bg}; border-radius: 8px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid #00d2ff; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
+    .ticker-wrap {{ background: {card_bg}; border-radius: 4px; padding: 8px 0; margin-bottom: 20px; border-left: 3px solid {accent_color}; box-shadow: {card_shadow}; overflow: hidden; white-space: nowrap; }}
     .ticker {{ display: inline-block; padding-right: 100%; animation: ticker 35s linear infinite; }}
     @keyframes ticker {{ 0% {{ transform: translate3d(0, 0, 0); }} 100% {{ transform: translate3d(-100%, 0, 0); }} }}
-    .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; }}
-    .ticker-item span {{ color: #00d2ff; font-weight: 800; }}
+    .ticker-item {{ display: inline-block; padding: 0 2rem; font-weight: 600; color: {text_main}; font-size: 14px; text-transform: uppercase; font-family: 'Rajdhani', sans-serif; }}
+    .ticker-item span {{ color: {accent_color}; font-weight: 800; font-size: 16px; }}
     
-    .chat-container {{ background: {card_bg}; padding: 20px; border-radius: 15px; border: 1px solid {card_border}; margin-bottom: 20px; max-height: 400px; overflow-y: auto; }}
-    .user-msg {{ background: rgba(0, 210, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: right; border-right: 3px solid #00d2ff; }}
-    .ai-msg {{ background: rgba(255, 170, 0, 0.05); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }}
+    .chat-container {{ background: {card_bg}; padding: 20px; border-radius: 4px; border: 1px solid {card_border}; margin-bottom: 20px; max-height: 400px; overflow-y: auto; font-family: 'Inter', sans-serif; }}
+    .user-msg {{ background: rgba(0, 210, 255, 0.1); padding: 15px; border-radius: 4px; margin-bottom: 10px; text-align: right; border-right: 3px solid #00d2ff; }}
+    .ai-msg {{ background: rgba(255, 170, 0, 0.05); padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 3px solid #ffaa00; }}
     
-    .site-btn {{ background: linear-gradient(145deg, #00d2ff, #008cba); color: white; padding: 25px; border-radius: 15px; text-align: center; font-size: 20px; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.2s; margin-bottom: 15px; }}
-    .site-btn:hover {{ transform: translateY(-5px); }}
-    .site-btn:active {{ transform: translateY(2px); }}
+    .live-indicator {{ display: flex; align-items: center; gap: 8px; }}
+    .live-dot {{ width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }}
+    @keyframes pulse {{ 0%, 100% {{ opacity: 1; transform: scale(1); }} 50% {{ opacity: 0.5; transform: scale(1.2); }} }}
     
-    @keyframes pulse-glow {{
-        0%, 100% {{ box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); }}
-        50% {{ box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }}
-    }}
-    
-    .metric-value.critical {{
-        animation: pulse-glow 2s infinite;
-        color: #e74c3c !important;
-    }}
-    
-    @keyframes pulse {{
-        0%, 100% {{ opacity: 1; transform: scale(1); }}
-        50% {{ opacity: 0.5; transform: scale(1.2); }}
-    }}
-    
-    .live-indicator {{
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }}
-    
-    .live-dot {{
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-    }}
-    
-    [data-testid="stAppViewContainer"]::before {{
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-image:
-            radial-gradient(circle at 20% 50%, rgba(0, 210, 255, 0.03) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(255, 170, 0, 0.03) 0%, transparent 50%);
-        pointer-events: none;
-        z-index: -1;
-    }}
-    
-    [data-testid="stSidebar"] hr {{
-        border: none;
-        height: 1px;
-        background: linear-gradient(90deg, transparent 0%, #00d2ff 50%, transparent 100%);
-        margin: 20px 0;
-    }}
-    
-    .dataframe {{
-        border-radius: 12px !important;
-        overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
-    }}
-    
-    .dataframe th {{
-        background: linear-gradient(135deg, #00d2ff, #008cba) !important;
-        color: white !important;
-        font-weight: 600 !important;
-        text-transform: uppercase;
-        font-size: 12px !important;
-        letter-spacing: 1px;
-    }}
-    
-    .dataframe tr:hover {{
-        background: rgba(0, 210, 255, 0.05) !important;
-    }}
-    
-    .navigation-card {{
-        background: {card_bg} !important;
-        padding: 40px;
-        border-radius: 20px;
-        border: 2px solid {card_border};
-        box-shadow: {card_shadow};
-        cursor: pointer;
-        transition: all 0.3s ease;
-        min-height: 300px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-    }}
-    
-    .navigation-card:hover {{
-        transform: translateY(-10px) scale(1.05);
-        border-color: #00d2ff !important;
-        box-shadow: 0 30px 60px rgba(0, 210, 255, 0.4) !important;
-    }}
+    /* تأثير خطوط المسح (Scanlines) خفيف جداً في الـ Dark Mode فقط */
+    {"[data-testid='stAppViewContainer']::after { content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; opacity: 0.15; }" if is_dark else ""}
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
