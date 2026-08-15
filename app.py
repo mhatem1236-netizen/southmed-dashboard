@@ -3696,7 +3696,8 @@ def render_dashboard():
                                 
                                 # 4. مؤشر كثافة التنفيذ (EII)
                                 eii_pct = round((daily_productivity / avg_daily_target * 100), 1) if avg_daily_target > 0 else 0
-                                
+                                # 🔥 تحجيم السرعات الخرافية لـ 400% كحد أقصى عشان الشارت ميبوظش والنقط تفضل ظاهرة
+                                eii_pct = min(eii_pct, 400)
                                 # 5. حساب الاستمرارية (Hit Rate %)
                                 days_met = int((valid_target_group[exec_qty_m3_col] >= valid_target_group[target_col]).sum())
                                 hit_rate = round((days_met / days_w * 100), 1)
@@ -3761,7 +3762,7 @@ def render_dashboard():
                                 title="Execution Intensity Matrix (EII)", # ✅ إضافة عنوان صريح
                                 showlegend=False, # ✅ إخفاء الليجند العملاق لتوفير المساحة
                                 height=600, 
-                                xaxis=dict(range=[-5, 250], title="Execution Intensity Index - EII % (Capped at 250%)"), # ✅ تحجيم المحور السيني لمنع التمدد الكارثي
+                                xaxis=dict(title="Execution Intensity Index - EII % (Capped at 400%)"), # ✅ تحجيم المحور السيني لمنع التمدد الكارثي
                                 yaxis=dict(range=[-10, 110], title="Target Hit Rate % (Daily Consistency)"),
                                 hovermode='closest',
                                 margin=dict(t=50, b=30, l=30, r=30)
