@@ -2785,30 +2785,43 @@ def render_dashboard():
                                         st.rerun()
                             
                             if st.session_state[scan_key]:
-                                base_confidence = 75.0
-                                confidence_bonus = min(24.5, peak_fill_val * 0.6) 
-                                ai_confidence = round(base_confidence + confidence_bonus, 1)
-
-                                ai_ratio = stock_in_peak / peak_fill_val if peak_fill_val > 0 else 1
-                                
                                 has_target_qty = pd.notna(req_qty) and req_qty > 0
+                                req_qty_int = int(req_qty) if has_target_qty else 0
                                 
-                                if ai_ratio < 0.05:
-                                    status_level, status_color, status_bg, status_icon = "SEVERE DEFICIT", "#e74c3c", "rgba(231, 76, 60, 0.1)", "🚨"
-                                    quality_insight = f"Significant discrepancy detected. Fill operations ({peak_fill_val} tests) lack sufficient corresponding stockpile verifications, creating a gap in material quality traceability."
-                                    if has_target_qty:
-                                        samples_needed = max(1, int(peak_fill_val * 0.1))
-                                        directive = f"ACTION REQUIRED: Request contractor to submit at least {samples_needed} Stockpile samples to cover the executed fill volume."
+                                if has_target_qty and req_qty_int > 0:
+                                    coverage_ratio = stock_count / req_qty_int
+                                    
+                                    # 1. حساب نسبة الثقة بناءً على تحقيق التارجت الهندسي
+                                    ai_confidence = min(99.9, 60.0 + (coverage_ratio * 39.9))
+                                    ai_confidence = round(ai_confidence, 1)
+                                    
+                                    # 2. تقييم التغطية بناءً على الكود/المواصفات
+                                    if coverage_ratio < 0.75:
+                                        status_level, status_color, status_bg, status_icon = "SEVERE DEFICIT", "#e74c3c", "rgba(231, 76, 60, 0.1)", "🚨"
+                                        missing_tests = req_qty_int - stock_count
+                                        quality_insight = f"Significant deficit detected based on engineering targets. Only {stock_count} out of {req_qty_int} required tests are logged."
+                                        directive = f"ACTION REQUIRED: Execute and submit at least {missing_tests} Stockpile samples immediately to meet the volumetric target specifications."
+                                        
+                                    elif coverage_ratio < 1.0:
+                                        status_level, status_color, status_bg, status_icon = "COVERAGE GAP", "#f1c40f", "rgba(241, 196, 15, 0.1)", "⚠️"
+                                        missing_tests = req_qty_int - stock_count
+                                        quality_insight = f"Material approval rate is slightly lagging. You are at {int(coverage_ratio*100)}% of the required volumetric target."
+                                        directive = f"ADVISORY: Schedule {missing_tests} additional stockpile tests to achieve full engineering compliance."
+                                        
                                     else:
-                                        directive = f"SYSTEM.HALT: Cannot calculate required samples. No Target 'Required Quantity' is registered for this contractor. Update records to enable exact sampling estimates."
-                                elif ai_ratio < 0.15:
-                                    status_level, status_color, status_bg, status_icon = "COVERAGE GAP", "#f1c40f", "rgba(241, 196, 15, 0.1)", "⚠️"
-                                    quality_insight = f"Material approval rate is lagging behind fill execution speed. A minor gap in material source validation is forming."
-                                    directive = f"ADVISORY: Schedule routine stockpile sampling to restore balance with field operations."
+                                        status_level, status_color, status_bg, status_icon = "OPTIMAL COVERAGE", "#2ecc71", "rgba(46, 204, 113, 0.1)", "✅"
+                                        quality_insight = f"Stockpile testing frequency exceeds or meets the required engineering targets ({int(coverage_ratio*100)}% coverage)."
+                                        directive = f"MAINTAIN: Volumetric target achieved. Continue standard QC monitoring."
+                                        
+                                    field_detect_msg = f"Target Required: <b style='color:#00d2ff;'>{req_qty_int} tests</b> based on volume.<br>Executed Stockpile Tests: <b style='color:{status_color};'>{stock_count} tests</b>."
+                                    
                                 else:
-                                    status_level, status_color, status_bg, status_icon = "OPTIMAL COVERAGE", "#2ecc71", "rgba(46, 204, 113, 0.1)", "✅"
-                                    quality_insight = f"Stockpile testing frequency is well-aligned with the current fill execution volume."
-                                    directive = f"MAINTAIN: Continue current testing and approval workflow."
+                                    # في حالة مفيش تارجت مسجل للمقاول
+                                    ai_confidence = 45.5 
+                                    status_level, status_color, status_bg, status_icon = "NO TARGET DEFINED", "#95a5a6", "rgba(149, 165, 166, 0.1)", "❓"
+                                    field_detect_msg = f"Executed Stockpile Tests: <b style='color:#00d2ff;'>{stock_count}</b>.<br>Target Required: <b style='color:#e74c3c;'>Not Found</b>."
+                                    quality_insight = "Cannot calculate material quality coverage because the 'Required Quantity' target is missing for this contractor."
+                                    directive = "SYSTEM.HALT: Please define the 'Required Quantity' in the Data Transformation Hub to enable AI volumetric audits."
 
                                 st.markdown(f"""
                                 <style>
@@ -2818,7 +2831,7 @@ def render_dashboard():
                                 </style>
                                 <div class="ai-terminal">
                                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
-                                        <h3 style="color: {status_color}; margin: 0; display: flex; align-items: center; font-size: 20px;"><span style="font-size: 24px; margin-right: 10px;">🤖</span> Generative AI Quality Auditor</h3>
+                                        <h3 style="color: {status_color}; margin: 0; display: flex; align-items: center; font-size: 20px;"><span style="font-size: 24px; margin-right: 10px;">🤖</span> Generative AI Quality Auditor (Volumetric)</h3>
                                         <div style="display: flex; gap: 10px;">
                                             <span class="ai-badge">⚡ Data Confidence: {ai_confidence}%</span>
                                             <span class="ai-badge" style="color: {status_color}; border-color: {status_color}; font-weight: bold;">{status_icon} Status: {status_level}</span>
@@ -2827,10 +2840,10 @@ def render_dashboard():
                                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
                                         <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #00d2ff;">
                                             <div style="color: #00d2ff; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> FIELD_DATA.DETECT()</div>
-                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">Peak filling activity detected in <b style="color:white;">{peak_fill_month}</b> with <b style="color:#00d2ff;">{peak_fill_val} submittals</b>.<br>Correlating approved Stockpile volume during this period is <b style="color:{status_color};">{stock_in_peak}</b>.</div>
+                                            <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{field_detect_msg}</div>
                                         </div>
                                         <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #ffaa00;">
-                                            <div style="color: #ffaa00; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QUALITY_GAP.ANALYZE()</div>
+                                            <div style="color: #ffaa00; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> ENGINEERING_GAP.ANALYZE()</div>
                                             <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{quality_insight}</div>
                                         </div>
                                         <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid {status_color};">
