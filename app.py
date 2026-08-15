@@ -3729,7 +3729,7 @@ def render_dashboard():
                                 y='Hit Rate %',
                                 color='Contractor',
                                 size='Bubble_Size',
-                                text='Element',
+                                # text='Element', # ❌ لغينا التكست المطبوع عشان نمنع الزحمة
                                 hover_name='Contractor',
                                 hover_data={
                                     'Contractor': False, 
@@ -3743,26 +3743,24 @@ def render_dashboard():
                                 color_discrete_sequence=NEON_COLORS
                             )
                             
-                            # خط المنتصف للاستمرارية عند 50% وللكثافة عند 100%
+                            # خط المنتصف للاستمرارية وللكثافة
                             fig_kpi.add_hline(y=50, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
                             fig_kpi.add_vline(x=100, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
                             
-                            # تحديد أقصى قيمة للـ X عشان الـ Annotations تتظبط
-                            max_x = max(150, kpi_df['EII (Intensity) %'].max() + 20)
-                            
-                            # إضافة الـ Annotations التحليلية
-                            fig_kpi.add_annotation(x=100 + (max_x-100)*0.5, y=95, text="🌟 High Intensity & Consistent", showarrow=False, font=dict(color="#2ecc71", size=11), bgcolor="rgba(0,0,0,0.5)")
+                            # إضافة الـ Annotations التحليلية (بأماكن ثابتة ومضبوطة)
+                            fig_kpi.add_annotation(x=175, y=95, text="🌟 High Intensity & Consistent", showarrow=False, font=dict(color="#2ecc71", size=11), bgcolor="rgba(0,0,0,0.5)")
                             fig_kpi.add_annotation(x=50, y=95, text="🐢 Consistent but Slow", showarrow=False, font=dict(color="#00d2ff", size=11), bgcolor="rgba(0,0,0,0.5)")
-                            fig_kpi.add_annotation(x=100 + (max_x-100)*0.5, y=5, text="🚀 High Speed, Poor Consistency", showarrow=False, font=dict(color="#f1c40f", size=11), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=175, y=5, text="🚀 High Speed, Poor Consistency", showarrow=False, font=dict(color="#f1c40f", size=11), bgcolor="rgba(0,0,0,0.5)")
                             fig_kpi.add_annotation(x=50, y=5, text="🚨 Slow & Erratic", showarrow=False, font=dict(color="#e74c3c", size=11), bgcolor="rgba(0,0,0,0.5)")
                             
-                            fig_kpi.update_traces(textposition='top center', textfont=dict(color='white', size=12, weight='bold'))
                             fig_kpi.update_layout(
+                                title="Execution Intensity Matrix (EII)", # ✅ إضافة عنوان صريح
+                                showlegend=False, # ✅ إخفاء الليجند العملاق لتوفير المساحة
                                 height=600, 
-                                xaxis=dict(range=[-5, max_x], title="Execution Intensity Index - EII % (Actual Speed vs Target Speed)"),
+                                xaxis=dict(range=[-5, 250], title="Execution Intensity Index - EII % (Capped at 250%)"), # ✅ تحجيم المحور السيني لمنع التمدد الكارثي
                                 yaxis=dict(range=[-10, 110], title="Target Hit Rate % (Daily Consistency)"),
                                 hovermode='closest',
-                                margin=dict(t=30, b=30, l=30, r=30)
+                                margin=dict(t=50, b=30, l=30, r=30)
                             )
                             
                             try: fig_kpi = style_3d_glassy(fig_kpi, "scatter")
