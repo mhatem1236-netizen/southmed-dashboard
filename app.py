@@ -3668,6 +3668,10 @@ def render_dashboard():
                         if sel_contractor != 'All Contractors':
                             df_valid = df_valid[df_valid[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()]
                             
+                        # 🔥 التعديل السحري: ربط شارت الماتريكس بفلتر العناصر اللي فوق
+                        if 'sel_elem_chart' in locals() and sel_elem_chart != 'All Elements':
+                            df_valid = df_valid[df_valid[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()]
+                            
                         grouped = df_valid.groupby([contractor_col, elem_all_col])
                         
                         for name, group in grouped:
