@@ -647,14 +647,11 @@ def render_home_page():
     
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
     
-   # 🧠 تحديد طريقة عرض الاسم: لو الحساب لكتيبة نعرضه كامل، لو شخص نعرض الاسم الأول
-    display_name = user['Name'] if "Battalion" in user['Name'] or "كتيبة" in user['Name'] else user['Name'].split()[0]
-    
     # Welcome Message
     st.markdown(f"""
     <div style="text-align: center; margin-bottom: 50px;">
         <h2 style="color: {ui['text_main']}; font-size: 32px; margin-bottom: 10px;">
-            Welcome Back, {display_name}! 👋
+            Welcome Back, {user['Name'].split()[0]}! 👋
         </h2>
         <p style="color: {ui['text_muted']}; font-size: 18px;">
             Choose your workspace to get started
