@@ -3786,12 +3786,16 @@ def render_dashboard():
                     st.caption("إطار تقييم هندسي شامل يعتمد على 5 معايير لتقييم المقاولين وتحديد الموثوقية.")
 
                     if contractor_col and target_col and exec_qty_m3_col and date_daily_col:
-                        # تجهيز الداتا للتقييم
+                        # 1. تجهيز الداتا للتقييم
                         df_score = df.copy()
                         df_score[target_col]      = pd.to_numeric(df_score[target_col], errors='coerce').fillna(0)
                         df_score[exec_qty_m3_col] = pd.to_numeric(df_score[exec_qty_m3_col], errors='coerce').fillna(0)
                         df_score[date_daily_col]  = pd.to_datetime(df_score[date_daily_col], dayfirst=True, errors='coerce')
                         df_score = df_score.dropna(subset=[contractor_col, date_daily_col])
+                        
+                        # 2. حساب حد الحجم الضخم (Tier A) للـ Scale Bonus
+                        contractor_volumes = df_score.groupby(contractor_col)[exec_qty_m3_col].sum()
+                        tier_a_threshold = contractor_volumes.quantile(0.75) if not contractor_volumes.empty else 0
 
                         scorecard_rows = []
                         
@@ -3802,10 +3806,9 @@ def render_dashboard():
                             group = group.sort_values(date_daily_col)
                             total_exec = group[exec_qty_m3_col].sum()
                             
-                            # تفادي القسمة على صفر للمقاولين اللي معملوش حاجة
                             if total_exec <= 0: continue
                                 
-                            # 1. Target Achievement (Weight: 35%)
+                            # --- 1. Target Achievement (Weight: 25%) ---
                             valid_target_days = group[group[target_col] > 0]
                             total_valid_days = len(valid_target_days)
                             if total_valid_days > 0:
@@ -3815,8 +3818,7 @@ def render_dashboard():
                                 hit_rate = 0
                             score_target = min(100, hit_rate * 100)
                             
-                            # 2. Consistency (Weight: 25%)
-                            # 1 - (Std / Mean)
+                            # --- 2. Consistency (Weight: 20%) ---
                             if total_valid_days > 2:
                                 mean_perf = valid_target_days[exec_qty_m3_col].mean()
                                 std_perf = valid_target_days[exec_qty_m3_col].std()
@@ -3826,50 +3828,66 @@ def render_dashboard():
                                 consistency = 0
                             score_consistency = min(100, consistency * 100)
                             
-                            # 3. Momentum (Weight: 20%)
-                            # استخدام Linear Regression مبسط لمعرفة الميل (Slope)
+                            # --- 3. Momentum (Weight: 15%) ---
                             if total_valid_days > 3:
                                 y = (valid_target_days[exec_qty_m3_col] / valid_target_days[target_col]).replace([np.inf, -np.inf], 0).fillna(0).values
                                 x = np.arange(len(y))
                                 slope, _ = np.polyfit(x, y, 1)
-                                # تطبيع الميل لنسبة مئوية (ميل إيجابي = سكور عالي)
-                                momentum = 50 + (slope * 500) # معادلة تقريبية لتحويل الميل لسكور
+                                momentum = 50 + (slope * 500)
                                 score_momentum = max(0, min(100, momentum))
                             else:
-                                score_momentum = 50 # محايد لو الداتا قليلة
+                                score_momentum = 50 
                                 
-                           # 4. Volume Delivery (Weight: 15%)
-                            # نسبة المنفذ على الإجمالي (مطابقة لكروت الـ Main KPIs)
+                            # --- 4. Volume Delivery (Weight: 10%) ---
                             if company_col and total_qty_col and company_col in df.columns:
-                                # بنروح للداتا الأصلية df عشان نجمع التارجت الكلي للمقاول (من عمود Company)
                                 tot_req = df[df[company_col].astype(str).str.strip() == ct][total_qty_col].sum()
                                 vol_delivery = (total_exec / tot_req * 100) if pd.notna(tot_req) and tot_req > 0 else 0
                             else:
                                 vol_delivery = 0
-                                
                             score_volume = min(100, vol_delivery)
-                            # 5. Active Days Rate (Weight: 5%)
+                            
+                            # --- 5. Active Days Rate (Weight: 5%) ---
                             min_date = group[date_daily_col].min()
                             max_date = group[date_daily_col].max()
                             spanned_days = (max_date - min_date).days + 1
-                            
-                            # التعديل هنا: استخدام nunique() لعد الأيام الفريدة فقط، وليس عدد الصفوف
                             active_days = group[group[exec_qty_m3_col] > 0][date_daily_col].nunique()
-                            
                             active_rate = (active_days / spanned_days * 100) if spanned_days > 0 else 0
                             score_active = min(100, active_rate)
                             
-                            # --- Final Weighted Score ---
-                            # الأوزان: 35%، 25%، 20%، 15%، 5%
+                            # --- 6. Site Execution Quality Yield (Weight: 25%) 🎯 ---
+                            score_quality = 50 # سكور افتراضي لو مفيش اختبارات
+                            test_col_name = next((c for c in df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), 'Test Type')
+                            
+                            if comp_name_col and 'sample status' in df.columns and test_col_name in df.columns:
+                                ct_qa = df[df[comp_name_col].astype(str).str.strip().str.lower() == ct.lower()]
+                                # الفلترة لاختبارات DPL و Plate Load فقط التي تمت في الموقع
+                                field_tests = ct_qa[ct_qa[test_col_name].astype(str).str.upper().str.contains('DPL|PLATE', na=False)]
+                                total_field_tests = len(field_tests)
+                                
+                                if total_field_tests > 0:
+                                    acc_field = len(field_tests[field_tests['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])])
+                                    score_quality = (acc_field / total_field_tests) * 100
+                            
+                            # --- 🧮 حساب النتيجة النهائية الموزونة ---
                             final_score = (
-                                (score_target * 0.35) + 
-                                (score_consistency * 0.25) + 
-                                (score_momentum * 0.20) + 
-                                (score_volume * 0.15) + 
-                                (score_active * 0.05)
+                                (score_target * 0.25) + 
+                                (score_consistency * 0.20) + 
+                                (score_momentum * 0.15) + 
+                                (score_volume * 0.10) + 
+                                (score_active * 0.05) +
+                                (score_quality * 0.25)
                             )
                             
-                            # تحديد القرار (Verdict)
+                            # --- 🚀 Scale Bonus (علاوة الحجم للمقاولين الكبار) ---
+                            is_tier_a = False
+                            if total_exec >= tier_a_threshold and tier_a_threshold > 0:
+                                final_score += 5.0 # إضافة 5 درجات
+                                final_score = min(100.0, final_score)
+                                is_tier_a = True
+                                
+                            display_name = f"🌟 {ct}" if is_tier_a else ct
+                            
+                            # --- إصدار القرار الإداري (Verdict) ---
                             if final_score >= 70:
                                 verdict = "🟢 Reliable"
                             elif final_score >= 40:
@@ -3878,20 +3896,21 @@ def render_dashboard():
                                 verdict = "🔴 Critical"
                                 
                             scorecard_rows.append({
-                                'Contractor': ct,
+                                'Contractor': display_name,
                                 'Final Score': round(final_score, 1),
                                 'Verdict': verdict,
-                                'Target Achv. (35%)': f"{score_target:.1f}%",
-                                'Consistency (25%)': f"{score_consistency:.1f}%",
-                                'Momentum (20%)': f"{score_momentum:.1f}%",
-                                'Vol Delivery (15%)': f"{score_volume:.1f}%",
+                                'Quality Yield (25%)': f"{score_quality:.1f}%",
+                                'Target Achv. (25%)': f"{score_target:.1f}%",
+                                'Consistency (20%)': f"{score_consistency:.1f}%",
+                                'Momentum (15%)': f"{score_momentum:.1f}%",
+                                'Vol Delivery (10%)': f"{score_volume:.1f}%",
                                 'Active Rate (5%)': f"{score_active:.1f}%"
                             })
                             
                         if scorecard_rows:
                             score_df = pd.DataFrame(scorecard_rows).sort_values('Final Score', ascending=False)
                             
-                            # تصميم الكروت التوضيحية
+                            # تصميم الكروت الإرشادية للحالة الإدارية
                             st.markdown("""
                             <style>
                             .v-box { padding: 15px; border-radius: 10px; text-align: center; border: 1px solid; }
@@ -3902,9 +3921,9 @@ def render_dashboard():
                             """, unsafe_allow_html=True)
                             
                             vc1, vc2, vc3 = st.columns(3)
-                            vc1.markdown(f'<div class="v-box v-g"><h4 style="color:#2ecc71; margin:0;">🟢 Reliable Contractor</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score ≥ 70 — يشتغل فوق الهدف باستمرار، انحراف منخفض. يستحق زيادة الأعمال.</p></div>', unsafe_allow_html=True)
-                            vc2.markdown(f'<div class="v-box v-a"><h4 style="color:#f1c40f; margin:0;">🟡 Watch List</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score 40-70 — أداء متذبذب أو أقل من الهدف. يحتاج متابعة أسبوعية.</p></div>', unsafe_allow_html=True)
-                            vc3.markdown(f'<div class="v-box v-r"><h4 style="color:#e74c3c; margin:0;">🔴 Critical — Intervention</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score < 40 — خطر على الجدول الزمني. يحتاج تدخل فوري.</p></div>', unsafe_allow_html=True)
+                            vc1.markdown(f'<div class="v-box v-g"><h4 style="color:#2ecc71; margin:0;">🟢 Reliable Contractor</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score ≥ 70 — إنتاجية ثابتة وجودة دمك ممتازة. (🌟 = مقاول فئة أولى حجماً).</p></div>', unsafe_allow_html=True)
+                            vc2.markdown(f'<div class="v-box v-a"><h4 style="color:#f1c40f; margin:0;">🟡 Watch List</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score 40-70 — أداء متذبذب أو رفض متكرر. يحتاج مراقبة مكثفة.</p></div>', unsafe_allow_html=True)
+                            vc3.markdown(f'<div class="v-box v-r"><h4 style="color:#e74c3c; margin:0;">🔴 Critical — Intervention</h4><p style="font-size:12px; color:{ui["text_muted"]}; margin:5px 0 0;">Score < 40 — خطر على الجدول الزمني وجودة المشروع. تدخل فوري.</p></div>', unsafe_allow_html=True)
                             
                             st.markdown("<br>", unsafe_allow_html=True)
                             
