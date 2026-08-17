@@ -4589,9 +4589,12 @@ def render_dashboard():
                         latest_tests = plot_df.groupby('Layer_Num').tail(1)
                         hanging_layers = latest_tests[latest_tests['status_upper'].isin(['REJECTED', 'REVISE'])]['Layer_Num'].tolist()
                         
-                        # 💡 3. اكتشاف الطبقات المعاد اختبارها (تكرار في نفس الطبقة)
-                        layer_counts = plot_df['Layer_Num'].value_counts()
-                        repeated_layers = layer_counts[layer_counts > 1].index.tolist()
+                        # 💡 3. اكتشاف الطبقات المعاد اختبارها (Reworked Layers) الذكي
+                        # هنجيب كل الطبقات اللي أخدت "رفض" في تاريخها
+                        all_rejected_history = plot_df[plot_df['status_upper'].isin(['REJECTED', 'REVISE'])]['Layer_Num'].unique().tolist()
+                        
+                        # الطبقة تعتبر (معادة) لو كانت اترفضت زمان، بس مش موجودة في قايمة المعلق (يعني نجحت بعدين)
+                        repeated_layers = [lyr for lyr in all_rejected_history if lyr not in hanging_layers]
                         
                         hanging_str = ", ".join(map(str, sorted(hanging_layers))) if hanging_layers else "✅ None"
                         repeated_str = ", ".join(map(str, sorted(repeated_layers))) if repeated_layers else "✅ None"
