@@ -4065,60 +4065,105 @@ def render_dashboard():
 # --- 1. Line Chart & Table (All Companies) ---
                             st.markdown("##### 🏢 DPL Performance & Consistency by Company")
                             
-                            # إضافة زر الاختيار بين المتوسط ومعامل الاستمرارية
+                           # 1. UI Radio Button (معايير القياس + المؤشر الشامل)
                             metric_choice = st.radio(
-                                "📊 اختر معيار القياس (Metric):", 
-                                ["المتوسط (Average - Performance)", "الاستمرارية (Consistency = Std / Mean)"], 
+                                "📊 (Metric) اختر معيار القياس:",
+                                options=[
+                                    "🔴 Average (المتوسط)", 
+                                    "🟡 Consistency (الاستمرارية)", 
+                                    "🟢 Pass Rate (نسبة القبول)", 
+                                    "🏆 Combined Score (المؤشر الشامل)"
+                                ],
                                 horizontal=True
                             )
+
+                            # 2. تجميع البيانات والعمليات الحسابية
+                            def count_accepted(series):
+                                return series.astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED']).sum()
+
+                            group_dpl = dpl_data.groupby(comp_name_col).agg(
+                                total_tests=('AVERAGE VALUE', 'count'),
+                                avg_dpl=('AVERAGE VALUE', 'mean'),
+                                std_dpl=('AVERAGE VALUE', 'std'),
+                                accepted_tests=('sample status', count_accepted) if 'sample status' in dpl_data.columns else ('AVERAGE VALUE', lambda x: 0)
+                            ).reset_index()
+
+                            # حساب الاستمرارية (Consistency)
+                            group_dpl['Consistency'] = 1 - (group_dpl['std_dpl'] / group_dpl['avg_dpl']).fillna(0)
+                            group_dpl['Consistency'] = group_dpl['Consistency'].apply(lambda x: max(0, x)) * 100
                             
-                            if metric_choice == "المتوسط (Average - Performance)":
-                                comp_dpl_stat = dpl_data.groupby(comp_name_col)['AVERAGE VALUE'].mean().reset_index()
-                                comp_dpl_stat = comp_dpl_stat.sort_values('AVERAGE VALUE', ascending=False)
-                                metric_name = 'Avg DPL Value'
-                                chart_title = "Trend of Average DPL by Company"
-                                line_color = '#00d2ff'
-                                marker_color = '#ffaa00'
-                            else:
-                                # حساب المتوسط والانحراف المعياري معاً
-                                agg_df = dpl_data.groupby(comp_name_col)['AVERAGE VALUE'].agg(['std', 'mean']).fillna(0).reset_index()
-                                
-                                # حساب الاستمرارية (معامل الاختلاف CV) = الانحراف المعياري / المتوسط
-                                # بنستخدم np.where عشان نتجنب الـ Error بتاع القسمة على صفر
-                                agg_df['Consistency'] = np.where(agg_df['mean'] > 0, agg_df['std'] / agg_df['mean'], 0)
-                                
-                                comp_dpl_stat = agg_df[[comp_name_col, 'Consistency']].copy()
-                                # الترتيب تصاعدي: النسبة الأقل تعني تشتت أقل واستمرارية أعلى في الجودة
-                                comp_dpl_stat = comp_dpl_stat.sort_values('Consistency', ascending=True)
-                                
-                                metric_name = 'Consistency (CV)'
-                                chart_title = "DPL Consistency by Company (Lower Ratio = More Consistent)"
-                                line_color = '#2ecc71' # أخضر للدلالة على الاستقرار
-                                marker_color = '#e74c3c'
+                            # حساب نسبة القبول الفعلي (Pass Rate)
+                            group_dpl['Pass Rate %'] = (group_dpl['accepted_tests'] / group_dpl['total_tests']) * 100
+
+                            # 🔥 حساب المؤشر الشامل (Combined Score)
+                            max_avg = group_dpl['avg_dpl'].max()
+                            group_dpl['Norm_Avg'] = (group_dpl['avg_dpl'] / max_avg * 100) if max_avg > 0 else 0
                             
-                            comp_dpl_stat.columns = ['Contractor / Company Name', metric_name]
-                            
+                            group_dpl['Combined Score'] = (
+                                (group_dpl['Pass Rate %'] * 0.40) + 
+                                (group_dpl['Consistency'] * 0.30) + 
+                                (group_dpl['Norm_Avg'] * 0.30)
+                            )
+
+                            # 3. توجيه البيانات حسب اختيار المدير
+                            if "Average" in metric_choice:
+                                y_col = 'avg_dpl'
+                                y_title = 'Avg DPL Value (Blows)'
+                                line_color = "#00d2ff"
+                                group_dpl = group_dpl.sort_values(y_col, ascending=False)
+                                
+                            elif "Consistency" in metric_choice:
+                                y_col = 'Consistency'
+                                y_title = 'Consistency Score % (Higher is Better)'
+                                line_color = "#f1c40f"
+                                group_dpl = group_dpl.sort_values(y_col, ascending=False)
+                                
+                            elif "Pass Rate" in metric_choice:
+                                y_col = 'Pass Rate %'
+                                y_title = 'Approval Rate % (Field QA/QC)'
+                                line_color = "#2ecc71"
+                                group_dpl = group_dpl.sort_values(y_col, ascending=False)
+                                
+                            else: # 🏆 Combined Score
+                                y_col = 'Combined Score'
+                                y_title = 'Composite Score % (40% Pass + 30% Cons. + 30% Avg)'
+                                line_color = "#9b59b6"
+                                group_dpl = group_dpl.sort_values(y_col, ascending=False)
+
+                            comp_dpl_stat = group_dpl[[comp_name_col, y_col]].copy()
+                            comp_dpl_stat.columns = ['Contractor / Company Name', y_title]
+
                             col_chart, col_table = st.columns([0.65, 0.35])
                             
                             with col_chart:
-                                fig_dpl_line = px.line(comp_dpl_stat, x='Contractor / Company Name', y=metric_name, 
-                                                       markers=True, title=chart_title, 
-                                                       color_discrete_sequence=[line_color])
-                                fig_dpl_line.update_traces(line=dict(width=3), marker=dict(size=10, color=marker_color, line=dict(color='white', width=2)))
+                                # 4. رسم الشارت الديناميكي
+                                fig_dpl_line = px.line(
+                                    group_dpl, 
+                                    x=comp_name_col, 
+                                    y=y_col,
+                                    markers=True,
+                                    title=f"Trend of {y_title} by Company"
+                                )
+                                
+                                hover_temp = '<b>Contractor:</b> %{x}<br><b>' + y_title + ':</b> %{y:.2f}'
+                                fig_dpl_line.update_traces(
+                                    line=dict(color=line_color, width=3),
+                                    marker=dict(size=10, color=line_color, line=dict(color='white', width=2)),
+                                    hovertemplate=hover_temp
+                                )
+                                
                                 try: fig_dpl_line = style_3d_glassy(fig_dpl_line, "line")
                                 except: pass
                                 st.plotly_chart(fig_dpl_line, use_container_width=True, key="dpl_line_overall")
                                 exported_figs["13. DPL Performance & Consistency"] = fig_dpl_line
                                 
                             with col_table:
-                                # تنسيق الأرقام لـ 3 علامات عشرية
-                                st.dataframe(comp_dpl_stat.style.format({metric_name: "{:.3f}"}), use_container_width=True, hide_index=True)
+                                # تنسيق الأرقام لـ 3 علامات عشرية في الجدول
+                                st.dataframe(comp_dpl_stat.style.format({y_title: "{:.3f}"}), use_container_width=True, hide_index=True)
                                 csv_dpl = comp_dpl_stat.to_csv(index=False).encode('utf-8-sig')
                                 st.download_button(label=f"📥 Download Data", data=csv_dpl, 
                                                    file_name=f"DPL_Metrics_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv", 
                                                    mime="text/csv", type="primary", use_container_width=True)
-
-                            st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                             
                             # --- 2. Filter & Deep Dive per Company ---
                             st.markdown("##### 🔍 Interactive Deep Dive: Contractor Specific")
