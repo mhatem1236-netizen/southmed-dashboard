@@ -4414,35 +4414,7 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         with st.expander("📂 View Complete Operational Records (Raw Data)"):
             st.dataframe(filtered_df, use_container_width=True)
-# ==========================================
-        # 📥 PPTX Download Button
         # ==========================================
-        st.markdown('<div class="bi-title">📊 PowerPoint Executive Deck</div>', unsafe_allow_html=True)
-        st.info("💡 **Meeting Mode:** Generate a fully formatted, Dark-Themed PowerPoint presentation containing your live KPIs and interactive charts.")
-        
-        if st.button("📥 Generate & Download PPTX", type="primary", use_container_width=True):
-            with st.spinner("📸 AI is capturing high-resolution charts and building your slides... Please wait (10-15 seconds)..."):
-                try:
-                    ppt_file = generate_executive_pptx(current_metrics, exported_figs, uploaded_file.name)
-                    st.download_button(
-                        label="✅ Download Ready! Click to Save .pptx",
-                        data=ppt_file,
-                        file_name=f"KK_Executive_Deck_{datetime.now(EGYPT_TZ).strftime('%Y%m%d_%H%M')}.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        use_container_width=True
-                    )
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"❌ Error generating PowerPoint: {str(e)}. Make sure 'kaleido' is installed.")
-        # Back to Home Button
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-        if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
-            st.session_state["current_page"] = "home"
-            st.rerun()
-
-    else:
-        st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
-# ==========================================
         # 🚨 MODULE 1: Unresolved Rejections Tracker (Action Table)
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
@@ -4572,7 +4544,36 @@ def render_dashboard():
                 
                 st.plotly_chart(fig_viz, use_container_width=True, key="layer_cross_section_viz")
             else:
-                st.info("لا توجد بيانات كافية (أرقام طبقات) لرسم القطاع العرضي.")
+                st.info("لا توجد بيانات كافية (أرقام طبقات) لرسم القطاع العرضي.")    
+# ==========================================
+        # 📥 PPTX Download Button
+        # ==========================================
+        st.markdown('<div class="bi-title">📊 PowerPoint Executive Deck</div>', unsafe_allow_html=True)
+        st.info("💡 **Meeting Mode:** Generate a fully formatted, Dark-Themed PowerPoint presentation containing your live KPIs and interactive charts.")
+        
+        if st.button("📥 Generate & Download PPTX", type="primary", use_container_width=True):
+            with st.spinner("📸 AI is capturing high-resolution charts and building your slides... Please wait (10-15 seconds)..."):
+                try:
+                    ppt_file = generate_executive_pptx(current_metrics, exported_figs, uploaded_file.name)
+                    st.download_button(
+                        label="✅ Download Ready! Click to Save .pptx",
+                        data=ppt_file,
+                        file_name=f"KK_Executive_Deck_{datetime.now(EGYPT_TZ).strftime('%Y%m%d_%H%M')}.pptx",
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        use_container_width=True
+                    )
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"❌ Error generating PowerPoint: {str(e)}. Make sure 'kaleido' is installed.")
+        # Back to Home Button
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
+            st.session_state["current_page"] = "home"
+            st.rerun()
+
+    else:
+        st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
+
 # ==========================================
 # 14. Main Application Execution
 # ==========================================
