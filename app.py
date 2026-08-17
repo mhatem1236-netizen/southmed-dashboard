@@ -4480,73 +4480,81 @@ def render_dashboard():
                 st.info("⚠️ بعض الأعمدة المطلوبة (مثل Date, Serial, Element) غير مكتملة لتوليد السجل.")
 
         # ==========================================
-        # 🍰 MODULE 2: 3D Layer Cross-Section Visualizer (Solid Brick View)
+        # 🧊 MODULE 2: Holographic 3D Subsurface Digital Twin
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="bi-title">🍰 Earthworks Solid Cross-Section</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🧊 3D Subsurface Digital Twin (Hologram View)</div>', unsafe_allow_html=True)
+        st.caption("نموذج ثلاثي الأبعاد حقيقي لطبقات الردم. يعرض (العنصر) أفقياً، و(رقم الطبقة) كارتفاع، و(الزمن) كعمق. يمكنك تدوير المجسم وتقريبه بالماوس.")
         
-        # 🧠 تعريف الأعمدة هنا مباشرة لتجنب خطأ UnboundLocalError
         layer_col = next((c for c in filtered_df.columns if c.strip().lower() == 'layer'), None)
         status_col = next((c for c in filtered_df.columns if c.strip().lower() == 'sample status'), None)
         elem_col = next((c for c in filtered_df.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
-        
+        test_date_col = next((c for c in filtered_df.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
+
         if layer_col and status_col and elem_col:
             df_viz = filtered_df.dropna(subset=[layer_col, status_col, elem_col]).copy()
-            # استخراج الأرقام فقط من عمود الطبقة
+            # استخراج أرقام الطبقات فقط
             df_viz['Layer_Num'] = df_viz[layer_col].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
             df_viz = df_viz[df_viz['Layer_Num'] > 0]
             
             if not df_viz.empty:
                 df_viz['status_upper'] = df_viz[status_col].str.upper()
                 
-                # أخذ أحدث حالة لكل طبقة
-                viz_grouped = df_viz.groupby([elem_col, 'Layer_Num']).tail(1)
+                # باليتة ألوان نيون للـ 3D
+                def assign_color(status):
+                    if status in ['ACCEPTED', 'APPROVED AS NOTED']: return '#00ff87' # نيون أخضر ساطع
+                    elif status in ['REJECTED', 'REVISE']: return '#ff007f' # نيون أحمر صارخ
+                    else: return '#f1c40f' # نيون أصفر
+                df_viz['Color'] = df_viz['status_upper'].apply(assign_color)
                 
-                # تحويل الحالات لأرقام عشان الـ Heatmap يقدر يلونها
-                def status_to_numeric(status):
-                    if status in ['ACCEPTED', 'APPROVED AS NOTED']: return 2 # أخضر
-                    elif status in ['REJECTED', 'REVISE']: return 0 # أحمر
-                    else: return 1 # أصفر
-                
-                viz_grouped['Status_Val'] = viz_grouped['status_upper'].apply(status_to_numeric)
-                
-                # رسم القطاع باستخدام Heatmap (بلوكات صلبة)
-                fig_viz = go.Figure(data=go.Heatmap(
-                    x=viz_grouped[elem_col],
-                    y=viz_grouped['Layer_Num'],
-                    z=viz_grouped['Status_Val'],
-                    text=viz_grouped['status_upper'],
-                    # باليتة الألوان: 0=أحمر، 0.5=أصفر، 1=أخضر
-                    colorscale=[[0.0, '#e74c3c'], [0.5, '#f1c40f'], [1.0, '#2ecc71']],
-                    showscale=False, # إخفاء شريط الألوان الجانبي
-                    xgap=2, # مسافة أفقية بين البلوكات
-                    ygap=2, # مسافة رأسية بين الطبقات
-                    hovertemplate="<b>Element:</b> %{x}<br><b>Layer:</b> %{y}<br><b>Status:</b> %{text}<extra></extra>"
+                # استخدام التاريخ لعمل بُعد العمق الحقيقي (Time-based Depth)
+                if test_date_col and test_date_col in df_viz.columns:
+                    df_viz['Time_Axis'] = pd.to_datetime(df_viz[test_date_col], dayfirst=True, errors='coerce')
+                    df_viz['Y_Val'] = df_viz['Time_Axis'].dt.strftime('%Y-%m-%d').fillna("Unknown")
+                    y_label = "Timeline (Date)"
+                else:
+                    df_viz['Y_Val'] = "Static"
+                    y_label = "Depth"
+
+                # رسم المجسم الثلاثي الأبعاد
+                fig_3d = go.Figure()
+
+                fig_3d.add_trace(go.Scatter3d(
+                    x=df_viz[elem_col],
+                    y=df_viz['Y_Val'],
+                    z=df_viz['Layer_Num'],
+                    mode='markers',
+                    marker=dict(
+                        size=6,
+                        color=df_viz['Color'],
+                        opacity=0.8,
+                        symbol='circle',
+                        line=dict(color='rgba(255,255,255,0.9)', width=1.5) # إطار أبيض زجاجي يعطي إحساس المجسم
+                    ),
+                    text=df_viz['status_upper'],
+                    hovertemplate="<b>Element:</b> %{x}<br><b>Date:</b> %{y}<br><b>Layer Level:</b> %{z}<br><b>Status:</b> %{text}<extra></extra>"
                 ))
                 
-                fig_viz.update_layout(
-                    title="Solid Layers Cross-Section (Green=Accepted, Red=Rejected)",
-                    xaxis_title="Element / Location",
-                    yaxis_title="Layer Level",
-                    height=550,
-                    xaxis=dict(
-                        showgrid=False, 
-                        tickangle=-90, 
-                        tickfont=dict(size=10)
+                # إعدادات الكاميرا والإضاءة للستايل الـ Sci-Fi
+                fig_3d.update_layout(
+                    title="Holographic Earthworks Profile",
+                    scene=dict(
+                        xaxis=dict(title="Element", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#00d2ff")),
+                        yaxis=dict(title=y_label, backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#ffaa00")),
+                        zaxis=dict(title="Layer Level", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#2ecc71")),
+                        camera=dict(
+                            eye=dict(x=1.8, y=-1.8, z=0.8) # زاوية كاميرا 3D ديناميكية
+                        )
                     ),
-                    yaxis=dict(
-                        showgrid=False,
-                    ),
-                    plot_bgcolor='rgba(0,0,0,0)',
+                    height=700,
+                    margin=dict(l=0, r=0, b=0, t=50),
                     paper_bgcolor='rgba(0,0,0,0)',
-                    margin=dict(b=120)
+                    plot_bgcolor='rgba(0,0,0,0)'
                 )
                 
-                try: fig_viz = style_3d_glassy(fig_viz, "heatmap")
-                except: pass
-                st.plotly_chart(fig_viz, use_container_width=True, key="layer_cross_section_viz_heatmap")
+                st.plotly_chart(fig_3d, use_container_width=True, key="hologram_3d_viz")
             else:
-                st.info("💡 لا توجد بيانات كافية (أرقام طبقات) لرسم القطاع العرضي.")
+                st.info("💡 لا توجد بيانات كافية لرسم المجسم ثلاثي الأبعاد.")
         else:
             st.warning("⚠️ لم يظهر الشارت لأن أحد هذه الأعمدة مفقود من الشيت: (layer, sample status, Element).")
 # ==========================================
