@@ -4480,71 +4480,71 @@ def render_dashboard():
                 st.info("⚠️ بعض الأعمدة المطلوبة (مثل Date, Serial, Element) غير مكتملة لتوليد السجل.")
 
         # ==========================================
-        # 🍰 MODULE 2: 3D Layer Cross-Section Visualizer
+        # 🍰 MODULE 2: 3D Layer Cross-Section Visualizer (Solid Brick View)
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="bi-title">🍰 3D Layer Cross-Section Visualizer</div>', unsafe_allow_html=True)
-        st.caption("محاكي قطاع جانبي لطبقات الردم. (أخضر = سليم، أحمر = مرفوض/عنق زجاجة). يوضح لك بطن الطريق بنظرة واحدة.")
-
-        if 'layer' in filtered_df.columns and 'sample status' in filtered_df.columns and elem_col:
-            df_viz = filtered_df.dropna(subset=['layer', 'sample status', elem_col]).copy()
-            
-            # استخراج رقم الطبقة الحقيقي عشان تترتب صح (Layer 1, L-2 -> 1, 2)
-            df_viz['Layer_Num'] = df_viz['layer'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
-            df_viz = df_viz[df_viz['Layer_Num'] > 0] # تجاهل الصفوف اللي مفهاش رقم طبقة
+        st.markdown('<div class="bi-title">🍰 Earthworks Solid Cross-Section</div>', unsafe_allow_html=True)
+        
+        if layer_col and status_col and elem_col:
+            df_viz = filtered_df.dropna(subset=[layer_col, status_col, elem_col]).copy()
+            # استخراج الأرقام فقط من عمود الطبقة
+            df_viz['Layer_Num'] = df_viz[layer_col].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
+            df_viz = df_viz[df_viz['Layer_Num'] > 0]
             
             if not df_viz.empty:
-                # فرز الحالة عشان نجيب "أحدث" نتيجة للطبقة (نضمن إن لو الطبقة اتصلحت تظهر خضرا)
-                if 'Date ( test)' in df_viz.columns:
-                    df_viz = df_viz.sort_values('Date ( test)', ascending=True)
-                    
-                df_viz['status_upper'] = df_viz['sample status'].str.upper()
+                df_viz['status_upper'] = df_viz[status_col].str.upper()
                 
-                # إعطاء ألوان للحالات
-                def assign_color(status):
-                    if status in ['ACCEPTED', 'APPROVED AS NOTED']: return '#2ecc71' # أخضر
-                    elif status in ['REJECTED', 'REVISE']: return '#e74c3c' # أحمر
-                    else: return '#f1c40f' # أصفر (حالة أخرى)
-                    
-                df_viz['Color'] = df_viz['status_upper'].apply(assign_color)
-                
-                # تجميع أحدث حالة لكل طبقة في كل عنصر
+                # أخذ أحدث حالة لكل طبقة
                 viz_grouped = df_viz.groupby([elem_col, 'Layer_Num']).tail(1)
                 
-                # رسم القطاع (Scatter plot بمربعات كبيرة لتمثيل قطاع التربة)
-                fig_viz = go.Figure()
+                # تحويل الحالات لأرقام عشان الـ Heatmap يقدر يلونها
+                def status_to_numeric(status):
+                    if status in ['ACCEPTED', 'APPROVED AS NOTED']: return 2 # أخضر
+                    elif status in ['REJECTED', 'REVISE']: return 0 # أحمر
+                    else: return 1 # أصفر
                 
-                fig_viz.add_trace(go.Scatter(
+                viz_grouped['Status_Val'] = viz_grouped['status_upper'].apply(status_to_numeric)
+                
+                # رسم القطاع باستخدام Heatmap (بلوكات صلبة)
+                fig_viz = go.Figure(data=go.Heatmap(
                     x=viz_grouped[elem_col],
                     y=viz_grouped['Layer_Num'],
-                    mode='markers',
-                    marker=dict(
-                        symbol='square', 
-                        size=30, # حجم كبير عشان تبان كأنها "بلوك" تربة
-                        color=viz_grouped['Color'],
-                        line=dict(width=1, color='rgba(255,255,255,0.2)')
-                    ),
+                    z=viz_grouped['Status_Val'],
                     text=viz_grouped['status_upper'],
+                    # باليتة الألوان: 0=أحمر، 0.5=أصفر، 1=أخضر
+                    colorscale=[[0.0, '#e74c3c'], [0.5, '#f1c40f'], [1.0, '#2ecc71']],
+                    showscale=False, # إخفاء شريط الألوان الجانبي
+                    xgap=2, # مسافة أفقية بين البلوكات
+                    ygap=2, # مسافة رأسية بين الطبقات (تأثير الطوب المتراص)
                     hovertemplate="<b>Element:</b> %{x}<br><b>Layer:</b> %{y}<br><b>Status:</b> %{text}<extra></extra>"
                 ))
                 
                 fig_viz.update_layout(
-                    title="Earthworks Cross-Section (Blocks View)",
+                    title="Solid Layers Cross-Section (Green=Accepted, Red=Rejected)",
                     xaxis_title="Element / Location",
                     yaxis_title="Layer Level",
-                    yaxis=dict(tick0=1, dtick=1), # إجبار المحور الصادي يعرض أرقام صحيحة (1, 2, 3...)
-                    height=500,
+                    height=550,
+                    xaxis=dict(
+                        showgrid=False, 
+                        tickangle=-90, # لفة الأسماء 90 درجة عشان متدخلش في بعضها
+                        tickfont=dict(size=10)
+                    ),
+                    yaxis=dict(
+                        showgrid=False,
+                        # لغينا dtick=1 عشان البلوتس ترتب الأرقام تلقائي وميحصلش زحمة على الشمال
+                    ),
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
-                    margin=dict(b=100) # مساحة كافية لأسماء العناصر تحت
+                    margin=dict(b=120)
                 )
                 
-                try: fig_viz = style_3d_glassy(fig_viz, "scatter")
+                try: fig_viz = style_3d_glassy(fig_viz, "heatmap")
                 except: pass
-                
-                st.plotly_chart(fig_viz, use_container_width=True, key="layer_cross_section_viz")
+                st.plotly_chart(fig_viz, use_container_width=True, key="layer_cross_section_viz_heatmap")
             else:
-                st.info("لا توجد بيانات كافية (أرقام طبقات) لرسم القطاع العرضي.")    
+                st.info("💡 لا توجد بيانات كافية (أرقام طبقات) لرسم القطاع العرضي.")
+        else:
+            st.warning("⚠️ لم يظهر الشارت لأن أحد هذه الأعمدة مفقود من الشيت: (layer, sample status, Element).")
 # ==========================================
         # 📥 PPTX Download Button
         # ==========================================
