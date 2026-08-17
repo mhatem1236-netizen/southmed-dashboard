@@ -4640,26 +4640,23 @@ def render_dashboard():
 
                         st.markdown(f"""
 <div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
-    <div style="margin-bottom: 10px;">
-        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Max Elevation</div>
-        <div style="color: #00d2ff; font-size: 20px; font-weight: bold;">Level {max_layer}</div>
-    </div>
-    <div style="margin-bottom: 10px;">
-        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Velocity (Unique Layers/Week)</div>
-        <div style="color: #ffaa00; font-size: 20px; font-weight: bold;">{velocity_str}</div>
-    </div>
-    
-    <div style="margin-top: 15px; margin-bottom: 5px; color: #ff9900; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(255,153,0,0.3);">⚠️ Hanging (Unresolved)</div>
-    <div style="font-size: 12px; margin-bottom: 5px;"><b>DPL:</b> <span style="color: {'#ff9900' if hanging_dpl else '#2ecc71'};">{h_dpl_str}</span></div>
-    <div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#ff9900' if hanging_plate else '#2ecc71'};">{h_plate_str}</span></div>
-    
-    <div style="margin-top: 10px; margin-bottom: 5px; color: #f1c40f; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(241,196,15,0.3);">🔁 Repeated (Reworked/Retested)</div>
-    <div style="font-size: 12px; margin-bottom: 5px;"><b>DPL:</b> <span style="color: {'#f1c40f' if repeated_dpl else '#2ecc71'};">{r_dpl_str}</span></div>
-    <div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#f1c40f' if repeated_plate else '#2ecc71'};">{r_plate_str}</span></div>
-    
-    <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
-    <div style="margin-bottom: 10px;"><div style="color: #e74c3c; font-size: 12px; font-weight: bold;">⚠️ AI Diagnostics:</div><div style="color: {ui['text_main']}; font-size: 12px;">{problem_html}</div></div>
-    <div><div style="color: #2ecc71; font-size: 12px; font-weight: bold;">💡 AI Prescription:</div><div style="color: {ui['text_main']}; font-size: 12px; background: rgba(46,204,113,0.1); padding: 5px; border-radius: 5px;">{solution_html}</div></div>
+<div style="margin-bottom: 10px;">
+<div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Max Elevation</div>
+<div style="color: #00d2ff; font-size: 20px; font-weight: bold;">Level {max_layer}</div>
+</div>
+<div style="margin-bottom: 10px;">
+<div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Velocity (Unique Layers/Week)</div>
+<div style="color: #ffaa00; font-size: 20px; font-weight: bold;">{velocity_str}</div>
+</div>
+<div style="margin-top: 15px; margin-bottom: 5px; color: #ff9900; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(255,153,0,0.3);">⚠️ Hanging (Unresolved)</div>
+<div style="font-size: 12px; margin-bottom: 5px;"><b>DPL:</b> <span style="color: {'#ff9900' if hanging_dpl else '#2ecc71'};">{h_dpl_str}</span></div>
+<div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#ff9900' if hanging_plate else '#2ecc71'};">{h_plate_str}</span></div>
+<div style="margin-top: 10px; margin-bottom: 5px; color: #f1c40f; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(241,196,15,0.3);">🔁 Repeated (Reworked/Retested)</div>
+<div style="font-size: 12px; margin-bottom: 5px;"><b>DPL:</b> <span style="color: {'#f1c40f' if repeated_dpl else '#2ecc71'};">{r_dpl_str}</span></div>
+<div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#f1c40f' if repeated_plate else '#2ecc71'};">{r_plate_str}</span></div>
+<hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+<div style="margin-bottom: 10px;"><div style="color: #e74c3c; font-size: 12px; font-weight: bold;">⚠️ AI Diagnostics:</div><div style="color: {ui['text_main']}; font-size: 12px;">{problem_html}</div></div>
+<div><div style="color: #2ecc71; font-size: 12px; font-weight: bold;">💡 AI Prescription:</div><div style="color: {ui['text_main']}; font-size: 12px; background: rgba(46,204,113,0.1); padding: 5px; border-radius: 5px;">{solution_html}</div></div>
 </div>
 """, unsafe_allow_html=True)
             else:
