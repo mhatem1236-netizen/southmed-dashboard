@@ -4485,6 +4485,11 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🍰 Earthworks Solid Cross-Section</div>', unsafe_allow_html=True)
         
+        # 🧠 تعريف الأعمدة هنا مباشرة لتجنب خطأ UnboundLocalError
+        layer_col = next((c for c in filtered_df.columns if c.strip().lower() == 'layer'), None)
+        status_col = next((c for c in filtered_df.columns if c.strip().lower() == 'sample status'), None)
+        elem_col = next((c for c in filtered_df.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
+        
         if layer_col and status_col and elem_col:
             df_viz = filtered_df.dropna(subset=[layer_col, status_col, elem_col]).copy()
             # استخراج الأرقام فقط من عمود الطبقة
@@ -4515,7 +4520,7 @@ def render_dashboard():
                     colorscale=[[0.0, '#e74c3c'], [0.5, '#f1c40f'], [1.0, '#2ecc71']],
                     showscale=False, # إخفاء شريط الألوان الجانبي
                     xgap=2, # مسافة أفقية بين البلوكات
-                    ygap=2, # مسافة رأسية بين الطبقات (تأثير الطوب المتراص)
+                    ygap=2, # مسافة رأسية بين الطبقات
                     hovertemplate="<b>Element:</b> %{x}<br><b>Layer:</b> %{y}<br><b>Status:</b> %{text}<extra></extra>"
                 ))
                 
@@ -4526,12 +4531,11 @@ def render_dashboard():
                     height=550,
                     xaxis=dict(
                         showgrid=False, 
-                        tickangle=-90, # لفة الأسماء 90 درجة عشان متدخلش في بعضها
+                        tickangle=-90, 
                         tickfont=dict(size=10)
                     ),
                     yaxis=dict(
                         showgrid=False,
-                        # لغينا dtick=1 عشان البلوتس ترتب الأرقام تلقائي وميحصلش زحمة على الشمال
                     ),
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
