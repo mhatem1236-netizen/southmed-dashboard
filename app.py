@@ -4442,7 +4442,137 @@ def render_dashboard():
 
     else:
         st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
+# ==========================================
+        # 🚨 MODULE 1: Unresolved Rejections Tracker (Action Table)
+        # ==========================================
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🚨 Action Tracker: Unresolved Rejections (سجل العينات المرفوضة المعلقة)</div>', unsafe_allow_html=True)
+        st.caption("هذا الجدول يحصر العينات (DPL & Plate Load) المرفوضة والتي لم يتم تسجيل عينة ناجحة لها في نفس المنسوب، لتوجيهها للمكتب الفني لإغلاقها.")
 
+        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns and 'layer' in filtered_df.columns:
+            # تحديد الأعمدة المطلوبة بدقة
+            test_col = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+            sub_date_col = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
+            test_date_col = next((c for c in filtered_df.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
+            serial_col = next((c for c in filtered_df.columns if 'SERIAL' in c.upper() or c.strip() == 'serial'), None)
+            elem_col = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
+            
+            if test_col and sub_date_col and test_date_col and serial_col and elem_col:
+                # فلترة الداتا لـ DPL و Plate Load فقط
+                target_tests = filtered_df[filtered_df[test_col].astype(str).str.upper().str.contains('DPL|PLATE', na=False)].copy()
+                
+                if not target_tests.empty:
+                    target_tests['status_upper'] = target_tests['sample status'].astype(str).str.upper()
+                    
+                    # 💡 الذكاء هنا: عمل كود سري لكل طبقة عشان نعرف هل اترفضت وبعدين اتقبلت ولا لسه!
+                    target_tests['Unique_Loc'] = target_tests['Company Name'].astype(str) + "_" + target_tests[elem_col].astype(str) + "_" + target_tests['layer'].astype(str) + "_" + target_tests[test_col].astype(str)
+                    
+                    # سحب كل الأماكن اللي اتوافق عليها
+                    approved_locs = set(target_tests[target_tests['status_upper'].isin(['ACCEPTED', 'APPROVED AS NOTED'])]['Unique_Loc'].unique())
+                    
+                    # فلترة العينات المرفوضة اللي مش موجودة في قايمة المقبول
+                    unresolved_df = target_tests[
+                        (target_tests['status_upper'].isin(['REJECTED', 'REVISE'])) & 
+                        (~target_tests['Unique_Loc'].isin(approved_locs))
+                    ].copy()
+                    
+                    if not unresolved_df.empty:
+                        # ترتيب الجدول وعرض الأعمدة المطلوبة فقط
+                        display_cols = ['Company Name', serial_col, sub_date_col, test_date_col, 'layer', test_col, elem_col]
+                        # التأكد إن الأعمدة دي موجودة فعلاً في الداتا
+                        display_cols = [c for c in display_cols if c in unresolved_df.columns]
+                        
+                        unresolved_display = unresolved_df[display_cols].sort_values(by=['Company Name', sub_date_col])
+                        
+                        st.markdown(f"""
+                        <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <b style="color: #e74c3c;">يوجد عدد ({len(unresolved_display)}) طلب مرفوض لم يتم إغلاقه هندسياً حتى الآن!</b><br>
+                            <span style="font-size: 13px; color: {ui['text_muted']};">يرجى تحميل الجدول وإرساله للمكتب الفني للتعامل معها.</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
+                        
+                        # زرار تصدير الداتا للإكسيل للمكتب الفني
+                        csv_export = unresolved_display.to_csv(index=False).encode('utf-8-sig')
+                        st.download_button(
+                            label="📥 Download Unresolved Tracker (تحميل للمكتب الفني)",
+                            data=csv_export,
+                            file_name=f"Unresolved_Rejections_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                            mime="text/csv",
+                            type="primary"
+                        )
+                    else:
+                        st.success("✅ ممتاز! لا توجد أي عينات DPL أو Plate Load مرفوضة معلقة حالياً.")
+            else:
+                st.info("⚠️ بعض الأعمدة المطلوبة (مثل Date, Serial, Element) غير مكتملة لتوليد السجل.")
+
+        # ==========================================
+        # 🍰 MODULE 2: 3D Layer Cross-Section Visualizer
+        # ==========================================
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🍰 3D Layer Cross-Section Visualizer</div>', unsafe_allow_html=True)
+        st.caption("محاكي قطاع جانبي لطبقات الردم. (أخضر = سليم، أحمر = مرفوض/عنق زجاجة). يوضح لك بطن الطريق بنظرة واحدة.")
+
+        if 'layer' in filtered_df.columns and 'sample status' in filtered_df.columns and elem_col:
+            df_viz = filtered_df.dropna(subset=['layer', 'sample status', elem_col]).copy()
+            
+            # استخراج رقم الطبقة الحقيقي عشان تترتب صح (Layer 1, L-2 -> 1, 2)
+            df_viz['Layer_Num'] = df_viz['layer'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
+            df_viz = df_viz[df_viz['Layer_Num'] > 0] # تجاهل الصفوف اللي مفهاش رقم طبقة
+            
+            if not df_viz.empty:
+                # فرز الحالة عشان نجيب "أحدث" نتيجة للطبقة (نضمن إن لو الطبقة اتصلحت تظهر خضرا)
+                if 'Date ( test)' in df_viz.columns:
+                    df_viz = df_viz.sort_values('Date ( test)', ascending=True)
+                    
+                df_viz['status_upper'] = df_viz['sample status'].str.upper()
+                
+                # إعطاء ألوان للحالات
+                def assign_color(status):
+                    if status in ['ACCEPTED', 'APPROVED AS NOTED']: return '#2ecc71' # أخضر
+                    elif status in ['REJECTED', 'REVISE']: return '#e74c3c' # أحمر
+                    else: return '#f1c40f' # أصفر (حالة أخرى)
+                    
+                df_viz['Color'] = df_viz['status_upper'].apply(assign_color)
+                
+                # تجميع أحدث حالة لكل طبقة في كل عنصر
+                viz_grouped = df_viz.groupby([elem_col, 'Layer_Num']).tail(1)
+                
+                # رسم القطاع (Scatter plot بمربعات كبيرة لتمثيل قطاع التربة)
+                fig_viz = go.Figure()
+                
+                fig_viz.add_trace(go.Scatter(
+                    x=viz_grouped[elem_col],
+                    y=viz_grouped['Layer_Num'],
+                    mode='markers',
+                    marker=dict(
+                        symbol='square', 
+                        size=30, # حجم كبير عشان تبان كأنها "بلوك" تربة
+                        color=viz_grouped['Color'],
+                        line=dict(width=1, color='rgba(255,255,255,0.2)')
+                    ),
+                    text=viz_grouped['status_upper'],
+                    hovertemplate="<b>Element:</b> %{x}<br><b>Layer:</b> %{y}<br><b>Status:</b> %{text}<extra></extra>"
+                ))
+                
+                fig_viz.update_layout(
+                    title="Earthworks Cross-Section (Blocks View)",
+                    xaxis_title="Element / Location",
+                    yaxis_title="Layer Level",
+                    yaxis=dict(tick0=1, dtick=1), # إجبار المحور الصادي يعرض أرقام صحيحة (1, 2, 3...)
+                    height=500,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(b=100) # مساحة كافية لأسماء العناصر تحت
+                )
+                
+                try: fig_viz = style_3d_glassy(fig_viz, "scatter")
+                except: pass
+                
+                st.plotly_chart(fig_viz, use_container_width=True, key="layer_cross_section_viz")
+            else:
+                st.info("لا توجد بيانات كافية (أرقام طبقات) لرسم القطاع العرضي.")
 # ==========================================
 # 14. Main Application Execution
 # ==========================================
