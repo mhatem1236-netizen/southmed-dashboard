@@ -4479,12 +4479,12 @@ def render_dashboard():
             else:
                 st.info("⚠️ بعض الأعمدة المطلوبة (مثل Date, Serial, Element) غير مكتملة لتوليد السجل.")
 
-        # ==========================================
-        # 🧊 MODULE 2: Holographic 3D Subsurface Digital Twin
+       # ==========================================
+        # 🧊 MODULE 2: AI-Powered 3D Subsurface Digital Twin & Diagnostics
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="bi-title">🧊 3D Subsurface Digital Twin (Hologram View)</div>', unsafe_allow_html=True)
-        st.caption("نموذج ثلاثي الأبعاد حقيقي لطبقات الردم. يعرض (العنصر) أفقياً، و(رقم الطبقة) كارتفاع، و(الزمن) كعمق. يمكنك تدوير المجسم وتقريبه بالماوس.")
+        st.markdown('<div class="bi-title">🧊 3D Subsurface Digital Twin & AI Diagnostics</div>', unsafe_allow_html=True)
+        st.caption("اختر العنصر لتحليل قطاعاته رأسياً عبر الزمن. يقوم الذكاء الاصطناعي برصد سرعة الإنجاز، المشاكل المتكررة، واقتراح الحلول.")
         
         layer_col = next((c for c in filtered_df.columns if c.strip().lower() == 'layer'), None)
         status_col = next((c for c in filtered_df.columns if c.strip().lower() == 'sample status'), None)
@@ -4493,21 +4493,18 @@ def render_dashboard():
 
         if layer_col and status_col and elem_col:
             df_viz = filtered_df.dropna(subset=[layer_col, status_col, elem_col]).copy()
-            # استخراج أرقام الطبقات فقط
             df_viz['Layer_Num'] = df_viz[layer_col].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
             df_viz = df_viz[df_viz['Layer_Num'] > 0]
             
             if not df_viz.empty:
                 df_viz['status_upper'] = df_viz[status_col].str.upper()
                 
-                # باليتة ألوان نيون للـ 3D
                 def assign_color(status):
-                    if status in ['ACCEPTED', 'APPROVED AS NOTED']: return '#00ff87' # نيون أخضر ساطع
-                    elif status in ['REJECTED', 'REVISE']: return '#ff007f' # نيون أحمر صارخ
-                    else: return '#f1c40f' # نيون أصفر
+                    if status in ['ACCEPTED', 'APPROVED AS NOTED']: return '#00ff87' 
+                    elif status in ['REJECTED', 'REVISE']: return '#ff007f' 
+                    else: return '#f1c40f' 
                 df_viz['Color'] = df_viz['status_upper'].apply(assign_color)
                 
-                # استخدام التاريخ لعمل بُعد العمق الحقيقي (Time-based Depth)
                 if test_date_col and test_date_col in df_viz.columns:
                     df_viz['Time_Axis'] = pd.to_datetime(df_viz[test_date_col], dayfirst=True, errors='coerce')
                     df_viz['Y_Val'] = df_viz['Time_Axis'].dt.strftime('%Y-%m-%d').fillna("Unknown")
@@ -4516,43 +4513,142 @@ def render_dashboard():
                     df_viz['Y_Val'] = "Static"
                     y_label = "Depth"
 
-                # رسم المجسم الثلاثي الأبعاد
-                fig_3d = go.Figure()
+                # 💡 1. إضافة فلتر العناصر (Element Selector)
+                all_elements = sorted([e for e in df_viz[elem_col].unique() if str(e).strip() != '' and str(e).lower() != 'nan'])
+                col_filter, _ = st.columns([0.4, 0.6])
+                selected_elem_3d = col_filter.selectbox("📍 Isolate specific Element (or view all):", ["All Elements"] + all_elements, key="viz_3d_elem_filter")
 
-                fig_3d.add_trace(go.Scatter3d(
-                    x=df_viz[elem_col],
-                    y=df_viz['Y_Val'],
-                    z=df_viz['Layer_Num'],
-                    mode='markers',
-                    marker=dict(
-                        size=6,
-                        color=df_viz['Color'],
-                        opacity=0.8,
-                        symbol='circle',
-                        line=dict(color='rgba(255,255,255,0.9)', width=1.5) # إطار أبيض زجاجي يعطي إحساس المجسم
-                    ),
-                    text=df_viz['status_upper'],
-                    hovertemplate="<b>Element:</b> %{x}<br><b>Date:</b> %{y}<br><b>Layer Level:</b> %{z}<br><b>Status:</b> %{text}<extra></extra>"
-                ))
-                
-                # إعدادات الكاميرا والإضاءة للستايل الـ Sci-Fi
-                fig_3d.update_layout(
-                    title="Holographic Earthworks Profile",
-                    scene=dict(
-                        xaxis=dict(title="Element", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#00d2ff")),
-                        yaxis=dict(title=y_label, backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#ffaa00")),
-                        zaxis=dict(title="Layer Level", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#2ecc71")),
-                        camera=dict(
-                            eye=dict(x=1.8, y=-1.8, z=0.8) # زاوية كاميرا 3D ديناميكية
-                        )
-                    ),
-                    height=700,
-                    margin=dict(l=0, r=0, b=0, t=50),
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)'
-                )
-                
-                st.plotly_chart(fig_3d, use_container_width=True, key="hologram_3d_viz")
+                # فلترة الداتا بناءً على الاختيار
+                if selected_elem_3d != "All Elements":
+                    plot_df = df_viz[df_viz[elem_col] == selected_elem_3d].copy()
+                else:
+                    plot_df = df_viz.copy()
+
+                # 💡 2. تقسيم الشاشة (الشارت 75% - التشخيص 25%)
+                col_3d, col_ai = st.columns([0.75, 0.25])
+
+                with col_3d:
+                    # رسم المجسم
+                    fig_3d = go.Figure()
+                    fig_3d.add_trace(go.Scatter3d(
+                        x=plot_df[elem_col],
+                        y=plot_df['Y_Val'],
+                        z=plot_df['Layer_Num'],
+                        mode='markers',
+                        marker=dict(
+                            size=6 if selected_elem_3d == "All Elements" else 10, 
+                            color=plot_df['Color'],
+                            opacity=0.8,
+                            symbol='circle',
+                            line=dict(color='rgba(255,255,255,0.7)', width=1) 
+                        ),
+                        text=plot_df['status_upper'],
+                        hovertemplate="<b>Element:</b> %{x}<br><b>Date:</b> %{y}<br><b>Layer:</b> %{z}<br><b>Status:</b> %{text}<extra></extra>"
+                    ))
+                    
+                    fig_3d.update_layout(
+                        title=f"Holographic Profile: {selected_elem_3d}",
+                        scene=dict(
+                            xaxis=dict(title="Element", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#00d2ff")),
+                            yaxis=dict(title=y_label, backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#ffaa00")),
+                            zaxis=dict(title="Layer Level", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#2ecc71")),
+                            camera=dict(eye=dict(x=1.8, y=-1.8, z=0.8))
+                        ),
+                        height=600,
+                        margin=dict(l=0, r=0, b=0, t=40),
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)'
+                    )
+                    st.plotly_chart(fig_3d, use_container_width=True, key="hologram_3d_viz_new")
+
+                with col_ai:
+                    # 💡 3. العبقرية الهندسية (AI Diagnostics Terminal)
+                    st.markdown("""
+                    <div style="border-bottom: 2px solid #00d2ff; margin-bottom: 15px; padding-bottom: 5px;">
+                        <b style="color: #00d2ff; font-size: 18px;">🧠 AI Node Diagnostics</b>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    if selected_elem_3d == "All Elements":
+                        st.info("👆 Please isolate a specific Element from the dropdown above to run Deep Engineering Diagnostics.")
+                        
+                        # إحصائيات عامة
+                        st.markdown(f"""
+                        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                            <div style="color: {ui['text_muted']}; font-size: 12px;">Total Sector Layers Logged</div>
+                            <div style="color: {ui['text_main']}; font-size: 24px; font-weight: bold;">{len(plot_df):,}</div>
+                            <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
+                            <div style="color: {ui['text_muted']}; font-size: 12px;">Max Elevation Reached</div>
+                            <div style="color: #2ecc71; font-size: 24px; font-weight: bold;">Layer {plot_df['Layer_Num'].max()}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # --- حسابات الذكاء الاصطناعي للعنصر المحدد ---
+                        plot_df = plot_df.sort_values('Time_Axis') if 'Time_Axis' in plot_df.columns else plot_df
+                        max_layer = plot_df['Layer_Num'].max()
+                        total_tests = len(plot_df)
+                        rejections = plot_df[plot_df['status_upper'].isin(['REJECTED', 'REVISE'])]
+                        rej_rate = (len(rejections) / total_tests * 100) if total_tests > 0 else 0
+                        
+                        velocity_str = "N/A"
+                        problem_html = ""
+                        solution_html = ""
+                        
+                        if 'Time_Axis' in plot_df.columns and pd.notna(plot_df['Time_Axis'].min()):
+                            days_worked = (plot_df['Time_Axis'].max() - plot_df['Time_Axis'].min()).days
+                            if days_worked > 0:
+                                layers_per_week = (max_layer / days_worked) * 7
+                                velocity_str = f"{layers_per_week:.1f} Layers/Week"
+                            
+                                # تشخيص المشاكل واقتراح الحلول
+                                if layers_per_week < 2:
+                                    problem_html += "🐢 <b>Slow Velocity:</b> The vertical progression is unusually slow.<br>"
+                                    solution_html += "👉 <b>Action:</b> Audit contractor resource allocation. Deploy more compaction equipment.<br>"
+                                elif layers_per_week > 10 and rej_rate > 15:
+                                    problem_html += "🏎️ <b>Rushed Execution:</b> High speed is compromising quality.<br>"
+                                    solution_html += "👉 <b>Action:</b> Enforce hold points. Restrict layer placement until full lab approval.<br>"
+
+                        if rej_rate > 20:
+                            problem_html += f"🚨 <b>High Rejection ({rej_rate:.1f}%):</b> Consistent failure in compaction/materials.<br>"
+                            solution_html += "👉 <b>Action:</b> Check Optimum Moisture Content (OMC) and verify Stockpile material quality.<br>"
+                            
+                        if not problem_html:
+                            problem_html = "✅ No critical anomalies detected."
+                            solution_html = "👉 <b>Action:</b> Maintain current supervision level."
+
+                        # عرض الـ Terminal
+                        st.markdown(f"""
+                        <div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
+                            
+                            <div style="margin-bottom: 15px;">
+                                <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Max Elevation Reached</div>
+                                <div style="color: #00d2ff; font-size: 22px; font-weight: bold; font-family: monospace;">Layer {max_layer}</div>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Vertical Velocity</div>
+                                <div style="color: #ffaa00; font-size: 22px; font-weight: bold; font-family: monospace;">{velocity_str}</div>
+                            </div>
+
+                            <div style="margin-bottom: 15px;">
+                                <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Rejection Rate</div>
+                                <div style="color: {'#e74c3c' if rej_rate > 15 else '#2ecc71'}; font-size: 22px; font-weight: bold; font-family: monospace;">{rej_rate:.1f}%</div>
+                            </div>
+                            
+                            <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+                            
+                            <div style="margin-bottom: 10px;">
+                                <div style="color: #e74c3c; font-size: 12px; font-weight: bold; margin-bottom: 5px;">⚠️ AI Diagnostics:</div>
+                                <div style="color: {ui['text_main']}; font-size: 12px; line-height: 1.5;">{problem_html}</div>
+                            </div>
+                            
+                            <div>
+                                <div style="color: #2ecc71; font-size: 12px; font-weight: bold; margin-bottom: 5px;">💡 AI Prescription:</div>
+                                <div style="color: {ui['text_main']}; font-size: 12px; line-height: 1.5; background: rgba(46,204,113,0.1); padding: 8px; border-radius: 5px;">{solution_html}</div>
+                            </div>
+
+                        </div>
+                        """, unsafe_allow_html=True)
             else:
                 st.info("💡 لا توجد بيانات كافية لرسم المجسم ثلاثي الأبعاد.")
         else:
