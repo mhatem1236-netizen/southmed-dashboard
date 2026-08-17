@@ -4618,37 +4618,30 @@ def render_dashboard():
 
                         # عرض الـ Terminal
                         st.markdown(f"""
-                        <div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
-                            
-                            <div style="margin-bottom: 15px;">
-                                <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Max Elevation Reached</div>
-                                <div style="color: #00d2ff; font-size: 22px; font-weight: bold; font-family: monospace;">Layer {max_layer}</div>
-                            </div>
-                            
-                            <div style="margin-bottom: 15px;">
-                                <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Vertical Velocity</div>
-                                <div style="color: #ffaa00; font-size: 22px; font-weight: bold; font-family: monospace;">{velocity_str}</div>
-                            </div>
-
-                            <div style="margin-bottom: 15px;">
-                                <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Rejection Rate</div>
-                                <div style="color: {'#e74c3c' if rej_rate > 15 else '#2ecc71'}; font-size: 22px; font-weight: bold; font-family: monospace;">{rej_rate:.1f}%</div>
-                            </div>
-                            
-                            <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
-                            
-                            <div style="margin-bottom: 10px;">
-                                <div style="color: #e74c3c; font-size: 12px; font-weight: bold; margin-bottom: 5px;">⚠️ AI Diagnostics:</div>
-                                <div style="color: {ui['text_main']}; font-size: 12px; line-height: 1.5;">{problem_html}</div>
-                            </div>
-                            
-                            <div>
-                                <div style="color: #2ecc71; font-size: 12px; font-weight: bold; margin-bottom: 5px;">💡 AI Prescription:</div>
-                                <div style="color: {ui['text_main']}; font-size: 12px; line-height: 1.5; background: rgba(46,204,113,0.1); padding: 8px; border-radius: 5px;">{solution_html}</div>
-                            </div>
-
-                        </div>
-                        """, unsafe_allow_html=True)
+<div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
+    <div style="margin-bottom: 15px;">
+        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Max Elevation Reached</div>
+        <div style="color: #00d2ff; font-size: 22px; font-weight: bold; font-family: monospace;">Layer {max_layer}</div>
+    </div>
+    <div style="margin-bottom: 15px;">
+        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Vertical Velocity</div>
+        <div style="color: #ffaa00; font-size: 22px; font-weight: bold; font-family: monospace;">{velocity_str}</div>
+    </div>
+    <div style="margin-bottom: 15px;">
+        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Rejection Rate</div>
+        <div style="color: {'#e74c3c' if rej_rate > 15 else '#2ecc71'}; font-size: 22px; font-weight: bold; font-family: monospace;">{rej_rate:.1f}%</div>
+    </div>
+    <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+    <div style="margin-bottom: 10px;">
+        <div style="color: #e74c3c; font-size: 12px; font-weight: bold; margin-bottom: 5px;">⚠️ AI Diagnostics:</div>
+        <div style="color: {ui['text_main']}; font-size: 12px; line-height: 1.5;">{problem_html}</div>
+    </div>
+    <div>
+        <div style="color: #2ecc71; font-size: 12px; font-weight: bold; margin-bottom: 5px;">💡 AI Prescription:</div>
+        <div style="color: {ui['text_main']}; font-size: 12px; line-height: 1.5; background: rgba(46,204,113,0.1); padding: 8px; border-radius: 5px;">{solution_html}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
             else:
                 st.info("💡 لا توجد بيانات كافية لرسم المجسم ثلاثي الأبعاد.")
         else:
