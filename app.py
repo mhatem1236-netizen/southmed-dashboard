@@ -4484,15 +4484,20 @@ def render_dashboard():
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🧊 3D Subsurface Digital Twin & AI Diagnostics</div>', unsafe_allow_html=True)
-        st.caption("اختر العنصر لتحليل قطاعاته رأسياً عبر الزمن. يقوم الذكاء الاصطناعي برصد سرعة الإنجاز، المشاكل المتكررة، واقتراح الحلول.")
+        st.caption("يعرض هذا المجسم اختبارات (DPL & Plate Load) فقط. يحلل الذكاء الاصطناعي سرعة الإنجاز، العينات المعلقة بدون قبول، والطبقات التي تم إعادة اختبارها.")
         
         layer_col = next((c for c in filtered_df.columns if c.strip().lower() == 'layer'), None)
         status_col = next((c for c in filtered_df.columns if c.strip().lower() == 'sample status'), None)
         elem_col = next((c for c in filtered_df.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
         test_date_col = next((c for c in filtered_df.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
+        test_col = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
 
-        if layer_col and status_col and elem_col:
-            df_viz = filtered_df.dropna(subset=[layer_col, status_col, elem_col]).copy()
+        if layer_col and status_col and elem_col and test_col:
+            df_viz = filtered_df.dropna(subset=[layer_col, status_col, elem_col, test_col]).copy()
+            
+            # 💡 1. حصر البيانات في DPL و PLATE فقط
+            df_viz = df_viz[df_viz[test_col].astype(str).str.upper().str.contains('DPL|PLATE', na=False)]
+            
             df_viz['Layer_Num'] = df_viz[layer_col].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
             df_viz = df_viz[df_viz['Layer_Num'] > 0]
             
@@ -4513,22 +4518,18 @@ def render_dashboard():
                     df_viz['Y_Val'] = "Static"
                     y_label = "Depth"
 
-                # 💡 1. إضافة فلتر العناصر (Element Selector)
                 all_elements = sorted([e for e in df_viz[elem_col].unique() if str(e).strip() != '' and str(e).lower() != 'nan'])
                 col_filter, _ = st.columns([0.4, 0.6])
                 selected_elem_3d = col_filter.selectbox("📍 Isolate specific Element (or view all):", ["All Elements"] + all_elements, key="viz_3d_elem_filter")
 
-                # فلترة الداتا بناءً على الاختيار
                 if selected_elem_3d != "All Elements":
                     plot_df = df_viz[df_viz[elem_col] == selected_elem_3d].copy()
                 else:
                     plot_df = df_viz.copy()
 
-                # 💡 2. تقسيم الشاشة (الشارت 75% - التشخيص 25%)
                 col_3d, col_ai = st.columns([0.75, 0.25])
 
                 with col_3d:
-                    # رسم المجسم
                     fig_3d = go.Figure()
                     fig_3d.add_trace(go.Scatter3d(
                         x=plot_df[elem_col],
@@ -4547,14 +4548,14 @@ def render_dashboard():
                     ))
                     
                     fig_3d.update_layout(
-                        title=f"Holographic Profile: {selected_elem_3d}",
+                        title=f"Holographic Profile (DPL/Plate Only): {selected_elem_3d}",
                         scene=dict(
                             xaxis=dict(title="Element", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#00d2ff")),
                             yaxis=dict(title=y_label, backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#ffaa00")),
                             zaxis=dict(title="Layer Level", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#2ecc71")),
                             camera=dict(eye=dict(x=1.8, y=-1.8, z=0.8))
                         ),
-                        height=600,
+                        height=620,
                         margin=dict(l=0, r=0, b=0, t=40),
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)'
@@ -4562,31 +4563,39 @@ def render_dashboard():
                     st.plotly_chart(fig_3d, use_container_width=True, key="hologram_3d_viz_new")
 
                 with col_ai:
-                    # 💡 3. العبقرية الهندسية (AI Diagnostics Terminal)
                     st.markdown("""
-                    <div style="border-bottom: 2px solid #00d2ff; margin-bottom: 15px; padding-bottom: 5px;">
-                        <b style="color: #00d2ff; font-size: 18px;">🧠 AI Node Diagnostics</b>
-                    </div>
-                    """, unsafe_allow_html=True)
+<div style="border-bottom: 2px solid #00d2ff; margin-bottom: 15px; padding-bottom: 5px;">
+    <b style="color: #00d2ff; font-size: 18px;">🧠 AI Node Diagnostics</b>
+</div>
+""", unsafe_allow_html=True)
 
                     if selected_elem_3d == "All Elements":
                         st.info("👆 Please isolate a specific Element from the dropdown above to run Deep Engineering Diagnostics.")
-                        
-                        # إحصائيات عامة
                         st.markdown(f"""
-                        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
-                            <div style="color: {ui['text_muted']}; font-size: 12px;">Total Sector Layers Logged</div>
-                            <div style="color: {ui['text_main']}; font-size: 24px; font-weight: bold;">{len(plot_df):,}</div>
-                            <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-                            <div style="color: {ui['text_muted']}; font-size: 12px;">Max Elevation Reached</div>
-                            <div style="color: #2ecc71; font-size: 24px; font-weight: bold;">Layer {plot_df['Layer_Num'].max()}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+<div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+    <div style="color: {ui['text_muted']}; font-size: 12px;">Total DPL/Plate Tests Logged</div>
+    <div style="color: {ui['text_main']}; font-size: 24px; font-weight: bold;">{len(plot_df):,}</div>
+    <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
+    <div style="color: {ui['text_muted']}; font-size: 12px;">Max Elevation Reached</div>
+    <div style="color: #2ecc71; font-size: 24px; font-weight: bold;">Layer {plot_df['Layer_Num'].max()}</div>
+</div>
+""", unsafe_allow_html=True)
                     else:
-                        # --- حسابات الذكاء الاصطناعي للعنصر المحدد ---
                         plot_df = plot_df.sort_values('Time_Axis') if 'Time_Axis' in plot_df.columns else plot_df
                         max_layer = plot_df['Layer_Num'].max()
                         total_tests = len(plot_df)
+                        
+                        # 💡 2. اكتشاف الطبقات المعلقة (مرفوضة بدون قبول لاحق)
+                        latest_tests = plot_df.groupby('Layer_Num').tail(1)
+                        hanging_layers = latest_tests[latest_tests['status_upper'].isin(['REJECTED', 'REVISE'])]['Layer_Num'].tolist()
+                        
+                        # 💡 3. اكتشاف الطبقات المعاد اختبارها (تكرار في نفس الطبقة)
+                        layer_counts = plot_df['Layer_Num'].value_counts()
+                        repeated_layers = layer_counts[layer_counts > 1].index.tolist()
+                        
+                        hanging_str = ", ".join(map(str, sorted(hanging_layers))) if hanging_layers else "✅ None"
+                        repeated_str = ", ".join(map(str, sorted(repeated_layers))) if repeated_layers else "✅ None"
+                        
                         rejections = plot_df[plot_df['status_upper'].isin(['REJECTED', 'REVISE'])]
                         rej_rate = (len(rejections) / total_tests * 100) if total_tests > 0 else 0
                         
@@ -4598,38 +4607,46 @@ def render_dashboard():
                             days_worked = (plot_df['Time_Axis'].max() - plot_df['Time_Axis'].min()).days
                             if days_worked > 0:
                                 layers_per_week = (max_layer / days_worked) * 7
-                                velocity_str = f"{layers_per_week:.1f} Layers/Week"
+                                velocity_str = f"{layers_per_week:.1f} / Week"
                             
-                                # تشخيص المشاكل واقتراح الحلول
                                 if layers_per_week < 2:
-                                    problem_html += "🐢 <b>Slow Velocity:</b> The vertical progression is unusually slow.<br>"
-                                    solution_html += "👉 <b>Action:</b> Audit contractor resource allocation. Deploy more compaction equipment.<br>"
+                                    problem_html += "🐢 <b>Slow Velocity:</b> Progression is unusually slow.<br>"
                                 elif layers_per_week > 10 and rej_rate > 15:
                                     problem_html += "🏎️ <b>Rushed Execution:</b> High speed is compromising quality.<br>"
-                                    solution_html += "👉 <b>Action:</b> Enforce hold points. Restrict layer placement until full lab approval.<br>"
+
+                        if hanging_layers:
+                            problem_html += f"🚨 <b>Hanging Rejections:</b> Layers ({hanging_str}) failed and have no passing record.<br>"
+                            solution_html += f"👉 <b>URGENT:</b> Send NCR for Layers {hanging_str} and halt placement above them.<br>"
+
+                        if repeated_layers:
+                            problem_html += f"🔁 <b>Reworked Layers:</b> Layers ({repeated_str}) were tested multiple times due to initial failures.<br>"
 
                         if rej_rate > 20:
-                            problem_html += f"🚨 <b>High Rejection ({rej_rate:.1f}%):</b> Consistent failure in compaction/materials.<br>"
-                            solution_html += "👉 <b>Action:</b> Check Optimum Moisture Content (OMC) and verify Stockpile material quality.<br>"
+                            problem_html += f"⚠️ <b>High Rejection ({rej_rate:.1f}%):</b> Consistent failure in compaction/materials.<br>"
                             
                         if not problem_html:
                             problem_html = "✅ No critical anomalies detected."
-                            solution_html = "👉 <b>Action:</b> Maintain current supervision level."
+                            solution_html = "👉 Maintain current supervision level."
+                        elif not solution_html:
+                            solution_html = "👉 Closely monitor material and compaction methodology."
 
-                        # عرض الـ Terminal
                         st.markdown(f"""
 <div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
-    <div style="margin-bottom: 15px;">
-        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Max Elevation Reached</div>
-        <div style="color: #00d2ff; font-size: 22px; font-weight: bold; font-family: monospace;">Layer {max_layer}</div>
+    <div style="margin-bottom: 10px;">
+        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Max Elevation</div>
+        <div style="color: #00d2ff; font-size: 20px; font-weight: bold; font-family: monospace;">Layer {max_layer}</div>
     </div>
-    <div style="margin-bottom: 15px;">
-        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Vertical Velocity</div>
-        <div style="color: #ffaa00; font-size: 22px; font-weight: bold; font-family: monospace;">{velocity_str}</div>
+    <div style="margin-bottom: 10px;">
+        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Velocity (Layers/Week)</div>
+        <div style="color: #ffaa00; font-size: 20px; font-weight: bold; font-family: monospace;">{velocity_str}</div>
     </div>
-    <div style="margin-bottom: 15px;">
-        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Rejection Rate</div>
-        <div style="color: {'#e74c3c' if rej_rate > 15 else '#2ecc71'}; font-size: 22px; font-weight: bold; font-family: monospace;">{rej_rate:.1f}%</div>
+    <div style="margin-bottom: 10px;">
+        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Hanging Rejections (Unresolved)</div>
+        <div style="color: {'#e74c3c' if hanging_layers else '#2ecc71'}; font-size: 16px; font-weight: bold; font-family: monospace; word-wrap: break-word;">{hanging_str}</div>
+    </div>
+    <div style="margin-bottom: 10px;">
+        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Reworked Layers (Repeated)</div>
+        <div style="color: {'#f1c40f' if repeated_layers else '#2ecc71'}; font-size: 13px; font-weight: bold; font-family: monospace; word-wrap: break-word;">{repeated_str}</div>
     </div>
     <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
     <div style="margin-bottom: 10px;">
@@ -4643,9 +4660,9 @@ def render_dashboard():
 </div>
 """, unsafe_allow_html=True)
             else:
-                st.info("💡 لا توجد بيانات كافية لرسم المجسم ثلاثي الأبعاد.")
+                st.info("💡 لا توجد عينات DPL أو Plate Load كافية لرسم المجسم ثلاثي الأبعاد.")
         else:
-            st.warning("⚠️ لم يظهر الشارت لأن أحد هذه الأعمدة مفقود من الشيت: (layer, sample status, Element).")
+            st.warning("⚠️ لم يظهر الشارت لأن أحد هذه الأعمدة مفقود من الشيت: (layer, sample status, Element, Test Type).")
 # ==========================================
         # 📥 PPTX Download Button
         # ==========================================
