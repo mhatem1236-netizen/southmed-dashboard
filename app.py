@@ -4480,11 +4480,18 @@ def render_dashboard():
                 st.info("⚠️ بعض الأعمدة المطلوبة (مثل Date, Serial, Element) غير مكتملة لتوليد السجل.")
 
        # ==========================================
-        # 🧊 MODULE 2: AI-Powered 3D Subsurface Digital Twin & Diagnostics
+        # 🧊 MODULE 2: AI-Powered 3D Subsurface Digital Twin (Open Book Edition)
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="bi-title">🧊 3D Subsurface Digital Twin & AI Diagnostics</div>', unsafe_allow_html=True)
-        st.caption("يعرض هذا المجسم اختبارات (DPL & Plate Load) فقط. يحلل الذكاء الاصطناعي سرعة الإنجاز، العينات المعلقة بدون قبول، والطبقات التي تم إعادة اختبارها.")
+        st.markdown('<div class="bi-title">🧊 3D Subsurface Digital Twin (Deep Analytics)</div>', unsafe_allow_html=True)
+        
+        # مفتاح الخريطة (Legend)
+        st.markdown("""
+        <div style="display: flex; gap: 15px; font-size: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+            <div><b>أشكال الاختبارات:</b> 🟢 (كرة) = DPL | 🔷 (ماسة) = Plate Load</div>
+            <div><b>حالة الطبقة:</b> <span style="color:#00ff87;">أخضر</span> = مقبول | <span style="color:#ff007f;">أحمر</span> = مرفوض وتم معالجته | <span style="color:#ff9900; font-weight:bold;">برتقالي</span> = مرفوض معلق (لم يتم قبوله)</div>
+        </div>
+        """, unsafe_allow_html=True)
         
         layer_col = next((c for c in filtered_df.columns if c.strip().lower() == 'layer'), None)
         status_col = next((c for c in filtered_df.columns if c.strip().lower() == 'sample status'), None)
@@ -4495,37 +4502,66 @@ def render_dashboard():
         if layer_col and status_col and elem_col and test_col:
             df_viz = filtered_df.dropna(subset=[layer_col, status_col, elem_col, test_col]).copy()
             
-            # 💡 1. حصر البيانات في DPL و PLATE فقط
+            # حصر البيانات في DPL و PLATE
             df_viz = df_viz[df_viz[test_col].astype(str).str.upper().str.contains('DPL|PLATE', na=False)]
             
-            df_viz['Layer_Num'] = df_viz[layer_col].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
+            # 💡 استخراج أرقام الطبقات والمناسيب بدقة (دعم الأرقام العشرية زي 33.5)
+            df_viz['Layer_Num'] = df_viz[layer_col].astype(str).str.extract(r'(\d+\.?\d*)')[0].fillna(0).astype(float)
             df_viz = df_viz[df_viz['Layer_Num'] > 0]
             
             if not df_viz.empty:
                 df_viz['status_upper'] = df_viz[status_col].str.upper()
+                df_viz['Test_Category'] = df_viz[test_col].astype(str).str.upper().apply(lambda x: 'PLATE' if 'PLATE' in x else 'DPL')
                 
-                def assign_color(status):
-                    if status in ['ACCEPTED', 'APPROVED AS NOTED']: return '#00ff87' 
-                    elif status in ['REJECTED', 'REVISE']: return '#ff007f' 
-                    else: return '#f1c40f' 
-                df_viz['Color'] = df_viz['status_upper'].apply(assign_color)
-                
+                # ربط السيريال واسم الشركة للمعلومات عند الوقوف بالماوس
+                company_col = next((c for c in filtered_df.columns if c.strip().lower() in ['company name', 'company', 'contractor']), None)
+                serial_col = next((c for c in filtered_df.columns if c.strip().lower() in ['serial', 'serial no', 'no']), None)
+                df_viz['Company_Info'] = df_viz[company_col] if company_col else 'N/A'
+                df_viz['Serial_Info'] = df_viz[serial_col] if serial_col else 'N/A'
+
+                # ترتيب بالزمن
                 if test_date_col and test_date_col in df_viz.columns:
                     df_viz['Time_Axis'] = pd.to_datetime(df_viz[test_date_col], dayfirst=True, errors='coerce')
+                    df_viz = df_viz.sort_values('Time_Axis')
                     df_viz['Y_Val'] = df_viz['Time_Axis'].dt.strftime('%Y-%m-%d').fillna("Unknown")
                     y_label = "Timeline (Date)"
                 else:
+                    df_viz['Time_Axis'] = pd.NaT
                     df_viz['Y_Val'] = "Static"
                     y_label = "Depth"
 
                 all_elements = sorted([e for e in df_viz[elem_col].unique() if str(e).strip() != '' and str(e).lower() != 'nan'])
                 col_filter, _ = st.columns([0.4, 0.6])
-                selected_elem_3d = col_filter.selectbox("📍 Isolate specific Element (or view all):", ["All Elements"] + all_elements, key="viz_3d_elem_filter")
+                selected_elem_3d = col_filter.selectbox("📍 Isolate specific Element:", ["All Elements"] + all_elements, key="viz_3d_elem_filter")
 
-                if selected_elem_3d != "All Elements":
-                    plot_df = df_viz[df_viz[elem_col] == selected_elem_3d].copy()
-                else:
-                    plot_df = df_viz.copy()
+                plot_df = df_viz[df_viz[elem_col] == selected_elem_3d].copy() if selected_elem_3d != "All Elements" else df_viz.copy()
+
+                # 💡 اكتشاف الطبقات المعلقة (آخر اختبار للطبقة مرفوض)
+                latest_tests = plot_df.groupby(['Layer_Num', 'Test_Category']).tail(1)
+                hanging_idx = latest_tests[latest_tests['status_upper'].isin(['REJECTED', 'REVISE'])].index
+
+                # 💡 تخصيص الألوان بناءً على حالة القبول/الرفض والتعليق
+                def get_point_color(row):
+                    if row['status_upper'] in ['REJECTED', 'REVISE']:
+                        if row.name in hanging_idx: return '#ff9900' # برتقالي: مرفوض معلق (لم يعالج)
+                        else: return '#ff007f' # أحمر/بينك: مرفوض بس اتعالج
+                    else: return '#00ff87' # أخضر: مقبول
+                
+                plot_df['Color'] = plot_df.apply(get_point_color, axis=1)
+                
+                # 💡 تخصيص الأشكال (دائرة للـ DPL وماسة للـ Plate)
+                plot_df['Symbol'] = plot_df['Test_Category'].apply(lambda x: 'diamond' if x == 'PLATE' else 'circle')
+                
+                # 💡 تجهيز كتاب المعلومات (Hover Text)
+                plot_df['Hover_Text'] = (
+                    "<b>📌 Element:</b> " + plot_df[elem_col].astype(str) + "<br>" +
+                    "<b>📏 Layer/Level:</b> " + plot_df['Layer_Num'].astype(str) + "<br>" +
+                    "<b>🔬 Test Type:</b> " + plot_df['Test_Category'] + "<br>" +
+                    "<b>⚖️ Status:</b> " + plot_df['status_upper'] + "<br>" +
+                    "<b>📅 Date:</b> " + plot_df['Y_Val'] + "<br>" +
+                    "<b>📑 Serial:</b> " + plot_df['Serial_Info'].astype(str) + "<br>" +
+                    "<b>🏢 Company:</b> " + plot_df['Company_Info'].astype(str)
+                )
 
                 col_3d, col_ai = st.columns([0.75, 0.25])
 
@@ -4537,135 +4573,99 @@ def render_dashboard():
                         z=plot_df['Layer_Num'],
                         mode='markers',
                         marker=dict(
-                            size=6 if selected_elem_3d == "All Elements" else 10, 
+                            size=7 if selected_elem_3d == "All Elements" else 12, 
                             color=plot_df['Color'],
-                            opacity=0.8,
-                            symbol='circle',
-                            line=dict(color='rgba(255,255,255,0.7)', width=1) 
+                            symbol=plot_df['Symbol'],
+                            opacity=0.85,
+                            line=dict(color='rgba(255,255,255,0.7)', width=1.5) 
                         ),
-                        text=plot_df['status_upper'],
-                        hovertemplate="<b>Element:</b> %{x}<br><b>Date:</b> %{y}<br><b>Layer:</b> %{z}<br><b>Status:</b> %{text}<extra></extra>"
+                        text=plot_df['Hover_Text'],
+                        hovertemplate="%{text}<extra></extra>" # يعرض كتاب المعلومات فقط
                     ))
                     
                     fig_3d.update_layout(
-                        title=f"Holographic Profile (DPL/Plate Only): {selected_elem_3d}",
+                        title=f"Open-Book Subsurface Profile: {selected_elem_3d}",
                         scene=dict(
                             xaxis=dict(title="Element", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#00d2ff")),
                             yaxis=dict(title=y_label, backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#ffaa00")),
-                            zaxis=dict(title="Layer Level", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#2ecc71")),
+                            zaxis=dict(title="Layer / Elevation", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#2ecc71")),
                             camera=dict(eye=dict(x=1.8, y=-1.8, z=0.8))
                         ),
-                        height=620,
-                        margin=dict(l=0, r=0, b=0, t=40),
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)'
+                        height=650, margin=dict(l=0, r=0, b=0, t=40), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'
                     )
                     st.plotly_chart(fig_3d, use_container_width=True, key="hologram_3d_viz_new")
 
                 with col_ai:
-                    st.markdown("""
-<div style="border-bottom: 2px solid #00d2ff; margin-bottom: 15px; padding-bottom: 5px;">
-    <b style="color: #00d2ff; font-size: 18px;">🧠 AI Node Diagnostics</b>
-</div>
-""", unsafe_allow_html=True)
+                    st.markdown('<div style="border-bottom: 2px solid #00d2ff; margin-bottom: 15px; padding-bottom: 5px;"><b style="color: #00d2ff; font-size: 18px;">🧠 AI Node Diagnostics</b></div>', unsafe_allow_html=True)
 
                     if selected_elem_3d == "All Elements":
-                        st.info("👆 Please isolate a specific Element from the dropdown above to run Deep Engineering Diagnostics.")
-                        st.markdown(f"""
-<div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
-    <div style="color: {ui['text_muted']}; font-size: 12px;">Total DPL/Plate Tests Logged</div>
-    <div style="color: {ui['text_main']}; font-size: 24px; font-weight: bold;">{len(plot_df):,}</div>
-    <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-    <div style="color: {ui['text_muted']}; font-size: 12px;">Max Elevation Reached</div>
-    <div style="color: #2ecc71; font-size: 24px; font-weight: bold;">Layer {plot_df['Layer_Num'].max()}</div>
-</div>
-""", unsafe_allow_html=True)
+                        st.info("👆 Please isolate a specific Element to unlock Deep Analytics.")
                     else:
-                        plot_df = plot_df.sort_values('Time_Axis') if 'Time_Axis' in plot_df.columns else plot_df
                         max_layer = plot_df['Layer_Num'].max()
-                        total_tests = len(plot_df)
                         
-                        # 💡 2. اكتشاف الطبقات المعلقة (مرفوضة بدون قبول لاحق)
-                        latest_tests = plot_df.groupby('Layer_Num').tail(1)
-                        hanging_layers = latest_tests[latest_tests['status_upper'].isin(['REJECTED', 'REVISE'])]['Layer_Num'].tolist()
+                        # حساب الطبقات المعلقة حسب النوع
+                        hanging_dpl = plot_df.loc[hanging_idx][plot_df.loc[hanging_idx]['Test_Category'] == 'DPL']['Layer_Num'].unique().tolist()
+                        hanging_plate = plot_df.loc[hanging_idx][plot_df.loc[hanging_idx]['Test_Category'] == 'PLATE']['Layer_Num'].unique().tolist()
                         
-                        # 💡 3. اكتشاف الطبقات المعاد اختبارها (Reworked Layers) الذكي
-                        # هنجيب كل الطبقات اللي أخدت "رفض" في تاريخها
-                        all_rejected_history = plot_df[plot_df['status_upper'].isin(['REJECTED', 'REVISE'])]['Layer_Num'].unique().tolist()
+                        # حساب التكرار الفعلي (أي طبقة ظهرت أكتر من مرة لنفس نوع الاختبار)
+                        layer_counts = plot_df.groupby(['Layer_Num', 'Test_Category']).size()
+                        repeated_dpl = layer_counts[(layer_counts > 1) & (layer_counts.index.get_level_values('Test_Category') == 'DPL')].index.get_level_values('Layer_Num').unique().tolist()
+                        repeated_plate = layer_counts[(layer_counts > 1) & (layer_counts.index.get_level_values('Test_Category') == 'PLATE')].index.get_level_values('Layer_Num').unique().tolist()
                         
-                        # الطبقة تعتبر (معادة) لو كانت اترفضت زمان، بس مش موجودة في قايمة المعلق (يعني نجحت بعدين)
-                        repeated_layers = [lyr for lyr in all_rejected_history if lyr not in hanging_layers]
+                        # تنسيق النصوص للعرض
+                        def format_list(lst): return ", ".join(map(lambda x: str(x).rstrip('0').rstrip('.') if x%1==0 else str(x), sorted(lst))) if lst else "✅ None"
                         
-                        hanging_str = ", ".join(map(str, sorted(hanging_layers))) if hanging_layers else "✅ None"
-                        repeated_str = ", ".join(map(str, sorted(repeated_layers))) if repeated_layers else "✅ None"
-                        
-                        rejections = plot_df[plot_df['status_upper'].isin(['REJECTED', 'REVISE'])]
-                        rej_rate = (len(rejections) / total_tests * 100) if total_tests > 0 else 0
+                        h_dpl_str, h_plate_str = format_list(hanging_dpl), format_list(hanging_plate)
+                        r_dpl_str, r_plate_str = format_list(repeated_dpl), format_list(repeated_plate)
                         
                         velocity_str = "N/A"
-                        problem_html = ""
-                        solution_html = ""
-                        
-                        if 'Time_Axis' in plot_df.columns and pd.notna(plot_df['Time_Axis'].min()):
+                        if pd.notna(plot_df['Time_Axis'].min()):
                             days_worked = (plot_df['Time_Axis'].max() - plot_df['Time_Axis'].min()).days
                             if days_worked > 0:
-                                layers_per_week = (max_layer / days_worked) * 7
+                                layers_per_week = (len(plot_df['Layer_Num'].unique()) / days_worked) * 7
                                 velocity_str = f"{layers_per_week:.1f} / Week"
-                            
-                                if layers_per_week < 2:
-                                    problem_html += "🐢 <b>Slow Velocity:</b> Progression is unusually slow.<br>"
-                                elif layers_per_week > 10 and rej_rate > 15:
-                                    problem_html += "🏎️ <b>Rushed Execution:</b> High speed is compromising quality.<br>"
 
-                        if hanging_layers:
-                            problem_html += f"🚨 <b>Hanging Rejections:</b> Layers ({hanging_str}) failed and have no passing record.<br>"
-                            solution_html += f"👉 <b>URGENT:</b> Send NCR for Layers {hanging_str} and halt placement above them.<br>"
-
-                        if repeated_layers:
-                            problem_html += f"🔁 <b>Reworked Layers:</b> Layers ({repeated_str}) were tested multiple times due to initial failures.<br>"
-
-                        if rej_rate > 20:
-                            problem_html += f"⚠️ <b>High Rejection ({rej_rate:.1f}%):</b> Consistent failure in compaction/materials.<br>"
+                        problem_html, solution_html = "", ""
+                        if hanging_dpl or hanging_plate:
+                            problem_html += f"🚨 <b>Hanging Rejections:</b> Unresolved failures exist.<br>"
+                            solution_html += f"👉 <b>URGENT Action Required:</b> Halt work. Request NCR closure.<br>"
+                        if repeated_dpl or repeated_plate:
+                            problem_html += f"🔁 <b>Rework Detected:</b> Multiple tests on same layers indicating rework or overlap.<br>"
                             
                         if not problem_html:
-                            problem_html = "✅ No critical anomalies detected."
-                            solution_html = "👉 Maintain current supervision level."
+                            problem_html = "✅ Excellent execution. No critical anomalies."
+                            solution_html = "👉 Maintain current QA/QC process."
                         elif not solution_html:
-                            solution_html = "👉 Closely monitor material and compaction methodology."
+                            solution_html = "👉 Audit contractor compaction methodology."
 
                         st.markdown(f"""
 <div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
     <div style="margin-bottom: 10px;">
         <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Max Elevation</div>
-        <div style="color: #00d2ff; font-size: 20px; font-weight: bold; font-family: monospace;">Layer {max_layer}</div>
+        <div style="color: #00d2ff; font-size: 20px; font-weight: bold;">Level {max_layer}</div>
     </div>
     <div style="margin-bottom: 10px;">
-        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Velocity (Layers/Week)</div>
-        <div style="color: #ffaa00; font-size: 20px; font-weight: bold; font-family: monospace;">{velocity_str}</div>
+        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Velocity (Unique Layers/Week)</div>
+        <div style="color: #ffaa00; font-size: 20px; font-weight: bold;">{velocity_str}</div>
     </div>
-    <div style="margin-bottom: 10px;">
-        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Hanging Rejections (Unresolved)</div>
-        <div style="color: {'#e74c3c' if hanging_layers else '#2ecc71'}; font-size: 16px; font-weight: bold; font-family: monospace; word-wrap: break-word;">{hanging_str}</div>
-    </div>
-    <div style="margin-bottom: 10px;">
-        <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">Reworked Layers (Repeated)</div>
-        <div style="color: {'#f1c40f' if repeated_layers else '#2ecc71'}; font-size: 13px; font-weight: bold; font-family: monospace; word-wrap: break-word;">{repeated_str}</div>
-    </div>
+    
+    <div style="margin-top: 15px; margin-bottom: 5px; color: #ff9900; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(255,153,0,0.3);">⚠️ Hanging (Unresolved)</div>
+    <div style="font-size: 12px; margin-bottom: 5px;"><b>DPL:</b> <span style="color: {'#ff9900' if hanging_dpl else '#2ecc71'};">{h_dpl_str}</span></div>
+    <div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#ff9900' if hanging_plate else '#2ecc71'};">{h_plate_str}</span></div>
+    
+    <div style="margin-top: 10px; margin-bottom: 5px; color: #f1c40f; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(241,196,15,0.3);">🔁 Repeated (Reworked/Retested)</div>
+    <div style="font-size: 12px; margin-bottom: 5px;"><b>DPL:</b> <span style="color: {'#f1c40f' if repeated_dpl else '#2ecc71'};">{r_dpl_str}</span></div>
+    <div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#f1c40f' if repeated_plate else '#2ecc71'};">{r_plate_str}</span></div>
+    
     <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
-    <div style="margin-bottom: 10px;">
-        <div style="color: #e74c3c; font-size: 12px; font-weight: bold; margin-bottom: 5px;">⚠️ AI Diagnostics:</div>
-        <div style="color: {ui['text_main']}; font-size: 12px; line-height: 1.5;">{problem_html}</div>
-    </div>
-    <div>
-        <div style="color: #2ecc71; font-size: 12px; font-weight: bold; margin-bottom: 5px;">💡 AI Prescription:</div>
-        <div style="color: {ui['text_main']}; font-size: 12px; line-height: 1.5; background: rgba(46,204,113,0.1); padding: 8px; border-radius: 5px;">{solution_html}</div>
-    </div>
+    <div style="margin-bottom: 10px;"><div style="color: #e74c3c; font-size: 12px; font-weight: bold;">⚠️ AI Diagnostics:</div><div style="color: {ui['text_main']}; font-size: 12px;">{problem_html}</div></div>
+    <div><div style="color: #2ecc71; font-size: 12px; font-weight: bold;">💡 AI Prescription:</div><div style="color: {ui['text_main']}; font-size: 12px; background: rgba(46,204,113,0.1); padding: 5px; border-radius: 5px;">{solution_html}</div></div>
 </div>
 """, unsafe_allow_html=True)
             else:
                 st.info("💡 لا توجد عينات DPL أو Plate Load كافية لرسم المجسم ثلاثي الأبعاد.")
         else:
-            st.warning("⚠️ لم يظهر الشارت لأن أحد هذه الأعمدة مفقود من الشيت: (layer, sample status, Element, Test Type).")
+            st.warning("⚠️ لم يظهر الشارت لأن أحد هذه الأعمدة مفقود.")
 # ==========================================
         # 📥 PPTX Download Button
         # ==========================================
