@@ -4428,6 +4428,7 @@ def render_dashboard():
             test_date_col = next((c for c in filtered_df.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
             serial_col = next((c for c in filtered_df.columns if 'SERIAL' in c.upper() or c.strip() == 'serial'), None)
             elem_col = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
+            done_by_col = next((c for c in filtered_df.columns if 'DONE BY' in c.upper()), None) # 💡 إضافة عمود المكتب
             
             if test_col and sub_date_col and test_date_col and serial_col and elem_col:
                 # فلترة الداتا لـ DPL و Plate Load فقط
@@ -4449,17 +4450,18 @@ def render_dashboard():
                     ].copy()
                     
                     if not unresolved_df.empty:
-                        # ترتيب الجدول وعرض الأعمدة المطلوبة فقط
-                        display_cols = ['Company Name', serial_col, sub_date_col, test_date_col, 'layer', test_col, elem_col]
+                        # 💡 إضافة عمود المكتب (done_by_col) لترتيب العرض
+                        display_cols = ['Company Name', done_by_col, serial_col, sub_date_col, test_date_col, 'layer', test_col, elem_col]
+                        
                         # التأكد إن الأعمدة دي موجودة فعلاً في الداتا
-                        display_cols = [c for c in display_cols if c in unresolved_df.columns]
+                        display_cols = [c for c in display_cols if c is not None and c in unresolved_df.columns]
                         
                         unresolved_display = unresolved_df[display_cols].sort_values(by=['Company Name', sub_date_col])
                         
                         st.markdown(f"""
                         <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                             <b style="color: #e74c3c;">يوجد عدد ({len(unresolved_display)}) طلب مرفوض لم يتم إغلاقه هندسياً حتى الآن!</b><br>
-                            <span style="font-size: 13px; color: {ui['text_muted']};">يرجى تحميل الجدول وإرساله للمكتب الفني للتعامل معها.</span>
+                            <span style="font-size: 13px; color: {{ui['text_muted']}};">يرجى تحميل الجدول وإرساله للمكتب الفني للتعامل معها.</span>
                         </div>
                         """, unsafe_allow_html=True)
                         
