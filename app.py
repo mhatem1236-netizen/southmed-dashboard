@@ -3269,10 +3269,27 @@ def render_dashboard():
 
                     if date_daily_col and target_col and exec_qty_m3_col and contractor_col and date_test_col and comp_name_col and elem_all_col and elment_col:
                         
+                        # 💡 --- التعديل المحلي (Local Scope) للشارت ده بس ---
+                        # هنعمل نسخة من الداتا خاصة بالشارت ده بس، ونوحد فيها أسماء العناصر لكتيبة 36
+                        chart_df = df.copy()
+                        battalion_col_local = next((c for c in chart_df.columns if 'BATTAL' in c.upper()), None)
+                        if battalion_col_local:
+                            mask_36 = chart_df[battalion_col_local].astype(str).str.strip() == '36'
+                            def unify_element(val):
+                                val = str(val).strip()
+                                parts = val.split('-')
+                                if len(parts) >= 3 and parts[-1].isdigit():
+                                    return "-".join(parts[:-1])
+                                return val
+                            chart_df.loc[mask_36, elem_all_col] = chart_df.loc[mask_36, elem_all_col].apply(unify_element)
+                            chart_df.loc[mask_36, elment_col] = chart_df.loc[mask_36, elment_col].apply(unify_element)
+                        # ----------------------------------------
+                        
+                        # 💡 كل استخدام لـ df تم استبداله بـ chart_df
                         if sel_contractor != 'All Contractors':
-                            available_elements = df[df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()][elem_all_col].dropna().astype(str).str.strip().unique()
+                            available_elements = chart_df[chart_df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()][elem_all_col].dropna().astype(str).str.strip().unique()
                         else:
-                            available_elements = df[elem_all_col].dropna().astype(str).str.strip().unique()
+                            available_elements = chart_df[elem_all_col].dropna().astype(str).str.strip().unique()
                             
                         available_elements = sorted([e for e in available_elements if e.lower() not in ['nan', 'none', '']])
                         
@@ -3288,11 +3305,11 @@ def render_dashboard():
                         
                         if sel_elem_chart != 'All Elements':
                             # نبحث في الداتا كلها عن العنصر ده مين اشتغله (كميات وجودة)
-                            exec_mask = df[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()
-                            qa_mask = df[elment_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()
+                            exec_mask = chart_df[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()
+                            qa_mask = chart_df[elment_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()
                             
-                            df_elem_exec = df[exec_mask]
-                            df_elem_qa = df[qa_mask]
+                            df_elem_exec = chart_df[exec_mask]
+                            df_elem_qa = chart_df[qa_mask]
                             
                             c_exec = df_elem_exec[contractor_col].dropna().unique().tolist()
                             c_qa = df_elem_qa[comp_name_col].dropna().unique().tolist()
@@ -3341,9 +3358,9 @@ def render_dashboard():
 
                         # --- 1. مسار الكميات (Execution Data) ---
                         if sel_elem_chart == 'All Elements':
-                            df_exec = df[df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else df.copy()
+                            df_exec = chart_df[chart_df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else chart_df.copy()
                         else:
-                            df_exec = df[df[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()].copy()
+                            df_exec = chart_df[chart_df[elem_all_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()].copy()
                             if selected_sub_contractor != "Combined":
                                 df_exec = df_exec[df_exec[contractor_col].astype(str).str.strip().str.lower() == selected_sub_contractor.lower()]
 
@@ -3378,9 +3395,9 @@ def render_dashboard():
 
                         # --- 2. مسار الجودة (DPL Data) ---
                         if sel_elem_chart == 'All Elements':
-                            df_qa = df[df[comp_name_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else df.copy()
+                            df_qa = chart_df[chart_df[comp_name_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].copy() if sel_contractor != 'All Contractors' else chart_df.copy()
                         else:
-                            df_qa = df[df[elment_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()].copy()
+                            df_qa = chart_df[chart_df[elment_col].astype(str).str.strip().str.lower() == sel_elem_chart.lower()].copy()
                             if selected_sub_contractor != "Combined":
                                 df_qa = df_qa[df_qa[comp_name_col].astype(str).str.strip().str.lower() == selected_sub_contractor.lower()]
                                 
@@ -3414,9 +3431,9 @@ def render_dashboard():
                         # --- التجهيز المسبق لجدول التتبع (عشان نطلع الـ AI Alert) ---
                         duration_rows = []
                         if sel_contractor != 'All Contractors':
-                            df_valid_dur = df[df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].dropna(subset=[elem_all_col, date_daily_col])
+                            df_valid_dur = chart_df[chart_df[contractor_col].astype(str).str.strip().str.lower() == sel_contractor.lower()].dropna(subset=[elem_all_col, date_daily_col])
                         else:
-                            df_valid_dur = df.dropna(subset=[contractor_col, elem_all_col, date_daily_col])
+                            df_valid_dur = chart_df.dropna(subset=[contractor_col, elem_all_col, date_daily_col])
                             
                         for (ct, el), group in df_valid_dur.groupby([contractor_col, elem_all_col]):
                             group_exec = group[group[exec_qty_m3_col] > 0].copy()
