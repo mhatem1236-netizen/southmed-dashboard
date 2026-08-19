@@ -3371,7 +3371,8 @@ def render_dashboard():
                         df_exec[date_daily_col] = pd.to_datetime(df_exec[date_daily_col], dayfirst=True, errors='coerce')
                         df_exec = df_exec.dropna(subset=[date_daily_col])
                         
-                        daily_elem_exec = df_exec.groupby([date_daily_col, elem_all_col]).agg(
+                        # التجميع اليومي الصحيح (تم إضافة عمود المقاول لضمان جمع تارجت القطاعات المدمجة)
+                        daily_elem_exec = df_exec.groupby([date_daily_col, contractor_col, elem_all_col]).agg(
                             Executed=(exec_qty_m3_col, 'sum'),
                             Target=(target_col, 'max')
                         ).reset_index()
