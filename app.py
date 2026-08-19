@@ -4481,6 +4481,75 @@ def render_dashboard():
             else:
                 st.info("⚠️ بعض الأعمدة المطلوبة (مثل Date, Serial, Element) غير مكتملة لتوليد السجل.")
 
+        # ==========================================
+        # 🚨 MODULE 1.5: Missing Layers Tracker (سجل الطبقات الناقصة)
+        # ==========================================
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🚨 Action Tracker: Missing Layers (سجل الطبقات المفقودة)</div>', unsafe_allow_html=True)
+        st.caption("يقوم هذا الجدول باكتشاف الفجوات في تسلسل طبقات الردم لكل مقاول وعنصر. (مثال: تم العثور على طبقة 1 و 3، واختفت طبقة 2 من السجل).")
+
+        elem_col_missing = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
+        test_col_missing = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+
+        if 'Company Name' in filtered_df.columns and 'layer' in filtered_df.columns and elem_col_missing:
+            # فلترة الاختبارات الخاصة بالطبقات فقط
+            if test_col_missing:
+                layer_tests_df = filtered_df[filtered_df[test_col_missing].astype(str).str.upper().str.contains('DPL|SAND|PLATE', na=False)].copy()
+            else:
+                layer_tests_df = filtered_df.copy()
+                
+            # استخراج أرقام الطبقات كأرقام صحيحة
+            layer_tests_df['Layer_Num'] = layer_tests_df['layer'].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
+            layer_tests_df = layer_tests_df[layer_tests_df['Layer_Num'] > 0]
+            
+            missing_records = []
+            
+            # تجميع بالشركة والعنصر لاكتشاف التسلسل
+            for (comp, elem), group in layer_tests_df.groupby(['Company Name', elem_col_missing]):
+                layers = group['Layer_Num'].unique()
+                if len(layers) > 1:
+                    min_l = int(layers.min())
+                    max_l = int(layers.max())
+                    
+                    # بناء التسلسل المثالي من أصغر لـ أكبر طبقة
+                    expected_layers = set(range(min_l, max_l + 1))
+                    actual_layers = set(layers)
+                    
+                    # استخراج الطبقات الساقطة
+                    missing_layers = sorted(list(expected_layers - actual_layers))
+                    
+                    if missing_layers:
+                        missing_records.append({
+                            'Company Name': comp,
+                            'Element': elem,
+                            'Missing Layers (الفجوات)': ", ".join([str(m) for m in missing_layers]),
+                            'Highest Layer Reached': max_l
+                        })
+            
+            if missing_records:
+                missing_df = pd.DataFrame(missing_records).sort_values(by=['Company Name', 'Element'])
+                
+                st.markdown(f"""
+                <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <b style="color: #f1c40f;">يوجد عدد ({len(missing_df)}) قطاع به ثغرات في تسلسل الطبقات!</b><br>
+                    <span style="font-size: 13px; color: {ui['text_muted']};">الطبقات المذكورة تم تخطيها ولم يتم العثور على أي قراءة (نجاح أو سقوط) لها في السجل الهندسي.</span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.dataframe(missing_df, use_container_width=True, hide_index=True)
+                
+                csv_missing = missing_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    label="📥 Download Missing Layers Tracker (تحميل تقرير الفجوات)",
+                    data=csv_missing,
+                    file_name=f"Missing_Layers_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    type="primary"
+                )
+            else:
+                st.success("✅ هندسياً ممتاز! لا توجد أي ثغرات أو طبقات ناقصة في التسلسل لجميع العناصر المدموكة.")
+        else:
+            st.info("⚠️ الأعمدة المطلوبة (Company Name, layer, Element) غير متوفرة لتوليد سجل الفجوات.")
        # ==========================================
         # 🧊 MODULE 2: AI-Powered 3D Subsurface Digital Twin (Smart Time-Mapping)
         # ==========================================
