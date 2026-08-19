@@ -3262,6 +3262,9 @@ def render_dashboard():
                     
                     # الزرار الجانبي للتحكم في ظهور خط الـ DPL
                     show_dpl_line = st.sidebar.toggle("📉 Show DPL Tests Line", value=True)
+                    
+                    # 💡 الزرار الجانبي الجديد للدمج الذكي (اختياري)
+                    enable_smart_mask = st.sidebar.toggle("🪄 Smart Element Merge (e.g. BH-11-1 ➔ BH-11)", value=False)
 
                     date_test_col = next((c for c in df.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
                     if not date_test_col:
@@ -3270,19 +3273,20 @@ def render_dashboard():
                     if date_daily_col and target_col and exec_qty_m3_col and contractor_col and date_test_col and comp_name_col and elem_all_col and elment_col:
                         
                         # 💡 --- التعديل المحلي (Local Scope) للشارت ده بس ---
-                        # هنعمل نسخة من الداتا خاصة بالشارت ده بس، ونوحد فيها أسماء العناصر لكتيبة 36
                         chart_df = df.copy()
-                        battalion_col_local = next((c for c in chart_df.columns if 'BATTAL' in c.upper()), None)
-                        if battalion_col_local:
-                            mask_36 = chart_df[battalion_col_local].astype(str).str.strip() == '36'
+                        
+                        # لو المدير فعّل الزرار، هنطبق دالة التوحيد على أي كتيبة
+                        if enable_smart_mask:
                             def unify_element(val):
                                 val = str(val).strip()
                                 parts = val.split('-')
+                                # لو الاسم متقسم بـ (-) لـ 3 مقاطع أو أكتر وآخر جزء عبارة عن رقم
                                 if len(parts) >= 3 and parts[-1].isdigit():
-                                    return "-".join(parts[:-1])
+                                    return "-".join(parts[:-1]) # يرجعه بدون الرقم الأخير
                                 return val
-                            chart_df.loc[mask_36, elem_all_col] = chart_df.loc[mask_36, elem_all_col].apply(unify_element)
-                            chart_df.loc[mask_36, elment_col] = chart_df.loc[mask_36, elment_col].apply(unify_element)
+                                
+                            chart_df[elem_all_col] = chart_df[elem_all_col].apply(unify_element)
+                            chart_df[elment_col] = chart_df[elment_col].apply(unify_element)
                         # ----------------------------------------
                         
                         # 💡 كل استخدام لـ df تم استبداله بـ chart_df
