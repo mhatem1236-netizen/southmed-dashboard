@@ -3371,7 +3371,6 @@ def render_dashboard():
                         df_exec[date_daily_col] = pd.to_datetime(df_exec[date_daily_col], dayfirst=True, errors='coerce')
                         df_exec = df_exec.dropna(subset=[date_daily_col])
                         
-                        # التجميع اليومي الصحيح 
                         daily_elem_exec = df_exec.groupby([date_daily_col, elem_all_col]).agg(
                             Executed=(exec_qty_m3_col, 'sum'),
                             Target=(target_col, 'max')
@@ -3381,21 +3380,6 @@ def render_dashboard():
                             Executed=('Executed', 'sum'),
                             Target=('Target', 'sum')
                         ).reset_index().sort_values(date_daily_col)
-
-                        # حساب الأسابيع المنطقية
-                        min_proj_date = daily_exec[date_daily_col].min() if not daily_exec.empty else pd.Timestamp.now()
-                        daily_exec['Proj_Week'] = ((daily_exec[date_daily_col] - min_proj_date).dt.days // 7) + 1
-                        
-                        weekly_exec = daily_exec.groupby('Proj_Week').agg(
-                          Executed=('Executed', 'sum'),
-                          Target=('Target', 'sum'),
-                                ).reset_index()
-
-                        if not weekly_exec.empty:
-                            weekly_exec['Week_Label'] = (
-                             "Wk " + weekly_exec['Proj_Week'].astype(str) + "<br>" +
-                             (min_proj_date + pd.to_timedelta((weekly_exec['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
-                                    )
 
                         # --- 2. مسار الجودة (DPL Data) ---
                         if sel_elem_chart == 'All Elements':
@@ -3408,29 +3392,43 @@ def render_dashboard():
                         df_qa[date_test_col] = pd.to_datetime(df_qa[date_test_col], dayfirst=True, errors='coerce')
                         df_qa = df_qa.dropna(subset=[date_test_col])
                         
-                        # فلترة الـ DPL للعناصر اللي ليها حفر فقط
-                        valid_exec_elements = df_exec[elem_all_col].dropna().astype(str).str.strip().str.lower().unique()
-                        df_qa = df_qa[df_qa[elment_col].astype(str).str.strip().str.lower().isin(valid_exec_elements)] if len(valid_exec_elements) > 0 else pd.DataFrame(columns=df_qa.columns)
-                        
+                        # 💡 THE FIX: إزالة الفلتر القديم اللي كان بيمسح اختبارات الـ DPL لو المقاول معندوش كميات تنفيذ
                         df_dpl = df_qa[df_qa[test_type_col].astype(str).str.upper().str.contains('DPL')].copy()
                         
                         daily_dpl = pd.DataFrame()
-                        weekly_dpl = pd.DataFrame()
-                        
                         if not df_dpl.empty and num_tests_col in df_dpl.columns:
                             df_dpl[num_tests_col] = pd.to_numeric(df_dpl[num_tests_col].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(0)
                             
                             daily_dpl = df_dpl.groupby(date_test_col)[num_tests_col].sum().reset_index()
                             daily_dpl.rename(columns={date_test_col: 'Date', num_tests_col: 'DPL Tests'}, inplace=True)
                             daily_dpl = daily_dpl[daily_dpl['DPL Tests'] > 0].sort_values('Date')
-                            
-                            if not daily_dpl.empty:
-                                daily_dpl['Proj_Week'] = ((daily_dpl['Date'] - min_proj_date).dt.days // 7) + 1
-                                weekly_dpl = daily_dpl.groupby('Proj_Week').agg({'DPL Tests': 'sum'}).reset_index()
-                                weekly_dpl['Week_Label'] = (
-                                "Wk " + weekly_dpl['Proj_Week'].astype(str) + "<br>" +
-                                 (min_proj_date + pd.to_timedelta((weekly_dpl['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
-                                )
+
+                        # 💡 THE FIX 2: توحيد تاريخ البداية للمشروع بناءً على الكميات أو الـ DPL (أيهما أقدم)
+                        min_exec = daily_exec[date_daily_col].min() if not daily_exec.empty else pd.NaT
+                        min_dpl = daily_dpl['Date'].min() if not daily_dpl.empty else pd.NaT
+                        
+                        if pd.notna(min_exec) and pd.notna(min_dpl):
+                            min_proj_date = min(min_exec, min_dpl)
+                        elif pd.notna(min_exec):
+                            min_proj_date = min_exec
+                        elif pd.notna(min_dpl):
+                            min_proj_date = min_dpl
+                        else:
+                            min_proj_date = pd.Timestamp.now().normalize()
+
+                        # حساب الأسابيع لمسار الكميات
+                        weekly_exec = pd.DataFrame()
+                        if not daily_exec.empty:
+                            daily_exec['Proj_Week'] = ((daily_exec[date_daily_col] - min_proj_date).dt.days // 7) + 1
+                            weekly_exec = daily_exec.groupby('Proj_Week').agg(Executed=('Executed', 'sum'), Target=('Target', 'sum')).reset_index()
+                            weekly_exec['Week_Label'] = "Wk " + weekly_exec['Proj_Week'].astype(str) + "<br>" + (min_proj_date + pd.to_timedelta((weekly_exec['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
+
+                        # حساب الأسابيع لمسار الجودة (DPL)
+                        weekly_dpl = pd.DataFrame()
+                        if not daily_dpl.empty:
+                            daily_dpl['Proj_Week'] = ((daily_dpl['Date'] - min_proj_date).dt.days // 7) + 1
+                            weekly_dpl = daily_dpl.groupby('Proj_Week').agg({'DPL Tests': 'sum'}).reset_index()
+                            weekly_dpl['Week_Label'] = "Wk " + weekly_dpl['Proj_Week'].astype(str) + "<br>" + (min_proj_date + pd.to_timedelta((weekly_dpl['Proj_Week'] - 1) * 7, unit='D')).dt.strftime('%b %y')
 
                         # --- التجهيز المسبق لجدول التتبع (عشان نطلع الـ AI Alert) ---
                         duration_rows = []
