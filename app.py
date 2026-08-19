@@ -79,29 +79,29 @@ def inject_custom_css():
     if is_dark:
         # 🌙 Stealth Ops (Dark)
         bg_main = "#0a0e17"
-        bg_sidebar = "#0f1623"
-        card_bg = "rgba(15, 23, 42, 0.85)"
-        card_border = "rgba(0, 210, 255, 0.2)"
-        card_shadow = "0 8px 32px rgba(0, 0, 0, 0.6)"
+        bg_sidebar = "rgba(15, 22, 35, 0.85)" # 💡 شفافية للقائمة الجانبية
+        card_bg = "rgba(15, 23, 42, 0.55)"    # 💡 شفافية أكبر للكروت لظهور الزجاج
+        card_border = "rgba(0, 210, 255, 0.15)"
+        card_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.5)"
         text_main = "#e2e8f0"
         text_muted = "#94a3b8"
         accent_color = "#00d2ff"
         accent_glow = "0 0 10px rgba(0, 210, 255, 0.3)"
-        input_bg = "rgba(30, 41, 59, 0.8)"
+        input_bg = "rgba(30, 41, 59, 0.6)"
         btn_bg = accent_color
         btn_text = bg_main
     else:
         # ☀️ Daytime HQ (Light)
         bg_main = "#f8fafc"
-        bg_sidebar = "#ffffff"
-        card_bg = "#ffffff"
+        bg_sidebar = "rgba(255, 255, 255, 0.85)"
+        card_bg = "rgba(255, 255, 255, 0.65)" # 💡 كروت بيضاء نصف شفافة
         card_border = "rgba(148, 163, 184, 0.3)"
-        card_shadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+        card_shadow = "0 8px 32px 0 rgba(31, 38, 135, 0.1)"
         text_main = "#0f172a"
         text_muted = "#475569"
-        accent_color = "#0ea5e9" # أزرق صريح للـ Light Mode
+        accent_color = "#0ea5e9" 
         accent_glow = "none"
-        input_bg = "#ffffff"
+        input_bg = "rgba(255, 255, 255, 0.6)"
         btn_bg = accent_color
         btn_text = "#ffffff"
 
@@ -147,16 +147,24 @@ def inject_custom_css():
     }}
     [data-testid="stButton"] button:hover {{ opacity: 0.9 !important; transform: translateY(-1px) !important; box-shadow: {accent_glow}; }}
     
-    /* Cards Fix */
+    /* Cards Fix - True Glassmorphism */
     .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {{
         background: {card_bg} !important;
+        backdrop-filter: blur(16px) !important; /* 🌟 سحر الزجاج المصنفر */
+        -webkit-backdrop-filter: blur(16px) !important; /* لدعم متصفحات سفاري وأبل */
         padding: 20px;
-        border-radius: 4px;
+        border-radius: 12px; /* تدوير عصري للحواف */
         border: 1px solid {card_border};
         border-top: 3px solid {accent_color};
         box-shadow: {card_shadow};
         margin-bottom: 15px;
-        transition: all 0.3s ease;
+        transition: transform 0.3s ease, box-shadow 0.3s ease; /* نعومة الحركة */
+    }}
+    
+    /* 🌟 تأثير الرفع والظل عند مرور الماوس (Hover Animation) */
+    .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover, .navigation-card:hover, .health-card:hover {{
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px 0 {accent_glow if is_dark else 'rgba(14, 165, 233, 0.2)'};
     }}
     
     .bi-title {{ font-size: 28px; font-weight: 700; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid {card_border}; padding-bottom: 10px; }}
