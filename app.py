@@ -2232,7 +2232,10 @@ def render_dashboard():
         st.markdown('<div class="bi-title">🤖 Predictive Risk Forecasting</div>', unsafe_allow_html=True)
         if 'Date ( test)' in filtered_df.columns and 'DURATION' in filtered_df.columns:
             pred_df = filtered_df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
-            pred_df['7-Day Trend'] = pred_df['DURATION'].rolling(window=7, min_periods=1).mean()
+            # الحل (يتم تطبيقه بعد التأكد أن Date(test) هو Index)
+            pred_df = pred_df.set_index('Date ( test)')
+            pred_df['7-Day Trend'] = pred_df['DURATION'].rolling('7D', min_periods=1).mean()
+            pred_df = pred_df.reset_index()
             fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], title="Duration Forecasting & Trendline Tracking", color_discrete_sequence=['#ffaa00', '#00d2ff'])
             fig_pred = style_3d_glassy(fig_pred, chart_type="line")
             latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
@@ -4457,8 +4460,11 @@ def render_dashboard():
                 if not target_tests.empty:
                     target_tests['status_upper'] = target_tests['sample status'].astype(str).str.upper()
                     
-                    # 💡 الذكاء هنا: عمل كود سري لكل طبقة عشان نعرف هل اترفضت وبعدين اتقبلت ولا لسه!
-                    target_tests['Unique_Loc'] = target_tests['Company Name'].astype(str) + "_" + target_tests[elem_col].astype(str) + "_" + target_tests['layer'].astype(str) + "_" + target_tests[test_col].astype(str)
+                    # الحل
+                    target_tests['Unique_Loc'] = (target_tests['Company Name'].astype(str).str.strip().str.upper() + "_" + 
+                              target_tests[elem_col].astype(str).str.strip().str.upper() + "_" + 
+                              target_tests['layer'].astype(str).str.strip().str.upper() + "_" + 
+                              target_tests[test_col].astype(str).str.strip().str.upper())
                     
                     # سحب كل الأماكن اللي اتوافق عليها
                     approved_locs = set(target_tests[target_tests['status_upper'].isin(['ACCEPTED', 'APPROVED AS NOTED'])]['Unique_Loc'].unique())
