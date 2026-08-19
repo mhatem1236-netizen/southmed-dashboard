@@ -4486,15 +4486,15 @@ def render_dashboard():
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🚨 Action Tracker: Missing Layers (سجل الطبقات المفقودة)</div>', unsafe_allow_html=True)
-        st.caption("يقوم هذا الجدول باكتشاف الفجوات في تسلسل طبقات الردم لكل مقاول وعنصر. (مثال: تم العثور على طبقة 1 و 3، واختفت طبقة 2 من السجل).")
+        st.caption("يقوم هذا الجدول باكتشاف الفجوات في تسلسل طبقات الردم لاختبارات (DPL & Sand Cone) لكل مقاول وعنصر. (مثال: تم العثور على طبقة 1 و 3، واختفت طبقة 2 من السجل).")
 
         elem_col_missing = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
         test_col_missing = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
 
         if 'Company Name' in filtered_df.columns and 'layer' in filtered_df.columns and elem_col_missing:
-            # فلترة الاختبارات الخاصة بالطبقات فقط
+            # 💡 فلترة الاختبارات لتشمل الـ DPL والـ Sand Cone معاً 
             if test_col_missing:
-                layer_tests_df = filtered_df[filtered_df[test_col_missing].astype(str).str.upper().str.contains('DPL|SAND|PLATE', na=False)].copy()
+                layer_tests_df = filtered_df[filtered_df[test_col_missing].astype(str).str.upper().str.contains('DPL|SAND', na=False)].copy()
             else:
                 layer_tests_df = filtered_df.copy()
                 
@@ -4531,8 +4531,8 @@ def render_dashboard():
                 
                 st.markdown(f"""
                 <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <b style="color: #f1c40f;">يوجد عدد ({len(missing_df)}) قطاع به ثغرات في تسلسل الطبقات!</b><br>
-                    <span style="font-size: 13px; color: {ui['text_muted']};">الطبقات المذكورة تم تخطيها ولم يتم العثور على أي قراءة (نجاح أو سقوط) لها في السجل الهندسي.</span>
+                    <b style="color: #f1c40f;">يوجد عدد ({len(missing_df)}) قطاع به ثغرات في تسلسل طبقات (DPL / Sand Cone)!</b><br>
+                    <span style="font-size: 13px; color: {{ui['text_muted']}};">الطبقات المذكورة تم تخطيها ولم يتم العثور على أي قراءة (نجاح أو سقوط) لها في السجل الهندسي.</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -4547,7 +4547,7 @@ def render_dashboard():
                     type="primary"
                 )
             else:
-                st.success("✅ هندسياً ممتاز! لا توجد أي ثغرات أو طبقات ناقصة في التسلسل لجميع العناصر المدموكة.")
+                st.success("✅ هندسياً ممتاز! لا توجد أي ثغرات أو طبقات ناقصة في تسلسل اختبارات (DPL / Sand Cone) لجميع العناصر المدموكة.")
         else:
             st.info("⚠️ الأعمدة المطلوبة (Company Name, layer, Element) غير متوفرة لتوليد سجل الفجوات.")
        # ==========================================
