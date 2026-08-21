@@ -3984,7 +3984,142 @@ def render_dashboard():
                             st.info("لا توجد بيانات كافية لحساب تقييم المقاولين.")
                     else:
                         st.warning("⚠️ أعمدة التقييم غير مكتملة.")
-                   # ══════════════════════════════════════════════════════
+                    # ══════════════════════════════════════════════════════
+                    # 6.5 EARNED VALUE MANAGEMENT (SPI MODULE)
+                    # ══════════════════════════════════════════════════════
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+                    st.markdown("#### ⏱️ Schedule Performance Index (EVM)")
+                    st.caption("مؤشر الأداء الزمني (SPI): يقيس كفاءة إنجاز العمل مقارنة بالجدول الزمني المخطط (الهدف اليومي). القيمة > 1.0 تعني تقدم، والقيمة < 1.0 تعني تأخير.")
+                    
+                    if contractor_col and date_daily_col and target_col and exec_qty_m3_col:
+                        # 1. تجهيز الداتا للـ EVM (تجميع صحيح لتفادي تكرار التارجت لنفس اليوم)
+                        spi_df = df_sel.dropna(subset=[contractor_col, date_daily_col]).copy()
+                        
+                        spi_daily = spi_df.groupby([date_daily_col, contractor_col, elem_all_col]).agg(
+                            EV=(exec_qty_m3_col, 'sum'),
+                            PV=(target_col, 'max')
+                        ).reset_index()
+                        
+                        # 2. حساب الـ SPI الكلي للقطاع أو الاختيار
+                        total_ev = spi_daily['EV'].sum()
+                        total_pv = spi_daily['PV'].sum()
+                        overall_spi = (total_ev / total_pv) if total_pv > 0 else 0
+                        
+                        # 3. حساب الـ SPI لكل مقاول للمضمار
+                        contractor_spi = spi_daily.groupby(contractor_col).agg(
+                            EV=('EV', 'sum'),
+                            PV=('PV', 'sum')
+                        ).reset_index()
+                        contractor_spi['SPI'] = (contractor_spi['EV'] / contractor_spi['PV']).fillna(0)
+                        contractor_spi = contractor_spi[contractor_spi['PV'] > 0] # استبعاد اللي معندوش تارجت
+                        contractor_spi = contractor_spi.sort_values('SPI', ascending=True) 
+
+                        col_spi_g, col_spi_b = st.columns([0.35, 0.65])
+                        
+                        # 🎯 العداد الزجاجي (Gauge Chart)
+                        with col_spi_g:
+                            if overall_spi >= 1.0: 
+                                gauge_color = "#2ecc71"
+                                spi_status = "AHEAD OF SCHEDULE"
+                            elif overall_spi >= 0.85: 
+                                gauge_color = "#f1c40f"
+                                spi_status = "MINOR DELAY"
+                            else: 
+                                gauge_color = "#e74c3c"
+                                spi_status = "CRITICAL DELAY"
+                                
+                            fig_spi_gauge = go.Figure(go.Indicator(
+                                mode = "gauge+number",
+                                value = overall_spi,
+                                number = {'valueformat': ".2f", 'font': {'size': 45, 'color': gauge_color, 'family': 'Rajdhani'}},
+                                title = {'text': "Overall SPI (Efficiency)", 'font': {'size': 16, 'color': '#e2e8f0'}},
+                                gauge = {
+                                    'axis': {'range': [0, max(1.5, overall_spi+0.2)], 'tickwidth': 1, 'tickcolor': "white"},
+                                    'bar': {'color': gauge_color, 'thickness': 0.8},
+                                    'bgcolor': "rgba(15, 23, 42, 0.5)" if is_dark else "rgba(240, 245, 250, 0.8)",
+                                    'borderwidth': 2,
+                                    'bordercolor': "rgba(0, 210, 255, 0.1)",
+                                    'steps': [
+                                        {'range': [0, 0.85], 'color': "rgba(231, 76, 60, 0.2)"},
+                                        {'range': [0.85, 0.99], 'color': "rgba(241, 196, 15, 0.2)"},
+                                        {'range': [0.99, 1.5], 'color': "rgba(46, 204, 113, 0.2)"}
+                                    ],
+                                    'threshold': {'line': {'color': "white", 'width': 4}, 'thickness': 0.75, 'value': 1.0}
+                                }
+                            ))
+                            fig_spi_gauge.update_layout(height=280, margin=dict(l=30, r=30, t=40, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                            
+                            st.markdown(f"""
+                            <div style="background: {ui['card_bg']}; border: 1px solid {ui['border_color']}; border-radius: 12px; padding: 15px; text-align: center; box-shadow: {ui['shadow']}; height: 100%;">
+                            """, unsafe_allow_html=True)
+                            st.plotly_chart(fig_spi_gauge, use_container_width=True, key="spi_gauge_main")
+                            
+                            diff_pct = abs(1 - overall_spi) * 100
+                            if overall_spi >= 1.0:
+                                msg = f"🚀 Zone is {diff_pct:.1f}% Ahead of Schedule"
+                            else:
+                                msg = f"⚠️ Zone is {diff_pct:.1f}% Behind Schedule"
+                                
+                            st.markdown(f"<div style='margin-top: -20px; font-family: Rajdhani; font-size: 15px; color: {gauge_color}; font-weight: bold;'>{msg}</div></div>", unsafe_allow_html=True)
+                        
+                        # 🏎️ مضمار المقاولين (Bullet/Bar Chart)
+                        with col_spi_b:
+                            if not contractor_spi.empty:
+                                contractor_spi['Color'] = contractor_spi['SPI'].apply(lambda x: '#2ecc71' if x >= 1.0 else ('#f1c40f' if x >= 0.85 else '#e74c3c'))
+                                fig_spi_bar = px.bar(
+                                    contractor_spi, x='SPI', y=contractor_col, orientation='h', text='SPI', 
+                                    title="🏎️ Contractors SPI Leaderboard"
+                                )
+                                fig_spi_bar.update_traces(marker_color=contractor_spi['Color'], texttemplate='%{text:.2f}', textposition='outside', textfont=dict(size=14, color='white'))
+                                fig_spi_bar.add_vline(x=1.0, line_dash="dash", line_color="white", line_width=2, annotation_text="Target (1.0)", annotation_position="top right")
+                                
+                                fig_spi_bar.update_layout(
+                                    height=280, margin=dict(l=10, r=30, t=40, b=10),
+                                    xaxis=dict(range=[0, max(1.5, contractor_spi['SPI'].max() + 0.2)]),
+                                    yaxis=dict(title="")
+                                )
+                                try: fig_spi_bar = style_3d_glassy(fig_spi_bar, "bar")
+                                except: pass
+                                
+                                st.markdown(f"""
+                                <div style="background: {ui['card_bg']}; border: 1px solid {ui['border_color']}; border-radius: 12px; padding: 15px; box-shadow: {ui['shadow']}; height: 100%;">
+                                """, unsafe_allow_html=True)
+                                st.plotly_chart(fig_spi_bar, use_container_width=True, key="spi_bar_main")
+                                st.markdown("</div>", unsafe_allow_html=True)
+                            else:
+                                st.info("No valid targets found to generate Contractor Leaderboard.")
+                                
+                        # 🤖 قرار الإدارة من الذكاء الاصطناعي
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        if not contractor_spi.empty:
+                            worst_contractor = contractor_spi.iloc[0]
+                            best_contractor = contractor_spi.iloc[-1]
+                            
+                            if overall_spi >= 1.0:
+                                ai_spi_msg = f"التحليل الزمني: القطاع يسير بمعدل ممتاز (SPI = {overall_spi:.2f}). أداء قوي، وخاصة من مقاول ({best_contractor[contractor_col]}) الذي يتصدر بـ SPI يبلغ ({best_contractor['SPI']:.2f})."
+                                ai_spi_color = "#2ecc71"
+                            elif overall_spi >= 0.85:
+                                ai_spi_msg = f"التحليل الزمني: القطاع يعاني من تأخير طفيف (SPI = {overall_spi:.2f}). شركة ({worst_contractor[contractor_col]}) تمثل نقطة السحب الأكبر للجدول بـ SPI يبلغ ({worst_contractor['SPI']:.2f}). يُرجى متابعة معدلات التنفيذ."
+                                ai_spi_color = "#f1c40f"
+                            else:
+                                ai_spi_msg = f"التحليل الزمني: القطاع يعاني من تأخير حرج (SPI = {overall_spi:.2f}). شركة ({worst_contractor[contractor_col]}) تمثل التهديد الأكبر للجدول الزمني بـ SPI يبلغ ({worst_contractor['SPI']:.2f}). يُوصى بإصدار إنذار زمني فوري للمقاول لرفع معدلات التوريد."
+                                ai_spi_color = "#e74c3c"
+                                
+                            st.markdown(f"""
+                            <div style="background: rgba(10, 20, 33, 0.6); border-left: 4px solid {ai_spi_color}; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                                <div style="font-size: 30px;">🤖</div>
+                                <div>
+                                    <div style="color: {ai_spi_color}; font-weight: bold; font-size: 14px; margin-bottom: 5px;">AI EVM Insight:</div>
+                                    <div style="color: {ui['text_main']}; font-size: 14px;">{ai_spi_msg}</div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                    else:
+                        st.warning("⚠️ أعمدة الكميات (المنفذ والمستهدف) غير مكتملة لحساب الـ SPI.")
+                    
+                    st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)     
+                    # ══════════════════════════════════════════════════════
                     # 7. DPL & PLATE LOAD TESTS (Strict Lookup in Company Name)
                     # ══════════════════════════════════════════════════════
                     st.markdown("#### 🧪 DPL & PLATE LOAD Tests per Contractor")
