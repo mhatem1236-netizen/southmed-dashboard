@@ -4096,22 +4096,22 @@ def render_dashboard():
                             best_contractor = contractor_spi.iloc[-1]
                             
                             if overall_spi >= 1.0:
-                                ai_spi_msg = f"التحليل الزمني: القطاع يسير بمعدل ممتاز (SPI = {overall_spi:.2f}). أداء قوي، وخاصة من مقاول ({best_contractor[contractor_col]}) الذي يتصدر بـ SPI يبلغ ({best_contractor['SPI']:.2f})."
+                                ai_spi_msg = f"القطاع يحقق معدلات إنجاز ممتازة متجاوزاً الجدول الزمني (SPI = {overall_spi:.2f}). أفضل أداء مسجل حالياً لشركة <b>{best_contractor[contractor_col]}</b> بمؤشر كفاءة يبلغ <b>{best_contractor['SPI']:.2f}</b>."
                                 ai_spi_color = "#2ecc71"
                             elif overall_spi >= 0.85:
-                                ai_spi_msg = f"التحليل الزمني: القطاع يعاني من تأخير طفيف (SPI = {overall_spi:.2f}). شركة ({worst_contractor[contractor_col]}) تمثل نقطة السحب الأكبر للجدول بـ SPI يبلغ ({worst_contractor['SPI']:.2f}). يُرجى متابعة معدلات التنفيذ."
+                                ai_spi_msg = f"القطاع يواجه تأخيراً طفيفاً (SPI = {overall_spi:.2f}). شركة <b>{worst_contractor[contractor_col]}</b> هي الأكثر تأخيراً بمؤشر يبلغ <b>{worst_contractor['SPI']:.2f}</b>، ويُنصح بمراجعة معدلات التنفيذ اليومية لها."
                                 ai_spi_color = "#f1c40f"
                             else:
-                                ai_spi_msg = f"التحليل الزمني: القطاع يعاني من تأخير حرج (SPI = {overall_spi:.2f}). شركة ({worst_contractor[contractor_col]}) تمثل التهديد الأكبر للجدول الزمني بـ SPI يبلغ ({worst_contractor['SPI']:.2f}). يُوصى بإصدار إنذار زمني فوري للمقاول لرفع معدلات التوريد."
+                                ai_spi_msg = f"تأخير حرج في القطاع (SPI = {overall_spi:.2f}). شركة <b>{worst_contractor[contractor_col]}</b> تمثل العائق الأكبر للجدول الزمني بمؤشر يبلغ <b>{worst_contractor['SPI']:.2f}</b>. يتطلب الأمر تدخلاً إدارياً عاجلاً."
                                 ai_spi_color = "#e74c3c"
                                 
                             st.markdown(f"""
-                            <div style="background: rgba(10, 20, 33, 0.6); border-left: 4px solid {ai_spi_color}; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
-                                <div style="font-size: 30px;">🤖</div>
-                                <div>
-                                    <div style="color: {ai_spi_color}; font-weight: bold; font-size: 14px; margin-bottom: 5px;">AI EVM Insight:</div>
-                                    <div style="color: {ui['text_main']}; font-size: 14px;">{ai_spi_msg}</div>
+                            <div style="background: rgba(10, 20, 33, 0.6); border-right: 5px solid {ai_spi_color}; padding: 15px 20px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;" dir="rtl">
+                                <div style="text-align: right;">
+                                    <div style="color: {ai_spi_color}; font-weight: bold; font-size: 15px; margin-bottom: 5px; font-family: 'Rajdhani', sans-serif;">🤖 رؤية الذكاء الاصطناعي (AI EVM Insight):</div>
+                                    <div style="color: {ui['text_main']}; font-size: 15px; line-height: 1.6;">{ai_spi_msg}</div>
                                 </div>
+                                <div style="font-size: 35px; opacity: 0.8;">📊</div>
                             </div>
                             """, unsafe_allow_html=True)
                             
