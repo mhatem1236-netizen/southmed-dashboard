@@ -2171,10 +2171,18 @@ def render_dashboard():
                 
                 if out_of_control_count > 0:
                     st.warning(f"⚠️ **Process Alert:** {out_of_control_count} out of {total_points} samples ({100-control_percentage:.1f}%) are outside control limits.")
-                    ooc_samples = spc_df[spc_df['out_of_control']].head(10)
+                    
+                    # السطر ده هو اللي بيرتب من الكبير للصغير بناءً على الـ AVERAGE VALUE
+                    ooc_samples = spc_df[spc_df['out_of_control']].sort_values(by='AVERAGE VALUE', ascending=False)
+                    
                     if not ooc_samples.empty:
                         st.markdown("**Top Out-of-Control Samples:**")
-                        st.dataframe(ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']].head(10), use_container_width=True)
+                        display_ooc = ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']].head(10)
+                        
+                        st.dataframe(display_ooc, use_container_width=True)
+                        
+                        # السطر السحري عشان زراير التحميل (إكسيل - بي دي إف - CSV)
+                        export_table_tools(display_ooc, f"Out_Of_Control_Samples_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
                 else:
                     st.success("✅ **Process Stable:** All samples are within control limits.")
                 
