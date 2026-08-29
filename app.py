@@ -2331,34 +2331,7 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
-        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
-            comp_stats = []
-            for comp in filtered_df['Company Name'].dropna().unique():
-                cdf = filtered_df[filtered_df['Company Name'] == comp]
-                c_total = len(cdf)
-                c_acc = len(cdf[cdf['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])])
-                rate = (c_acc / c_total * 100) if c_total > 0 else 0
-                comp_stats.append({'Company': comp, 'Total': c_total, 'Rate': rate})
-            c_df = pd.DataFrame(comp_stats)
-            if not c_df.empty:
-                valid_c_df = c_df[c_df['Total'] >= 5] if len(c_df[c_df['Total'] >= 5]) > 0 else c_df
-                best_comp = valid_c_df.loc[valid_c_df['Rate'].idxmax()]
-                worst_comp = valid_c_df.loc[valid_c_df['Rate'].idxmin()]
-                l_col1, l_col2 = st.columns(2)
-                l_col1.markdown(f"""
-                    <div class="leaderboard-card" style="border-left-color: #2ecc71;">
-                        <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
-                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{best_comp['Company']}</h2>
-                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
-                    </div>
-                """, unsafe_allow_html=True)
-                l_col2.markdown(f"""
-                    <div class="leaderboard-card" style="border-left-color: #e74c3c;">
-                        <h4 style="margin:0; color:#e74c3c; text-transform: uppercase; font-size: 14px;">⚠️ Needs Attention</h4>
-                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{worst_comp['Company']}</h2>
-                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#e74c3c; font-size: 18px;">{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
-                    </div>
-                """, unsafe_allow_html=True)
+       
 
         if 'Company Name' in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
             mat_df = filtered_df.copy()
