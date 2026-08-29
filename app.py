@@ -69,7 +69,45 @@ def _t(text):
     if st.session_state.get("language") == "AR":
         return TRANSLATIONS.get(text, text)
     return text
-
+def export_table_tools(df, filename_prefix):
+    import io
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    
+    # 1. زرار تحميل CSV
+    csv_data = df.to_csv(index=False).encode('utf-8-sig')
+    c1.download_button("📥 Download CSV", data=csv_data, file_name=f"{filename_prefix}.csv", mime="text/csv", use_container_width=True, key=f"csv_{filename_prefix}")
+    
+    # 2. زرار تحميل Excel
+    excel_buffer = io.BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Report')
+    c2.download_button("📊 Download Excel", data=excel_buffer.getvalue(), file_name=f"{filename_prefix}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key=f"xls_{filename_prefix}")
+    
+    # 3. زرار الحفظ كـ PDF 
+    html_content = f"""
+    <html dir="ltr">
+    <head>
+        <title>{filename_prefix}</title>
+        <style>
+            body {{ font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+            th {{ background-color: #1e3d59; color: white; }}
+            tr:nth-child(even) {{ background-color: #f2f2f2; }}
+        </style>
+    </head>
+    <body onload="window.print()">
+        <h2 style="color: #1e3d59;">Project Report: {filename_prefix.replace('_', ' ')}</h2>
+        <p style="color: #7f8c8d;">Generated on: {datetime.now(EGYPT_TZ).strftime('%Y-%m-%d %H:%M')}</p>
+        <hr>
+        {df.to_html(index=False)}
+    </body>
+    </html>
+    """
+    b64_html = base64.b64encode(html_content.encode('utf-8')).decode()
+    pdf_href = f'<a href="data:text/html;base64,{b64_html}" download="{filename_prefix}_Printable.html" style="display: block; text-align: center; background-color: #e74c3c; color: white; padding: 6px; border-radius: 4px; text-decoration: none; font-weight: bold; font-family: sans-serif; border: 1px solid #c0392b; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">🖨️ Save as PDF</a>'
+    c3.markdown(pdf_href, unsafe_allow_html=True)
 # ==========================================
 # 2. Tactical UI/UX CSS Injection (Dual Mode)
 # ==========================================
@@ -2428,14 +2466,10 @@ def render_dashboard():
                     
             report_df = pd.DataFrame(report_data)
             st.dataframe(report_df, use_container_width=True)
-            csv_export = report_df.to_csv(index=False).encode('utf-8-sig')
-            st.download_button(
-                label="📥 Download Stockpile Master Report (CSV)",
-                data=csv_export,
-                file_name=f"Stockpile_Targets_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                type="primary"
-            )
+            
+            # السطر السحري الجديد اللي هيعوض كل اللي مسحته
+            export_table_tools(report_df, f"Stockpile_Targets_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
+            
             st.divider()
 
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
@@ -4589,14 +4623,11 @@ def render_dashboard():
                         st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
                         
                         # زرار تصدير الداتا للإكسيل للمكتب الفني
-                        csv_export = unresolved_display.to_csv(index=False).encode('utf-8-sig')
-                        st.download_button(
-                            label="📥 Download Unresolved Tracker (تحميل للمكتب الفني)",
-                            data=csv_export,
-                            file_name=f"Unresolved_Rejections_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
-                            mime="text/csv",
-                            type="primary"
-                        )
+                        st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
+                        
+                        # السطر السحري بديل زرار التحميل القديم
+                        export_table_tools(unresolved_display, f"Unresolved_Rejections_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
+                        
                     else:
                         st.success("✅ ممتاز! لا توجد أي عينات DPL أو Plate Load مرفوضة معلقة حالياً.")
             else:
