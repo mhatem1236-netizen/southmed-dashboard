@@ -2396,6 +2396,10 @@ def render_dashboard():
             existing_cols = [c for c in cols_order if c in summary_pivot.columns]
             summary_pivot = summary_pivot[existing_cols]
             st.dataframe(summary_pivot, use_container_width=True)
+            
+            # السطر السحري لإضافة الـ 3 زراير
+            export_table_tools(summary_pivot.reset_index(), f"Consolidated_Contractors_Summary_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
+            
             st.divider()
 
             target_dict = {}
@@ -4620,7 +4624,7 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
+                        
                         
                         # زرار تصدير الداتا للإكسيل للمكتب الفني
                         st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
