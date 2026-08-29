@@ -1971,27 +1971,7 @@ def render_dashboard():
         st.markdown(f"<div style='font-size: 15px; color: {ui['text_main']}; line-height: 1.6; background: {ui['highlight_bg']}; padding: 20px; border-radius: 10px; border-left: 4px solid #00d2ff; margin-bottom: 25px;'>{narrative}</div>", unsafe_allow_html=True)
 
        
-        st.markdown('<div class="bi-title">🏆 Benchmark Engine</div>', unsafe_allow_html=True)
-        if 'Company Name' in filtered_df.columns:
-            bm_comp = st.selectbox("Select Contractor for Benchmarking against Global Averages:", companies, key="bm_engine")
-            if bm_comp:
-                bm_df = filtered_df[filtered_df['Company Name'] == bm_comp]
-                bm_acc = len(bm_df[bm_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bm_df.columns else 0
-                bm_yield = (bm_acc / len(bm_df) * 100) if len(bm_df) > 0 else 0
-                bm_dur = bm_df['DURATION'].mean() if 'DURATION' in bm_df.columns else 0
-                b1, b2 = st.columns(2)
-                y_diff = bm_yield - overall_rate
-                y_color = "#2ecc71" if y_diff >= 0 else "#e74c3c"
-                y_icon = "▲" if y_diff >= 0 else "▼"
-                b1.markdown(f"<div class='metric-card'><h4>Yield vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_yield:.1f}%</h2><p style='color:{y_color}; font-weight:bold;'>{y_icon} {abs(y_diff):.1f}% vs Global ({overall_rate:.1f}%)</p></div>", unsafe_allow_html=True)
-                d_diff = bm_dur - avg_duration_value
-                d_color = "#e74c3c" if d_diff > 0 else "#2ecc71" 
-                d_icon = "▲" if d_diff > 0 else "▼"
-                b2.markdown(f"<div class='metric-card'><h4>Delay vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_dur:.1f} Days</h2><p style='color:{d_color}; font-weight:bold;'>{d_icon} {abs(d_diff):.1f} Days vs Global ({avg_duration_value:.1f})</p></div>", unsafe_allow_html=True)
-        else:
-            st.info("Company Name column is required for benchmarking.")
-
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        
 
         st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
@@ -2257,17 +2237,7 @@ def render_dashboard():
                 else:
                     st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
 
-        st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
-        if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
-            tree_df = filtered_df.copy()
-            tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
-            tree_df['status_upper'] = tree_df['sample status'].str.upper()
-            status_weights = {'ACCEPTED': 100, 'APPROVED AS NOTED': 80, 'REVISE': 40, 'REJECTED': 0, 'Unknown': 50}
-            tree_df['Heat_Score'] = tree_df['status_upper'].map(status_weights).fillna(50)
-            fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], color='Heat_Score', color_continuous_scale='RdYlGn', title="Project Hierarchy Heat Map (Green = High Approval, Red = Bottleneck/Rejections)")
-            fig_tree.update_traces(hovertemplate='<b>%{label}</b><br>Score: %{color:.1f}')
-            fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
-            st.plotly_chart(fig_tree, use_container_width=True, key="heatmap_sector")
+        
 
         st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
         st.info("💡 **CEO Feature:** Click the button below to download a styled HTML report. When opened, it can be easily saved as a perfectly formatted PDF for your Daily/Weekly Briefing!")
