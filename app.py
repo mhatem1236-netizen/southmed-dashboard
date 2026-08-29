@@ -117,8 +117,8 @@ def inject_custom_css():
     if is_dark:
         # 🌙 Stealth Ops (Dark)
         bg_main = "#0a0e17"
-        bg_sidebar = "rgba(15, 22, 35, 0.85)" # 💡 شفافية للقائمة الجانبية
-        card_bg = "rgba(15, 23, 42, 0.55)"    # 💡 شفافية أكبر للكروت لظهور الزجاج
+        bg_sidebar = "rgba(15, 22, 35, 0.95)"
+        card_bg = "rgba(15, 23, 42, 0.7)"
         card_border = "rgba(0, 210, 255, 0.15)"
         card_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.5)"
         text_main = "#e2e8f0"
@@ -127,19 +127,19 @@ def inject_custom_css():
         accent_glow = "0 0 10px rgba(0, 210, 255, 0.3)"
         input_bg = "rgba(30, 41, 59, 0.6)"
         btn_bg = accent_color
-        btn_text = bg_main
+        btn_text = "#0a0e17"
     else:
-        # ☀️ Daytime HQ (Light)
-        bg_main = "#f8fafc"
-        bg_sidebar = "rgba(255, 255, 255, 0.85)"
-        card_bg = "rgba(255, 255, 255, 0.65)" # 💡 كروت بيضاء نصف شفافة
-        card_border = "rgba(148, 163, 184, 0.3)"
-        card_shadow = "0 8px 32px 0 rgba(31, 38, 135, 0.1)"
-        text_main = "#0f172a"
-        text_muted = "#475569"
-        accent_color = "#0ea5e9" 
+        # ☀️ Daytime HQ (Light) - تم التعديل بالكامل لتكون مريحة وشيك جداً
+        bg_main = "#f4f7f9"            # خلفية رمادي فاتح جداً مريح للعين
+        bg_sidebar = "#ffffff"         # قائمة جانبية بيضاء ناصعة
+        card_bg = "#ffffff"            # كروت بيضاء سادة
+        card_border = "#d1d9e6"        # إطار الكروت رمادي هادي
+        card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)" # ضل خفيف وناعم
+        text_main = "#1e293b"          # لون النصوص كحلي غامق (أريح من الأسود الصريح)
+        text_muted = "#64748b"         # لون النصوص الفرعية رمادي مزرق
+        accent_color = "#0284c7"       # أزرق احترافي للأرقام والعناوين
         accent_glow = "none"
-        input_bg = "rgba(255, 255, 255, 0.6)"
+        input_bg = "#f8fafc"
         btn_bg = accent_color
         btn_text = "#ffffff"
 
@@ -152,24 +152,36 @@ def inject_custom_css():
     [data-testid="stHeader"] {{background: transparent !important;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
-    html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
+    /* 💡 تم إزالة السطر القديم الذي كان يطمس الأيقونات واستبداله بقواعد صحيحة */
+    html, body {{ font-family: 'Inter', sans-serif; color: {text_main}; }}
     
-    h1, h2, h3, h4, h5, h6, .metric-value, .bi-title, .login-title {{ 
+    /* إصلاح الخلفيات الأساسية */
+    [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
+    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; }}
+    
+    /* إصلاح النصوص والعناوين لضمان وضوحها في الوضعين */
+    h1, h2, h3, h4, h5, h6, .login-title {{ 
         font-family: 'Rajdhani', sans-serif !important; 
-        letter-spacing: 0.5px;
         color: {text_main} !important;
     }}
-    p, .stMarkdown, label {{ color: {text_main} !important; }}
     
-    [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
-    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.4s ease; }}
+    p, label, .stMarkdown {{ color: {text_main} !important; }}
     
+    /* 💡 إصلاح الأيقونات والأسهم (Expanders & Toggles) عشان تظهر واضحة في اللايت مود */
+    [data-testid="stExpander"] details summary svg, 
+    [data-testid="stSidebar"] svg,
+    .st-emotion-cache-1r4qj8v svg {{
+        stroke: {text_main} !important;
+        fill: {text_main} !important;
+    }}
+    [data-testid="stExpander"] details summary p {{ font-weight: bold !important; color: {accent_color} !important; }}
+
     /* Input Fields */
     [data-testid="stTextInput"] input, [data-testid="stSelectbox"] div, [data-testid="stMultiselect"] div {{
         background-color: {input_bg} !important;
         color: {text_main} !important;
         border: 1px solid {card_border} !important;
-        border-radius: 4px !important;
+        border-radius: 6px !important;
     }}
     
     /* Buttons Fix */
@@ -181,38 +193,35 @@ def inject_custom_css():
         font-family: 'Rajdhani', sans-serif !important;
         text-transform: uppercase;
         letter-spacing: 1px;
-        border-radius: 4px !important;
+        border-radius: 6px !important;
     }}
-    [data-testid="stButton"] button:hover {{ opacity: 0.9 !important; transform: translateY(-1px) !important; box-shadow: {accent_glow}; }}
+    [data-testid="stButton"] button:hover {{ opacity: 0.9 !important; transform: translateY(-1px) !important; box-shadow: {card_shadow}; }}
     
-    /* Cards Fix - True Glassmorphism */
+    /* Cards Fix - Clean and Sharp */
     .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {{
         background: {card_bg} !important;
-        backdrop-filter: blur(16px) !important; /* 🌟 سحر الزجاج المصنفر */
-        -webkit-backdrop-filter: blur(16px) !important; /* لدعم متصفحات سفاري وأبل */
         padding: 20px;
-        border-radius: 12px; /* تدوير عصري للحواف */
+        border-radius: 12px; 
         border: 1px solid {card_border};
         border-top: 3px solid {accent_color};
         box-shadow: {card_shadow};
         margin-bottom: 15px;
-        transition: transform 0.3s ease, box-shadow 0.3s ease; /* نعومة الحركة */
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }}
     
-    /* 🌟 تأثير الرفع والظل عند مرور الماوس (Hover Animation) */
     .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover, .navigation-card:hover, .health-card:hover {{
-        transform: translateY(-5px);
-        box-shadow: 0 12px 40px 0 {accent_glow if is_dark else 'rgba(14, 165, 233, 0.2)'};
+        transform: translateY(-4px);
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
     }}
     
-    .bi-title {{ font-size: 28px; font-weight: 700; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid {card_border}; padding-bottom: 10px; }}
+    .bi-title {{ font-size: 26px; font-weight: 700; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 2px solid {card_border}; padding-bottom: 10px; color: {accent_color} !important; }}
     .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; text-transform: uppercase; }}
     .metric-value {{ color: {accent_color} !important; font-size: 38px; font-weight: 700; line-height: 1.2; text-shadow: {accent_glow}; }}
     
-    .gradient-divider {{ height: 1px; background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
+    .gradient-divider {{ height: 1px; background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.4; }}
     
-    /* User Tag Fix */
-    div[style*="background:rgba(255,170,0,0.1)"] {{ background: {card_bg} !important; border-color: {card_border} !important; }}
+    /* 💡 إصلاح مظهر الجداول (DataFrames) في اللايت مود لتندمج مع الخلفية البيضاء */
+    [data-testid="stDataFrame"] {{ border: 1px solid {card_border} !important; border-radius: 8px !important; background-color: {card_bg} !important; }}
     
     {"[data-testid='stAppViewContainer']::after { content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; opacity: 0.15; }" if is_dark else ""}
     </style>
