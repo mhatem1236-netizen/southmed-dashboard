@@ -1617,24 +1617,28 @@ def render_dashboard():
         st.markdown('<div class="bi-title">🧠 Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
         st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
         
-        chat_container = st.container()
-        with chat_container:
-            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-            for msg in st.session_state["chat_history"]:
-                if msg['role'] == 'user':
-                    st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        # 💡 زرار التحكم السحري لإخفاء وإظهار الشات
+        show_ai_chat = st.toggle("💬 إظهار / إخفاء المساعد الذكي (Show/Hide AI Assistant)", value=False)
+        
+        if show_ai_chat:
+            chat_container = st.container()
+            with chat_container:
+                st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+                for msg in st.session_state["chat_history"]:
+                    if msg['role'] == 'user':
+                        st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-        prompt = st.chat_input("Ask the AI Engineering Assistant...")
-        if prompt:
-            st.session_state["chat_history"].append({"role": "user", "content": prompt})
-            with st.spinner(" AI is analyzing the dataset..."):
-                time.sleep(1.5)
-                ai_response = genai_chat_engine(prompt, df)
-            st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
-            st.rerun()
+            prompt = st.chat_input("Ask the AI Engineering Assistant...")
+            if prompt:
+                st.session_state["chat_history"].append({"role": "user", "content": prompt})
+                with st.spinner(" AI is analyzing the dataset..."):
+                    time.sleep(1.5)
+                    ai_response = genai_chat_engine(prompt, df)
+                st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
+                st.rerun()
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
