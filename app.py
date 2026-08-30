@@ -244,50 +244,33 @@ def clear_users_cache():
 
 def clear_logs_cache():
     _load_login_logs.clear()
-def init_auth_system():
-    # الحسابات الأساسية للسيستم
-    default_users = pd.DataFrame([
-        {"Email": "mohamed.hatem@kk.com", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
-        {"Email": "Eng.ibrahim.khaled@kk.com", "Name": "Eng. Ibrahim Khaled", "Password": "admin", "Role": "Admin", "Status": "Active"},
+def authenticate_user(email, password):
+    # الحسابات الثابتة والدائمة (مكتوبة جوه الكود مباشرة للاستغناء عن الـ CSV)
+    users_df = pd.DataFrame([
+        {"Email": "mohamed.hatem", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
+        {"Email": "ibrahim.khaled", "Name": "Eng. Ibrahim Khaled", "Password": "admin", "Role": "Admin", "Status": "Active"},
         {"Email": "bat36@kk.com", "Password": "123", "Name": "Battalion 36", "Role": "User", "Status": "Active"},
         {"Email": "bat73@kk.com", "Password": "123", "Name": "Battalion 73", "Role": "User", "Status": "Active"},
         {"Email": "bat44@kk.com", "Password": "123", "Name": "Battalion 44", "Role": "User", "Status": "Active"}
     ])
-    
-    default_users.to_csv(USERS_DB_FILE, index=False)
-    clear_users_cache()
-    
-    if not os.path.exists(LOGIN_LOGS_FILE):
-        logs_df = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Role"])
-        logs_df.to_csv(LOGIN_LOGS_FILE, index=False)
-        clear_logs_cache()
 
-def log_user_entry(user_info):
-    logs_df = _load_login_logs()
-    new_log = pd.DataFrame([{
-        "Timestamp": datetime.now(EGYPT_TZ).strftime("%Y-%m-%d %H:%M:%S"),
-        "Name": user_info["Name"],
-        "Email": user_info["Email"],
-        "Role": user_info["Role"]
-    }])
-    updated_logs = pd.concat([logs_df, new_log], ignore_index=True)
-    updated_logs.to_csv(LOGIN_LOGS_FILE, index=False)
-    clear_logs_cache()
-
-def authenticate_user(email, password):
-    users_df = _load_users_db()
+    # البحث عن الإيميل والباسورد
     user = users_df[(users_df["Email"].str.lower() == email.lower()) & (users_df["Password"] == password)]
+    
     if not user.empty:
         user_data = user.iloc[0]
         if user_data["Status"] == "Active":
             st.session_state["authenticated"] = True
             st.session_state["current_user"] = user_data.to_dict()
-            log_user_entry(user_data)
+            try:
+                log_user_entry(user_data)
+            except:
+                pass
             return True, "Success"
         else:
             return False, "Account Suspended. Contact Administrator."
+            
     return False, "Invalid Email or Password."
-
 # ==========================================
 # 5. 3D Glassy Chart Styling Function
 # ==========================================
