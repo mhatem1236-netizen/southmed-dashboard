@@ -4688,14 +4688,9 @@ def render_dashboard():
                 
                 st.dataframe(missing_df, use_container_width=True, hide_index=True)
                 
-                csv_missing = missing_df.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(
-                    label="📥 Download Missing Layers Tracker (تحميل تقرير الفجوات)",
-                    data=csv_missing,
-                    file_name=f"Missing_Layers_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
-                    mime="text/csv",
-                    type="primary"
-                )
+                # السطر السحري لإضافة الـ 3 زراير (CSV, Excel, PDF)
+                export_table_tools(missing_df, f"Missing_Layers_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
+                
             else:
                 st.success("✅ هندسياً ممتاز! لا توجد أي ثغرات أو طبقات ناقصة في تسلسل اختبارات (DPL / Sand Cone) لجميع العناصر المدموكة.")
         else:
