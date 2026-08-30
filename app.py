@@ -2101,19 +2101,17 @@ def render_dashboard():
                         cpk_status = "N/A (Std Dev is 0)"
 
                     st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="metric-label">Process Capability (Cpk)</div>
-                        <div class="metric-value" style="font-size: 32px !important; color: {cpk_color} !important;">{cpk:.2f}</div>
-                        <div style="color: {cpk_color}; font-size: 14px; margin-top: 5px; font-weight: bold;">{cpk_status}</div>
-                        
-                        <!-- 💡 الدليل الإرشادي (Legend) -->
-                        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed rgba(128,128,128,0.3); font-size: 11px; display: flex; justify-content: space-between;">
-                            <span style="color: #2ecc71; font-weight: 600;">≥ 1.33 (Excellent)</span>
-                            <span style="color: #f1c40f; font-weight: 600;">≥ 1.0 (Good)</span>
-                            <span style="color: #e74c3c; font-weight: 600;">&lt; 1.0 (Needs Imp.)</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+<div class="metric-card">
+    <div class="metric-label">Process Capability (Cpk)</div>
+    <div class="metric-value" style="font-size: 32px !important; color: {cpk_color} !important;">{cpk:.2f}</div>
+    <div style="color: {cpk_color}; font-size: 14px; margin-top: 5px; font-weight: bold;">{cpk_status}</div>
+    <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed rgba(128,128,128,0.3); font-size: 11px; display: flex; justify-content: space-between;">
+        <span style="color: #2ecc71; font-weight: 600;">≥ 1.33 (Excellent)</span>
+        <span style="color: #f1c40f; font-weight: 600;">≥ 1.0 (Good)</span>
+        <span style="color: #e74c3c; font-weight: 600;">&lt; 1.0 (Needs Imp.)</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
                 with cap_col2:
                     if std_val > 0:
                         cpk = min((ucl - mean_val) / (3 * std_val), (mean_val - lcl) / (3 * std_val))
