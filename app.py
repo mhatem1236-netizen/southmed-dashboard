@@ -1715,7 +1715,7 @@ def render_dashboard():
         d2 = HistoryManager.get_delta_html(current_metrics["Total_Tests"], "Total_Tests", uploaded_file.name)
         create_card(col2, "Total Tests", current_metrics["Total_Tests"], delta_html=d2, progress=min(100, (current_metrics["Total_Tests"]/t_test)*100 if current_metrics["Total_Tests"] else 0))
         d3 = HistoryManager.get_delta_html(current_metrics["Avg_DPL"], "Avg_DPL", uploaded_file.name)
-        create_card(col3, "Avg DPL Value", current_metrics["Avg_DPL"], delta_html=d3, progress=min(100, (current_metrics["Avg_DPL"]/t_dpl)*100 if current_metrics["Avg_DPL"] else 0))
+        create_card(col3, "Avg DPL Value", f"{current_metrics['Avg_DPL']} <span style='font-size: 20px; font-weight: 500; color: var(--text-muted);'>MN/m²</span>", delta_html=d3, progress=min(100, (current_metrics["Avg_DPL"]/t_dpl)*100 if current_metrics["Avg_DPL"] else 0))
         d4 = HistoryManager.get_delta_html(current_metrics["Avg_Duration"], "Avg_Duration", uploaded_file.name)
         dur_prog = max(0, 100 - (current_metrics["Avg_Duration"]/t_dur * 100)) if current_metrics["Avg_Duration"] else 100
         create_card(col4, "Avg. Dur (Days)", current_metrics["Avg_Duration"], delta_html=d4, progress=dur_prog)
@@ -2845,7 +2845,7 @@ def render_dashboard():
                     create_card(c2, "Executed Qty", f"{exe_qty:,.0f}" if pd.notna(exe_qty) and exe_qty>0 else "0")
                     pts_html = f"<div style='font-size:14px; color:#8da3b9; margin-top:5px;'>DPL: <b style='color:#00d2ff;'>{dpl_pts}</b> | Plate: <b style='color:#ffaa00;'>{plate_pts}</b></div>"
                     create_card(c3, "Total Compaction Points", f"{total_test_points:,}", delta_html=pts_html)
-                    create_card(c4, "Average DPL Value", f"{avg_dpl:.2f}" if pd.notna(avg_dpl) else "N/A")
+                    create_card(c4, "Average DPL Value", f"{avg_dpl:.2f} <span style='font-size: 20px; font-weight: 500; color: var(--text-muted);'>MN/m²</span>" if pd.notna(avg_dpl) else "N/A")
 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                     
@@ -4332,7 +4332,7 @@ def render_dashboard():
                         c5, c6, c7, c8 = st.columns(4)
                         create_card(c5, "Passed/Approved", bh_accepted)
                         create_card(c6, "Approval Rate (%)", f"{bh_pass_rate:.1f}%")
-                        create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f}" if not pd.isna(bh_avg_dpl) else "N/A")
+                        create_card(c7, "Avg DPL Value", f"{bh_avg_dpl:.2f} <span style='font-size: 20px; font-weight: 500; color: var(--text-muted);'>MN/m²</span>" if not pd.isna(bh_avg_dpl) else "N/A")
                         create_card(c8, "Rejected Submittals", bh_total_submittals - bh_accepted)
 
                         if 'Company Name' in bh_df.columns:
