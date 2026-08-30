@@ -115,33 +115,27 @@ def inject_custom_css():
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     
     if is_dark:
-        # 🌙 Stealth Ops (Dark)
+        # 🌙 Dark Mode
         bg_main = "#0a0e17"
-        bg_sidebar = "rgba(15, 22, 35, 0.95)"
+        bg_sidebar = "#0f1623"
         card_bg = "rgba(15, 23, 42, 0.7)"
-        card_border = "rgba(0, 210, 255, 0.15)"
+        card_border = "#1e293b"
         card_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.5)"
-        text_main = "#e2e8f0"
+        text_main = "#f8fafc"
         text_muted = "#94a3b8"
         accent_color = "#00d2ff"
-        accent_glow = "0 0 10px rgba(0, 210, 255, 0.3)"
-        input_bg = "rgba(30, 41, 59, 0.6)"
-        btn_bg = accent_color
-        btn_text = "#0a0e17"
+        input_bg = "#1e293b"
     else:
-        # ☀️ Daytime HQ (Light) - ألوان مريحة للعين ومناسبة لفترات العمل الطويلة
-        bg_main = "#f0f4f8"            # خلفية رمادي فاتح جداً (بدل الأبيض الصارخ)
+        # ☀️ Light Mode (مريح جداً للعين)
+        bg_main = "#f0f4f8"            # خلفية رمادي فاتح جداً مريحة
         bg_sidebar = "#ffffff"         # قائمة جانبية بيضاء
         card_bg = "#ffffff"            # كروت بيضاء
         card_border = "#cbd5e1"        # إطار الكروت رمادي هادي
-        card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)" # ضل ناعم للكروت
+        card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)" 
         text_main = "#0f172a"          # نصوص بلون كحلي غامق (أريح من الأسود)
-        text_muted = "#475569"         # نصوص فرعية بلون رمادي مزرق
-        accent_color = "#0284c7"       # أزرق احترافي للعناوين والأرقام
-        accent_glow = "none"
-        input_bg = "#f8fafc"
-        btn_bg = accent_color
-        btn_text = "#ffffff"
+        text_muted = "#475569"         # نصوص فرعية
+        accent_color = "#0284c7"       # أزرق احترافي
+        input_bg = "#ffffff"
 
     custom_css = f"""
     <style>
@@ -150,46 +144,53 @@ def inject_custom_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stHeader"] {{background: transparent !important;}}
-    .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
-    /* 💡 تم إزالة الكود العنيف الذي كان يخفي الأيقونات ويدمر الجداول */
-    
-    /* تحديد الخلفيات الأساسية */
+    /* تحديد الألوان الأساسية */
+    html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
-    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; }}
+    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border} !important; }}
     
-    /* العناوين الأساسية */
-    h1, h2, h3, h4, h5, h6, .login-title {{ 
-        font-family: 'Rajdhani', sans-serif !important; 
-        color: {text_main} !important;
+    h1, h2, h3, h4, h5, h6, .login-title, .bi-title {{ color: {text_main} !important; font-family: 'Rajdhani', sans-serif !important; }}
+    .bi-title {{ color: {accent_color} !important; border-bottom: 2px solid {card_border}; }}
+    p, label, span {{ color: {text_main} !important; }}
+    
+    /* 💡 1. الإصلاح الجذري لاختفاء الـ Toggles والـ Checkboxes */
+    /* إضافة إطار ثابت حوالين الـ Toggle عشان يظهر دايماً حتى لو لونه فاتح */
+    div[data-baseweb="checkbox"] > div {{
+        border: 1px solid #94a3b8 !important; 
     }}
     
-    /* النصوص العادية */
-    p, label, .stMarkdown p {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
-    
-    /* حقول الإدخال */
-    [data-testid="stTextInput"] input, [data-testid="stSelectbox"] div[data-baseweb="select"], [data-testid="stMultiselect"] div[data-baseweb="select"] {{
+    /* 💡 2. إصلاح حقول الإدخال والـ Dropdowns */
+    [data-baseweb="select"] > div, [data-baseweb="input"] > div, [data-testid="stTextInput"] input {{
         background-color: {input_bg} !important;
         color: {text_main} !important;
         border: 1px solid {card_border} !important;
         border-radius: 6px !important;
     }}
+    /* تلوين النص جوه القوائم المنسدلة */
+    [data-baseweb="popover"] {{ background-color: {input_bg} !important; }}
+    ul[data-baseweb="menu"] li {{ color: {text_main} !important; }}
     
-    /* أزرار السيستم */
+    /* 💡 3. إصلاح خلفيات الجداول (Dataframes) لتتجاوب قدر الإمكان */
+    [data-testid="stDataFrame"] {{
+        background-color: {card_bg} !important;
+        border: 1px solid {card_border} !important;
+        border-radius: 8px !important;
+        padding: 5px;
+    }}
+
+    /* الأزرار */
     [data-testid="stButton"] button {{
-        background: {btn_bg} !important;
-        color: {btn_text} !important;
+        background: {accent_color} !important;
+        color: #ffffff !important;
         border: none !important;
-        font-weight: 700 !important;
         font-family: 'Rajdhani', sans-serif !important;
         text-transform: uppercase;
-        letter-spacing: 1px;
         border-radius: 6px !important;
     }}
-    [data-testid="stButton"] button:hover {{ opacity: 0.9 !important; transform: translateY(-1px) !important; box-shadow: {card_shadow}; }}
     
-    /* الكروت التحليلية (Cards) */
-    .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {{
+    /* الكروت */
+    .metric-card, .leaderboard-card, .simulator-card, .health-card, .navigation-card {{
         background: {card_bg} !important;
         padding: 20px;
         border-radius: 12px; 
@@ -197,24 +198,7 @@ def inject_custom_css():
         border-top: 3px solid {accent_color};
         box-shadow: {card_shadow};
         margin-bottom: 15px;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }}
-    
-    .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover, .navigation-card:hover, .health-card:hover {{
-        transform: translateY(-4px);
-        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
-    }}
-    
-    .bi-title {{ font-size: 26px; font-weight: 700; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 2px solid {card_border}; padding-bottom: 10px; color: {accent_color} !important; }}
-    .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; text-transform: uppercase; }}
-    .metric-value {{ color: {accent_color} !important; font-size: 38px; font-weight: 700; line-height: 1.2; text-shadow: {accent_glow}; }}
-    
-    .gradient-divider {{ height: 1px; background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.4; }}
-    
-    /* 💡 إصلاح الـ Dataframes: تم إزالة إجبار لون الخلفية لترك Streamlit يرسم الجداول بألوانها الصحيحة المقروءة */
-    [data-testid="stDataFrame"] {{ border: 1px solid {card_border} !important; border-radius: 8px !important; }}
-    
-    {"[data-testid='stAppViewContainer']::after { content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; opacity: 0.15; }" if is_dark else ""}
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
