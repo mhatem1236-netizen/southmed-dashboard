@@ -125,18 +125,20 @@ def inject_custom_css():
         text_muted = "#94a3b8"
         accent_color = "#00d2ff"
         input_bg = "#1e293b"
+        toggle_track = "#334155" # لون مسار الزراير في الدارك
     else:
-        # ☀️ Light Mode (مريح جداً للعين)
-        bg_main = "#f0f4f8"            # خلفية رمادي فاتح جداً مريحة
-        bg_sidebar = "#ffffff"         # قائمة جانبية بيضاء
-        card_bg = "#ffffff"            # كروت بيضاء
-        card_border = "#cbd5e1"        # إطار الكروت رمادي هادي
+        # ☀️ Light Mode (ألوان احترافية مريحة جداً)
+        bg_main = "#f0f4f8"            
+        bg_sidebar = "#ffffff"         
+        card_bg = "#ffffff"            
+        card_border = "#cbd5e1"        
         card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)" 
-        text_main = "#0f172a"          # نصوص بلون كحلي غامق (أريح من الأسود)
-        text_muted = "#475569"         # نصوص فرعية
-        accent_color = "#0284c7"       # أزرق احترافي
+        text_main = "#0f172a"          
+        text_muted = "#475569"         
+        accent_color = "#0284c7"       
         input_bg = "#ffffff"
-
+        toggle_track = "#94a3b8" # لون رمادي واضح لمسار الزراير في اللايت عشان متختفيش
+        
     custom_css = f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap');
@@ -145,7 +147,7 @@ def inject_custom_css():
     footer {{visibility: hidden;}}
     [data-testid="stHeader"] {{background: transparent !important;}}
     
-    /* تحديد الألوان الأساسية */
+    /* 1. الألوان الأساسية والخلفيات */
     html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border} !important; }}
@@ -154,24 +156,55 @@ def inject_custom_css():
     .bi-title {{ color: {accent_color} !important; border-bottom: 2px solid {card_border}; }}
     p, label, span {{ color: {text_main} !important; }}
     
-    /* 💡 1. الإصلاح الجذري لاختفاء الـ Toggles والـ Checkboxes */
-    /* إضافة إطار ثابت حوالين الـ Toggle عشان يظهر دايماً حتى لو لونه فاتح */
-    div[data-baseweb="checkbox"] > div {{
-        border: 1px solid #94a3b8 !important; 
+    /* 💡 2. إصلاح مربع رفع الملفات (File Uploader) عشان ميبقاش أسود */
+    [data-testid="stFileUploadDropzone"] {{
+        background-color: {input_bg} !important;
+        border: 2px dashed {card_border} !important;
+        border-radius: 8px !important;
+    }}
+    [data-testid="stFileUploadDropzone"] * {{
+        color: {text_main} !important;
+    }}
+    [data-testid="stFileUploadDropzone"] button {{
+        background-color: {input_bg} !important;
+        border: 1px solid {card_border} !important;
+        color: {text_main} !important;
+    }}
+
+    /* 💡 3. إصلاح علامة الصح (Checkboxes) عشان المربع بتاعها يظهر */
+    [data-testid="stCheckbox"] div[data-baseweb="checkbox"] > div:first-child {{
+        background-color: {input_bg} !important;
+        border: 2px solid {toggle_track} !important;
+    }}
+    [data-testid="stCheckbox"] div[data-baseweb="checkbox"] input:checked + div {{
+        background-color: {accent_color} !important;
+        border-color: {accent_color} !important;
     }}
     
-    /* 💡 2. إصلاح حقول الإدخال والـ Dropdowns */
+    /* 💡 4. إصلاح زراير التشغيل (Toggles) عشان المسار والزرار يظهروا */
+    [data-testid="stToggle"] div[data-baseweb="checkbox"] > div:first-child {{
+        background-color: {toggle_track} !important;
+    }}
+    [data-testid="stToggle"] div[data-baseweb="checkbox"] input:checked + div {{
+        background-color: {accent_color} !important;
+    }}
+    /* الزرار الدائري (الـ Knob) اللي بيتحرك جوه الـ Toggle */
+    [data-testid="stToggle"] div[data-baseweb="checkbox"] > div:first-child > div {{
+        background-color: #ffffff !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
+    }}
+    
+    /* 5. إصلاح القوائم المنسدلة وحقول الإدخال */
     [data-baseweb="select"] > div, [data-baseweb="input"] > div, [data-testid="stTextInput"] input {{
         background-color: {input_bg} !important;
         color: {text_main} !important;
         border: 1px solid {card_border} !important;
         border-radius: 6px !important;
     }}
-    /* تلوين النص جوه القوائم المنسدلة */
-    [data-baseweb="popover"] {{ background-color: {input_bg} !important; }}
+    [data-baseweb="popover"] {{ background-color: {input_bg} !important; border: 1px solid {card_border} !important; }}
     ul[data-baseweb="menu"] li {{ color: {text_main} !important; }}
     
-    /* 💡 3. إصلاح خلفيات الجداول (Dataframes) لتتجاوب قدر الإمكان */
+    /* 6. خلفيات الجداول */
     [data-testid="stDataFrame"] {{
         background-color: {card_bg} !important;
         border: 1px solid {card_border} !important;
@@ -179,7 +212,7 @@ def inject_custom_css():
         padding: 5px;
     }}
 
-    /* الأزرار */
+    /* 7. الأزرار الأساسية */
     [data-testid="stButton"] button {{
         background: {accent_color} !important;
         color: #ffffff !important;
@@ -189,7 +222,7 @@ def inject_custom_css():
         border-radius: 6px !important;
     }}
     
-    /* الكروت */
+    /* 8. الكروت */
     .metric-card, .leaderboard-card, .simulator-card, .health-card, .navigation-card {{
         background: {card_bg} !important;
         padding: 20px;
