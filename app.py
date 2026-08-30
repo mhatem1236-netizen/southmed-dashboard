@@ -2284,15 +2284,20 @@ def render_dashboard():
                             ai_color = "var(--text-muted)"
 
             # رسم الشارت النهائي
+           # رسم الشارت النهائي
             if is_valid:
+                # 💡 ضفنا markers=True عشان كل عينة تظهر كنقطة واضحة ومتبقاش مجرد خط
                 fig_risk = px.line(plot_data, x='Date ( test)', y=[col_to_plot, 'Trend'], 
                                    title=f"AI Forecasting: {risk_metric} for {selected_risk_comp}", 
-                                   color_discrete_sequence=['#00d2ff', '#ffaa00'])
+                                   color_discrete_sequence=['#00d2ff', '#ffaa00'],
+                                   markers=True)
                 
-                # إضافة خطوط التحذير لمنخل 200
+                # إضافة خطوط التحذير لمنخل 200 وضبط الـ Scale
                 if risk_metric == "Material Fines Increase (Sieve #200)":
                     fig_risk.add_hline(y=35, line_dash="dash", line_color="#e74c3c", annotation_text="35% Rejection Limit")
                     fig_risk.add_hline(y=30, line_dash="dash", line_color="#f1c40f", annotation_text="30% Warning Limit")
+                    # 💡 إجبار الـ Y-axis إنه يبدأ من صفر لـ 40 عشان الخط ميبانش إنه لازق في الأرض
+                    fig_risk.update_layout(yaxis=dict(range=[0, max(40, plot_data[col_to_plot].max() + 5)]))
                     
                 fig_risk.update_layout(yaxis_title=y_title, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
                 try: fig_risk = style_3d_glassy(fig_risk, chart_type="line")
@@ -2313,8 +2318,6 @@ def render_dashboard():
                     """, unsafe_allow_html=True)
             else:
                 st.info(f"عفواً، لا توجد داتا صحيحة مسجلة (بعد الفلترة) لحساب توقعات {risk_metric} لشركة {selected_risk_comp}.")
-        else:
-            st.warning("⚠️ الأعمدة المطلوبة غير موجودة في الشيت المرفوع.")
 
         
 
