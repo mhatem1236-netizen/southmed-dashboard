@@ -2172,10 +2172,20 @@ def render_dashboard():
                 
                 if out_of_control_count > 0:
                     st.warning(f"⚠️ **Process Alert:** {out_of_control_count} out of {total_points} samples ({100-control_percentage:.1f}%) are outside control limits.")
-                    ooc_samples = spc_df[spc_df['out_of_control']].head(10)
+                    
+                    # الترتيب من الكبير للصغير
+                    ooc_samples = spc_df[spc_df['out_of_control']].sort_values(by='AVERAGE VALUE', ascending=False)
+                    
                     if not ooc_samples.empty:
-                        st.markdown("**Top Out-of-Control Samples:**")
-                        st.dataframe(ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']].head(10), use_container_width=True)
+                        st.markdown(f"**All Out-of-Control Samples ({out_of_control_count}):**")
+                        
+                        # شيلنا .head(10) من هنا عشان نعرض الداتا كلها مهما كان عددها
+                        display_ooc = ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']]
+                        
+                        st.dataframe(display_ooc, use_container_width=True)
+                        
+                        # زراير التحميل للتقرير الكامل
+                        export_table_tools(display_ooc, f"Out_Of_Control_Samples_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
                 else:
                     st.success("✅ **Process Stable:** All samples are within control limits.")
                 
