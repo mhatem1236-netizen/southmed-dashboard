@@ -1614,27 +1614,37 @@ def render_dashboard():
             render_alerts_module(df)
             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🧠 Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
-        st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
-        
-        chat_container = st.container()
-        with chat_container:
-            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-            for msg in st.session_state["chat_history"]:
-                if msg['role'] == 'user':
-                    st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        # ==========================================
+        # 🧠 Generative AI Engineering Assistant (Dropdown Mode)
+        # ==========================================
+        with st.expander("🧠 Generative AI Engineering Assistant (Click to open/close)", expanded=False):
+            st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
+            
+            chat_container = st.container()
+            with chat_container:
+                st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+                for msg in st.session_state["chat_history"]:
+                    if msg['role'] == 'user':
+                        st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-        prompt = st.chat_input("Ask the AI Engineering Assistant...")
-        if prompt:
-            st.session_state["chat_history"].append({"role": "user", "content": prompt})
-            with st.spinner(" AI is analyzing the dataset..."):
-                time.sleep(1.5)
-                ai_response = genai_chat_engine(prompt, df)
-            st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
-            st.rerun()
+            # تحويل الشات لـ Form عشان يشتغل جوه القائمة المنسدلة
+            with st.form(key="ai_chat_form", clear_on_submit=True):
+                col_input, col_btn = st.columns([0.85, 0.15])
+                with col_input:
+                    prompt = st.text_input("Ask:", label_visibility="collapsed", placeholder="Type your message here...")
+                with col_btn:
+                    submit_btn = st.form_submit_button("Send 🚀", use_container_width=True)
+                
+                if submit_btn and prompt:
+                    st.session_state["chat_history"].append({"role": "user", "content": prompt})
+                    with st.spinner(" AI is analyzing the dataset..."):
+                        time.sleep(1.5)
+                        ai_response = genai_chat_engine(prompt, df)
+                    st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
+                    st.rerun()
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
