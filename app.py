@@ -129,15 +129,15 @@ def inject_custom_css():
         btn_bg = accent_color
         btn_text = "#0a0e17"
     else:
-        # ☀️ Daytime HQ (Light) - تم التعديل بالكامل لتكون مريحة وشيك جداً
-        bg_main = "#f4f7f9"            # خلفية رمادي فاتح جداً مريح للعين
-        bg_sidebar = "#ffffff"         # قائمة جانبية بيضاء ناصعة
-        card_bg = "#ffffff"            # كروت بيضاء سادة
-        card_border = "#d1d9e6"        # إطار الكروت رمادي هادي
-        card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)" # ضل خفيف وناعم
-        text_main = "#1e293b"          # لون النصوص كحلي غامق (أريح من الأسود الصريح)
-        text_muted = "#64748b"         # لون النصوص الفرعية رمادي مزرق
-        accent_color = "#0284c7"       # أزرق احترافي للأرقام والعناوين
+        # ☀️ Daytime HQ (Light) - ألوان مريحة للعين ومناسبة لفترات العمل الطويلة
+        bg_main = "#f0f4f8"            # خلفية رمادي فاتح جداً (بدل الأبيض الصارخ)
+        bg_sidebar = "#ffffff"         # قائمة جانبية بيضاء
+        card_bg = "#ffffff"            # كروت بيضاء
+        card_border = "#cbd5e1"        # إطار الكروت رمادي هادي
+        card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)" # ضل ناعم للكروت
+        text_main = "#0f172a"          # نصوص بلون كحلي غامق (أريح من الأسود)
+        text_muted = "#475569"         # نصوص فرعية بلون رمادي مزرق
+        accent_color = "#0284c7"       # أزرق احترافي للعناوين والأرقام
         accent_glow = "none"
         input_bg = "#f8fafc"
         btn_bg = accent_color
@@ -152,39 +152,30 @@ def inject_custom_css():
     [data-testid="stHeader"] {{background: transparent !important;}}
     .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
-    /* 💡 تم إزالة السطر القديم الذي كان يطمس الأيقونات واستبداله بقواعد صحيحة */
-    html, body {{ font-family: 'Inter', sans-serif; color: {text_main}; }}
+    /* 💡 تم إزالة الكود العنيف الذي كان يخفي الأيقونات ويدمر الجداول */
     
-    /* إصلاح الخلفيات الأساسية */
+    /* تحديد الخلفيات الأساسية */
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
     [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; }}
     
-    /* إصلاح النصوص والعناوين لضمان وضوحها في الوضعين */
+    /* العناوين الأساسية */
     h1, h2, h3, h4, h5, h6, .login-title {{ 
         font-family: 'Rajdhani', sans-serif !important; 
         color: {text_main} !important;
     }}
     
-    p, label, .stMarkdown {{ color: {text_main} !important; }}
+    /* النصوص العادية */
+    p, label, .stMarkdown p {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
     
-    /* 💡 إصلاح الأيقونات والأسهم (Expanders & Toggles) عشان تظهر واضحة في اللايت مود */
-    [data-testid="stExpander"] details summary svg, 
-    [data-testid="stSidebar"] svg,
-    .st-emotion-cache-1r4qj8v svg {{
-        stroke: {text_main} !important;
-        fill: {text_main} !important;
-    }}
-    [data-testid="stExpander"] details summary p {{ font-weight: bold !important; color: {accent_color} !important; }}
-
-    /* Input Fields */
-    [data-testid="stTextInput"] input, [data-testid="stSelectbox"] div, [data-testid="stMultiselect"] div {{
+    /* حقول الإدخال */
+    [data-testid="stTextInput"] input, [data-testid="stSelectbox"] div[data-baseweb="select"], [data-testid="stMultiselect"] div[data-baseweb="select"] {{
         background-color: {input_bg} !important;
         color: {text_main} !important;
         border: 1px solid {card_border} !important;
         border-radius: 6px !important;
     }}
     
-    /* Buttons Fix */
+    /* أزرار السيستم */
     [data-testid="stButton"] button {{
         background: {btn_bg} !important;
         color: {btn_text} !important;
@@ -197,7 +188,7 @@ def inject_custom_css():
     }}
     [data-testid="stButton"] button:hover {{ opacity: 0.9 !important; transform: translateY(-1px) !important; box-shadow: {card_shadow}; }}
     
-    /* Cards Fix - Clean and Sharp */
+    /* الكروت التحليلية (Cards) */
     .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {{
         background: {card_bg} !important;
         padding: 20px;
@@ -220,8 +211,8 @@ def inject_custom_css():
     
     .gradient-divider {{ height: 1px; background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.4; }}
     
-    /* 💡 إصلاح مظهر الجداول (DataFrames) في اللايت مود لتندمج مع الخلفية البيضاء */
-    [data-testid="stDataFrame"] {{ border: 1px solid {card_border} !important; border-radius: 8px !important; background-color: {card_bg} !important; }}
+    /* 💡 إصلاح الـ Dataframes: تم إزالة إجبار لون الخلفية لترك Streamlit يرسم الجداول بألوانها الصحيحة المقروءة */
+    [data-testid="stDataFrame"] {{ border: 1px solid {card_border} !important; border-radius: 8px !important; }}
     
     {"[data-testid='stAppViewContainer']::after { content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; opacity: 0.15; }" if is_dark else ""}
     </style>
