@@ -249,18 +249,18 @@ def init_auth_system():
     if not os.path.exists(USERS_DB_FILE):
         # 🛡️ الحسابات الأساسية للسيستم (بتتكريت أوتوماتيك أول ما السيستم يشتغل)
         # الحسابات الأساسية للسيستم (بتتكريت أوتوماتيك أول ما السيستم يشتغل)
-        def init_auth_system():
-        # شلنا سطر الـ if خالص عشان يجبره يكريت الداتا الجديدة
-        default_users = pd.DataFrame([
-            {"Email": "mohamed.hatem", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
-            {"Email": "Eng.ibrahim.khaled", "Name": "Eng. Ibrahim Khaled", "Password": "admin", "Role": "Admin", "Status": "Active"},
-            {"Email": "bat36@kk.com", "Password": "123", "Name": "Battalion 36", "Role": "User", "Status": "Active"},
-            {"Email": "bat73@kk.com", "Password": "123", "Name": "Battalion 73", "Role": "User", "Status": "Active"},
-            {"Email": "bat44@kk.com", "Password": "123", "Name": "Battalion 44", "Role": "User", "Status": "Active"}
-        ])
-        
-        default_users.to_csv(USERS_DB_FILE, index=False)
-        clear_users_cache()
+ def init_auth_system():
+    # الحسابات الأساسية للسيستم
+    default_users = pd.DataFrame([
+        {"Email": "mohamed.hatem", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
+        {"Email": "ibrahim.khaled", "Name": "Eng. Ibrahim Khaled", "Password": "admin", "Role": "Admin", "Status": "Active"},
+        {"Email": "bat36@kk.com", "Password": "123", "Name": "Battalion 36", "Role": "User", "Status": "Active"},
+        {"Email": "bat73@kk.com", "Password": "123", "Name": "Battalion 73", "Role": "User", "Status": "Active"},
+        {"Email": "bat44@kk.com", "Password": "123", "Name": "Battalion 44", "Role": "User", "Status": "Active"}
+    ])
+    
+    default_users.to_csv(USERS_DB_FILE, index=False)
+    clear_users_cache()
     
     if not os.path.exists(LOGIN_LOGS_FILE):
         logs_df = pd.DataFrame(columns=["Timestamp", "Name", "Email", "Role"])
