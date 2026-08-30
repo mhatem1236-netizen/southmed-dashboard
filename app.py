@@ -69,45 +69,7 @@ def _t(text):
     if st.session_state.get("language") == "AR":
         return TRANSLATIONS.get(text, text)
     return text
-def export_table_tools(df, filename_prefix):
-    import io
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    
-    # 1. زرار تحميل CSV
-    csv_data = df.to_csv(index=False).encode('utf-8-sig')
-    c1.download_button("📥 Download CSV", data=csv_data, file_name=f"{filename_prefix}.csv", mime="text/csv", use_container_width=True, key=f"csv_{filename_prefix}")
-    
-    # 2. زرار تحميل Excel
-    excel_buffer = io.BytesIO()
-    with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Report')
-    c2.download_button("📊 Download Excel", data=excel_buffer.getvalue(), file_name=f"{filename_prefix}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key=f"xls_{filename_prefix}")
-    
-    # 3. زرار الحفظ كـ PDF 
-    html_content = f"""
-    <html dir="ltr">
-    <head>
-        <title>{filename_prefix}</title>
-        <style>
-            body {{ font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }}
-            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }}
-            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-            th {{ background-color: #1e3d59; color: white; }}
-            tr:nth-child(even) {{ background-color: #f2f2f2; }}
-        </style>
-    </head>
-    <body onload="window.print()">
-        <h2 style="color: #1e3d59;">Project Report: {filename_prefix.replace('_', ' ')}</h2>
-        <p style="color: #7f8c8d;">Generated on: {datetime.now(EGYPT_TZ).strftime('%Y-%m-%d %H:%M')}</p>
-        <hr>
-        {df.to_html(index=False)}
-    </body>
-    </html>
-    """
-    b64_html = base64.b64encode(html_content.encode('utf-8')).decode()
-    pdf_href = f'<a href="data:text/html;base64,{b64_html}" download="{filename_prefix}_Printable.html" style="display: block; text-align: center; background-color: #e74c3c; color: white; padding: 6px; border-radius: 4px; text-decoration: none; font-weight: bold; font-family: sans-serif; border: 1px solid #c0392b; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">🖨️ Save as PDF</a>'
-    c3.markdown(pdf_href, unsafe_allow_html=True)
+
 # ==========================================
 # 2. Tactical UI/UX CSS Injection (Dual Mode)
 # ==========================================
@@ -115,132 +77,106 @@ def inject_custom_css():
     is_dark = st.session_state.get("theme", "Dark") == "Dark"
     
     if is_dark:
-        # 🌙 Dark Mode
+        # 🌙 Stealth Ops (Dark)
         bg_main = "#0a0e17"
-        bg_sidebar = "#0f1623"
-        card_bg = "rgba(15, 23, 42, 0.7)"
-        card_border = "#1e293b"
+        bg_sidebar = "rgba(15, 22, 35, 0.85)" # 💡 شفافية للقائمة الجانبية
+        card_bg = "rgba(15, 23, 42, 0.55)"    # 💡 شفافية أكبر للكروت لظهور الزجاج
+        card_border = "rgba(0, 210, 255, 0.15)"
         card_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.5)"
-        text_main = "#f8fafc"
+        text_main = "#e2e8f0"
         text_muted = "#94a3b8"
         accent_color = "#00d2ff"
-        input_bg = "#1e293b"
-        toggle_track_off = "#334155"
-        
-        df_filter = "none" # لا يوجد فلتر للجداول في الدارك مود
-        icon_color = "#f8fafc" # أيقونات بيضاء
+        accent_glow = "0 0 10px rgba(0, 210, 255, 0.3)"
+        input_bg = "rgba(30, 41, 59, 0.6)"
+        btn_bg = accent_color
+        btn_text = bg_main
     else:
-        # ☀️ Light Mode (ألوان احترافية مريحة جداً ومحددة)
-        bg_main = "#f0f4f8"            
-        bg_sidebar = "#ffffff"         
-        card_bg = "#ffffff"            
-        card_border = "#cbd5e1"        
-        card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)" 
-        text_main = "#0f172a"          
-        text_muted = "#64748b"         
-        accent_color = "#0284c7"       
-        input_bg = "#f8fafc"
-        toggle_track_off = "#cbd5e1" 
-        
-        # 🔥 الفلتر السحري: يعكس ألوان الجدول للأبيض ويحافظ على الألوان الأصلية (أخضر/أحمر)
-        df_filter = "invert(1) hue-rotate(180deg) brightness(1.15) contrast(0.9)"
-        icon_color = "#0f172a" # إجبار الأيقونات والأسهم تكون كحلي عشان تظهر على الأبيض
-        
+        # ☀️ Daytime HQ (Light)
+        bg_main = "#f8fafc"
+        bg_sidebar = "rgba(255, 255, 255, 0.85)"
+        card_bg = "rgba(255, 255, 255, 0.65)" # 💡 كروت بيضاء نصف شفافة
+        card_border = "rgba(148, 163, 184, 0.3)"
+        card_shadow = "0 8px 32px 0 rgba(31, 38, 135, 0.1)"
+        text_main = "#0f172a"
+        text_muted = "#475569"
+        accent_color = "#0ea5e9" 
+        accent_glow = "none"
+        input_bg = "rgba(255, 255, 255, 0.6)"
+        btn_bg = accent_color
+        btn_text = "#ffffff"
+
     custom_css = f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap');
     
-    
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
     [data-testid="stHeader"] {{background: transparent !important;}}
+    .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
     
-    /* 1. الألوان الأساسية والخلفيات */
     html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
+    
+    h1, h2, h3, h4, h5, h6, .metric-value, .bi-title, .login-title {{ 
+        font-family: 'Rajdhani', sans-serif !important; 
+        letter-spacing: 0.5px;
+        color: {text_main} !important;
+    }}
+    p, .stMarkdown, label {{ color: {text_main} !important; }}
+    
     [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
-    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border} !important; }}
+    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.4s ease; }}
     
-    h1, h2, h3, h4, h5, h6, .login-title, .bi-title {{ color: {text_main} !important; font-family: 'Rajdhani', sans-serif !important; }}
-    .bi-title {{ color: {accent_color} !important; border-bottom: 2px solid {card_border}; }}
-    p, label, span, div {{ color: {text_main} !important; }}
-    
-    /* 💡 2. إجبار الأيقونات والأسهم على الظهور (SVGs) */
-    [data-testid="stExpander"] details summary svg,
-    [data-baseweb="icon"] svg,
-    [data-testid="stSelectbox"] svg {{
-        fill: {icon_color} !important;
-        color: {icon_color} !important;
-    }}
-
-    /* 💡 3. إصلاح مربع رفع الملفات (File Uploader) */
-    [data-testid="stFileUploadDropzone"] {{
-        background-color: {input_bg} !important;
-        border: 2px dashed {text_muted} !important;
-        border-radius: 8px !important;
-    }}
-    [data-testid="stFileUploadDropzone"] * {{ color: {text_main} !important; }}
-    [data-testid="stFileUploadDropzone"] button {{ background-color: {input_bg} !important; border: 1px solid {card_border} !important; color: {text_main} !important; }}
-
-    /* 💡 4. إصلاح علامة الصح (Checkboxes) والزراير الدائرية (Toggles) */
-    [data-testid="stCheckbox"] div[data-baseweb="checkbox"] > div:first-child {{
-        background-color: {input_bg} !important;
-        border: 2px solid {text_muted} !important;
-    }}
-    [data-testid="stCheckbox"] div[data-baseweb="checkbox"] input:checked + div {{
-        background-color: {accent_color} !important;
-        border-color: {accent_color} !important;
-    }}
-    [data-testid="stToggle"] div[data-baseweb="checkbox"] > div:first-child {{
-        background-color: {toggle_track_off} !important;
-        border: 1px solid {text_muted} !important;
-    }}
-    [data-testid="stToggle"] div[data-baseweb="checkbox"] input:checked + div {{
-        background-color: {accent_color} !important;
-        border-color: {accent_color} !important;
-    }}
-    [data-testid="stToggle"] div[data-baseweb="checkbox"] > div:first-child > div {{
-        background-color: #ffffff !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
-    }}
-    
-    /* 5. إصلاح القوائم المنسدلة وحقول الإدخال */
-    [data-baseweb="select"] > div, [data-baseweb="input"] > div, [data-testid="stTextInput"] input {{
+    /* Input Fields */
+    [data-testid="stTextInput"] input, [data-testid="stSelectbox"] div, [data-testid="stMultiselect"] div {{
         background-color: {input_bg} !important;
         color: {text_main} !important;
         border: 1px solid {card_border} !important;
-        border-radius: 6px !important;
+        border-radius: 4px !important;
     }}
-    [data-baseweb="popover"] {{ background-color: {input_bg} !important; border: 1px solid {card_border} !important; }}
-    ul[data-baseweb="menu"] li {{ color: {text_main} !important; }}
     
-    /* 💡 6. خلفيات الجداول (الفلتر العكسي يعمل هنا) */
-    [data-testid="stDataFrame"] {{
-        filter: {df_filter} !important;
-        background-color: {card_bg} !important;
-        border: 1px solid {card_border} !important;
-        border-radius: 8px !important;
-        padding: 5px;
-        transition: filter 0.4s ease !important;
-    }}
-
-    /* 7. الأزرار الأساسية وأزرار التحميل */
-    [data-testid="stButton"] button, [data-testid="stDownloadButton"] button {{
-        background: {accent_color} !important;
-        color: #ffffff !important;
+    /* Buttons Fix */
+    [data-testid="stButton"] button {{
+        background: {btn_bg} !important;
+        color: {btn_text} !important;
         border: none !important;
+        font-weight: 700 !important;
         font-family: 'Rajdhani', sans-serif !important;
         text-transform: uppercase;
-        border-radius: 6px !important;
+        letter-spacing: 1px;
+        border-radius: 4px !important;
     }}
+    [data-testid="stButton"] button:hover {{ opacity: 0.9 !important; transform: translateY(-1px) !important; box-shadow: {accent_glow}; }}
     
-    /* 8. الكروت التحليلية */
-    .metric-card, .leaderboard-card, .simulator-card, .health-card, .navigation-card {{
+    /* Cards Fix - True Glassmorphism */
+    .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {{
         background: {card_bg} !important;
+        backdrop-filter: blur(16px) !important; /* 🌟 سحر الزجاج المصنفر */
+        -webkit-backdrop-filter: blur(16px) !important; /* لدعم متصفحات سفاري وأبل */
         padding: 20px;
-        border-radius: 12px; 
+        border-radius: 12px; /* تدوير عصري للحواف */
         border: 1px solid {card_border};
         border-top: 3px solid {accent_color};
         box-shadow: {card_shadow};
         margin-bottom: 15px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease; /* نعومة الحركة */
     }}
+    
+    /* 🌟 تأثير الرفع والظل عند مرور الماوس (Hover Animation) */
+    .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover, .navigation-card:hover, .health-card:hover {{
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px 0 {accent_glow if is_dark else 'rgba(14, 165, 233, 0.2)'};
+    }}
+    
+    .bi-title {{ font-size: 28px; font-weight: 700; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid {card_border}; padding-bottom: 10px; }}
+    .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; text-transform: uppercase; }}
+    .metric-value {{ color: {accent_color} !important; font-size: 38px; font-weight: 700; line-height: 1.2; text-shadow: {accent_glow}; }}
+    
+    .gradient-divider {{ height: 1px; background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
+    
+    /* User Tag Fix */
+    div[style*="background:rgba(255,170,0,0.1)"] {{ background: {card_bg} !important; border-color: {card_border} !important; }}
+    
+    {"[data-testid='stAppViewContainer']::after { content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; opacity: 0.15; }" if is_dark else ""}
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
@@ -1678,39 +1614,30 @@ def render_dashboard():
             render_alerts_module(df)
             st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        # ==========================================
-        # 🧠 Generative AI Engineering Assistant (Dropdown Mode)
-        # ==========================================
-        with st.expander("🧠 Generative AI Engineering Assistant (Click to open/close)", expanded=False):
-            st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
-            
-            chat_container = st.container()
-            with chat_container:
-                st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-                for msg in st.session_state["chat_history"]:
-                    if msg['role'] == 'user':
-                        st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🧠 Generative AI Engineering Assistant</div>', unsafe_allow_html=True)
+        st.caption("Ask the AI anything about your project data. (e.g., 'Which contractor has the most rejections?')")
+        
+        chat_container = st.container()
+        with chat_container:
+            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+            for msg in st.session_state["chat_history"]:
+                if msg['role'] == 'user':
+                    st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            # تحويل الشات لـ Form عشان يشتغل جوه القائمة المنسدلة
-            with st.form(key="ai_chat_form", clear_on_submit=True):
-                col_input, col_btn = st.columns([0.85, 0.15])
-                with col_input:
-                    prompt = st.text_input("Ask:", label_visibility="collapsed", placeholder="Type your message here...")
-                with col_btn:
-                    submit_btn = st.form_submit_button("Send 🚀", use_container_width=True)
-                
-                if submit_btn and prompt:
-                    st.session_state["chat_history"].append({"role": "user", "content": prompt})
-                    with st.spinner(" AI is analyzing the dataset..."):
-                        time.sleep(1.5)
-                        ai_response = genai_chat_engine(prompt, df)
-                    st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
-                    st.rerun()
+        prompt = st.chat_input("Ask the AI Engineering Assistant...")
+        if prompt:
+            st.session_state["chat_history"].append({"role": "user", "content": prompt})
+            with st.spinner(" AI is analyzing the dataset..."):
+                time.sleep(1.5)
+                ai_response = genai_chat_engine(prompt, df)
+            st.session_state["chat_history"].append({"role": "ai", "content": ai_response})
+            st.rerun()
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+
         st.sidebar.markdown("### 🎯 2. Smart Filters")
         global_search = st.sidebar.text_input("🔍 Global Search:", placeholder="Keyword (Serial, Date)...")
         if global_search:
@@ -2044,7 +1971,27 @@ def render_dashboard():
         st.markdown(f"<div style='font-size: 15px; color: {ui['text_main']}; line-height: 1.6; background: {ui['highlight_bg']}; padding: 20px; border-radius: 10px; border-left: 4px solid #00d2ff; margin-bottom: 25px;'>{narrative}</div>", unsafe_allow_html=True)
 
        
-        
+        st.markdown('<div class="bi-title">🏆 Benchmark Engine</div>', unsafe_allow_html=True)
+        if 'Company Name' in filtered_df.columns:
+            bm_comp = st.selectbox("Select Contractor for Benchmarking against Global Averages:", companies, key="bm_engine")
+            if bm_comp:
+                bm_df = filtered_df[filtered_df['Company Name'] == bm_comp]
+                bm_acc = len(bm_df[bm_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bm_df.columns else 0
+                bm_yield = (bm_acc / len(bm_df) * 100) if len(bm_df) > 0 else 0
+                bm_dur = bm_df['DURATION'].mean() if 'DURATION' in bm_df.columns else 0
+                b1, b2 = st.columns(2)
+                y_diff = bm_yield - overall_rate
+                y_color = "#2ecc71" if y_diff >= 0 else "#e74c3c"
+                y_icon = "▲" if y_diff >= 0 else "▼"
+                b1.markdown(f"<div class='metric-card'><h4>Yield vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_yield:.1f}%</h2><p style='color:{y_color}; font-weight:bold;'>{y_icon} {abs(y_diff):.1f}% vs Global ({overall_rate:.1f}%)</p></div>", unsafe_allow_html=True)
+                d_diff = bm_dur - avg_duration_value
+                d_color = "#e74c3c" if d_diff > 0 else "#2ecc71" 
+                d_icon = "▲" if d_diff > 0 else "▼"
+                b2.markdown(f"<div class='metric-card'><h4>Delay vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_dur:.1f} Days</h2><p style='color:{d_color}; font-weight:bold;'>{d_icon} {abs(d_diff):.1f} Days vs Global ({avg_duration_value:.1f})</p></div>", unsafe_allow_html=True)
+        else:
+            st.info("Company Name column is required for benchmarking.")
+
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
@@ -2197,20 +2144,10 @@ def render_dashboard():
                 
                 if out_of_control_count > 0:
                     st.warning(f"⚠️ **Process Alert:** {out_of_control_count} out of {total_points} samples ({100-control_percentage:.1f}%) are outside control limits.")
-                    
-                    # الترتيب من الكبير للصغير
-                    ooc_samples = spc_df[spc_df['out_of_control']].sort_values(by='AVERAGE VALUE', ascending=False)
-                    
+                    ooc_samples = spc_df[spc_df['out_of_control']].head(10)
                     if not ooc_samples.empty:
-                        st.markdown(f"**All Out-of-Control Samples ({out_of_control_count}):**")
-                        
-                        # شيلنا .head(10) من هنا عشان نعرض الداتا كلها مهما كان عددها
-                        display_ooc = ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']]
-                        
-                        st.dataframe(display_ooc, use_container_width=True)
-                        
-                        # زراير التحميل للتقرير الكامل
-                        export_table_tools(display_ooc, f"Out_Of_Control_Samples_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
+                        st.markdown("**Top Out-of-Control Samples:**")
+                        st.dataframe(ooc_samples[['Company Name', 'Test Type', 'AVERAGE VALUE', 'sample status']].head(10), use_container_width=True)
                 else:
                     st.success("✅ **Process Stable:** All samples are within control limits.")
                 
@@ -2320,7 +2257,17 @@ def render_dashboard():
                 else:
                     st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
 
-        
+        st.markdown('<div class="bi-title">🗺️ Sector Performance Heat Map</div>', unsafe_allow_html=True)
+        if 'Classification' in filtered_df.columns and 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
+            tree_df = filtered_df.copy()
+            tree_df[['Classification', 'Company Name', 'sample status']] = tree_df[['Classification', 'Company Name', 'sample status']].fillna('Unknown')
+            tree_df['status_upper'] = tree_df['sample status'].str.upper()
+            status_weights = {'ACCEPTED': 100, 'APPROVED AS NOTED': 80, 'REVISE': 40, 'REJECTED': 0, 'Unknown': 50}
+            tree_df['Heat_Score'] = tree_df['status_upper'].map(status_weights).fillna(50)
+            fig_tree = px.treemap(tree_df, path=['Classification', 'Company Name', 'sample status'], color='Heat_Score', color_continuous_scale='RdYlGn', title="Project Hierarchy Heat Map (Green = High Approval, Red = Bottleneck/Rejections)")
+            fig_tree.update_traces(hovertemplate='<b>%{label}</b><br>Score: %{color:.1f}')
+            fig_tree = style_3d_glassy(fig_tree, chart_type="treemap")
+            st.plotly_chart(fig_tree, use_container_width=True, key="heatmap_sector")
 
         st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
         st.info("💡 **CEO Feature:** Click the button below to download a styled HTML report. When opened, it can be easily saved as a perfectly formatted PDF for your Daily/Weekly Briefing!")
@@ -2414,7 +2361,34 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
-       
+        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
+            comp_stats = []
+            for comp in filtered_df['Company Name'].dropna().unique():
+                cdf = filtered_df[filtered_df['Company Name'] == comp]
+                c_total = len(cdf)
+                c_acc = len(cdf[cdf['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])])
+                rate = (c_acc / c_total * 100) if c_total > 0 else 0
+                comp_stats.append({'Company': comp, 'Total': c_total, 'Rate': rate})
+            c_df = pd.DataFrame(comp_stats)
+            if not c_df.empty:
+                valid_c_df = c_df[c_df['Total'] >= 5] if len(c_df[c_df['Total'] >= 5]) > 0 else c_df
+                best_comp = valid_c_df.loc[valid_c_df['Rate'].idxmax()]
+                worst_comp = valid_c_df.loc[valid_c_df['Rate'].idxmin()]
+                l_col1, l_col2 = st.columns(2)
+                l_col1.markdown(f"""
+                    <div class="leaderboard-card" style="border-left-color: #2ecc71;">
+                        <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
+                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{best_comp['Company']}</h2>
+                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
+                    </div>
+                """, unsafe_allow_html=True)
+                l_col2.markdown(f"""
+                    <div class="leaderboard-card" style="border-left-color: #e74c3c;">
+                        <h4 style="margin:0; color:#e74c3c; text-transform: uppercase; font-size: 14px;">⚠️ Needs Attention</h4>
+                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{worst_comp['Company']}</h2>
+                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#e74c3c; font-size: 18px;">{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
+                    </div>
+                """, unsafe_allow_html=True)
 
         if 'Company Name' in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
             mat_df = filtered_df.copy()
@@ -2432,10 +2406,6 @@ def render_dashboard():
             existing_cols = [c for c in cols_order if c in summary_pivot.columns]
             summary_pivot = summary_pivot[existing_cols]
             st.dataframe(summary_pivot, use_container_width=True)
-            
-            # السطر السحري لإضافة الـ 3 زراير
-            export_table_tools(summary_pivot.reset_index(), f"Consolidated_Contractors_Summary_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
-            
             st.divider()
 
             target_dict = {}
@@ -2506,10 +2476,14 @@ def render_dashboard():
                     
             report_df = pd.DataFrame(report_data)
             st.dataframe(report_df, use_container_width=True)
-            
-            # السطر السحري الجديد اللي هيعوض كل اللي مسحته
-            export_table_tools(report_df, f"Stockpile_Targets_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
-            
+            csv_export = report_df.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label="📥 Download Stockpile Master Report (CSV)",
+                data=csv_export,
+                file_name=f"Stockpile_Targets_Report_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                type="primary"
+            )
             st.divider()
 
             st.markdown("#### 🏢 Individual Contractor Deep Dive")
@@ -3806,29 +3780,14 @@ def render_dashboard():
                             )
                             
                             # خط المنتصف للاستمرارية وللكثافة
-                            # 💡 تعريف الألوان ديناميكياً بناءً على المود (Dark / Light)
-                            is_dark = st.session_state.get("theme", "Dark") == "Dark"
-                            
-                            # ألوان الخطوط المتقاطعة (أبيض شفاف للدارك، أسود شفاف للايت)
-                            grid_line_color = "rgba(255,255,255,0.3)" if is_dark else "rgba(0,0,0,0.15)"
-                            
-                            # ألوان خلفيات النصوص (أسود شفاف للدارك، أبيض ناصع مع ضل خفيف للايت)
-                            anno_bg = "rgba(0,0,0,0.6)" if is_dark else "rgba(255,255,255,0.9)"
-                            anno_border = "rgba(255,255,255,0.1)" if is_dark else "rgba(0,0,0,0.1)"
-                            
-                            # خط المنتصف للاستمرارية وللكثافة
-                            fig_kpi.add_hline(y=50, line_dash="dash", line_color=grid_line_color, line_width=1.5)
-                            fig_kpi.add_vline(x=100, line_dash="dash", line_color=grid_line_color, line_width=1.5)
+                            fig_kpi.add_hline(y=50, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
+                            fig_kpi.add_vline(x=100, line_dash="dash", line_color="rgba(255,255,255,0.3)", line_width=1)
                             
                             # إضافة الـ Annotations التحليلية (بأماكن ثابتة ومضبوطة)
-                            # إضافة الـ Annotations التحليلية (بعد تعديل الإحداثيات لمنع التداخل)
-                            # المربعات اللي في اليمين (وديناها عند x=3000 عشان تبعد تماماً)
-                            fig_kpi.add_annotation(x=3000, y=95, text="🌟 High Intensity & Consistent", showarrow=False, font=dict(color="#2ecc71" if is_dark else "#27ae60", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
-                            fig_kpi.add_annotation(x=3000, y=5, text="🚀 High Speed, Poor Consistency", showarrow=False, font=dict(color="#f1c40f" if is_dark else "#d35400", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
-                            
-                            # المربعات اللي في الشمال (عند x=50)
-                            fig_kpi.add_annotation(x=50, y=95, text="🐢 Consistent but Slow", showarrow=False, font=dict(color="#00d2ff" if is_dark else "#0984e3", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
-                            fig_kpi.add_annotation(x=50, y=5, text="🚨 Slow & Erratic", showarrow=False, font=dict(color="#e74c3c" if is_dark else "#c0392b", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
+                            fig_kpi.add_annotation(x=175, y=95, text="🌟 High Intensity & Consistent", showarrow=False, font=dict(color="#2ecc71", size=11), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=50, y=95, text="🐢 Consistent but Slow", showarrow=False, font=dict(color="#00d2ff", size=11), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=175, y=5, text="🚀 High Speed, Poor Consistency", showarrow=False, font=dict(color="#f1c40f", size=11), bgcolor="rgba(0,0,0,0.5)")
+                            fig_kpi.add_annotation(x=50, y=5, text="🚨 Slow & Erratic", showarrow=False, font=dict(color="#e74c3c", size=11), bgcolor="rgba(0,0,0,0.5)")
                             
                             fig_kpi.update_layout(
                                 title="Execution Intensity Matrix (EII)", # ✅ إضافة عنوان صريح
@@ -4675,14 +4634,17 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        
-                        
-                        # زرار تصدير الداتا للإكسيل للمكتب الفني
                         st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
                         
-                        # السطر السحري بديل زرار التحميل القديم
-                        export_table_tools(unresolved_display, f"Unresolved_Rejections_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
-                        
+                        # زرار تصدير الداتا للإكسيل للمكتب الفني
+                        csv_export = unresolved_display.to_csv(index=False).encode('utf-8-sig')
+                        st.download_button(
+                            label="📥 Download Unresolved Tracker (تحميل للمكتب الفني)",
+                            data=csv_export,
+                            file_name=f"Unresolved_Rejections_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                            mime="text/csv",
+                            type="primary"
+                        )
                     else:
                         st.success("✅ ممتاز! لا توجد أي عينات DPL أو Plate Load مرفوضة معلقة حالياً.")
             else:
@@ -4745,8 +4707,14 @@ def render_dashboard():
                 
                 st.dataframe(missing_df, use_container_width=True, hide_index=True)
                 
-                # السطر السحري لإضافة الـ 3 زراير (CSV, Excel, PDF)
-                export_table_tools(missing_df, f"Missing_Layers_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
+                csv_missing = missing_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    label="📥 Download Missing Layers Tracker (تحميل تقرير الفجوات)",
+                    data=csv_missing,
+                    file_name=f"Missing_Layers_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    type="primary"
+                )
             else:
                 st.success("✅ هندسياً ممتاز! لا توجد أي ثغرات أو طبقات ناقصة في تسلسل اختبارات (DPL / Sand Cone) لجميع العناصر المدموكة.")
         else:
