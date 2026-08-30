@@ -248,15 +248,18 @@ def clear_logs_cache():
 def init_auth_system():
     if not os.path.exists(USERS_DB_FILE):
         # 🛡️ الحسابات الأساسية للسيستم (بتتكريت أوتوماتيك أول ما السيستم يشتغل)
+        # الحسابات الأساسية للسيستم (بتتكريت أوتوماتيك أول ما السيستم يشتغل)
         default_users = pd.DataFrame([
-            # حسابك الأساسي كـ Admin
-            {"Email": "Mohamedhatem@kk.com", "Password": "admin123", "Name": "Mohamed Hatem", "Role": "Admin", "Status": "Active"},
+            # حسابات الأدمن
+            {"Email": "mohamed.hatem", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
+            {"Email": "ibrahim.khaled", "Name": "Eng.Ibrahim Khaled", "Password": "admin", "Role": "Admin", "Status": "Active"},
             
-            # حسابات الكتائب الدائمة (ممكن تغير الباسوردات هنا براحتك)
+            # حسابات الكتائب الدائمة
             {"Email": "bat36@kk.com", "Password": "123", "Name": "Battalion 36", "Role": "User", "Status": "Active"},
             {"Email": "bat73@kk.com", "Password": "123", "Name": "Battalion 73", "Role": "User", "Status": "Active"},
             {"Email": "bat44@kk.com", "Password": "123", "Name": "Battalion 44", "Role": "User", "Status": "Active"}
         ])
+        
         default_users.to_csv(USERS_DB_FILE, index=False)
         clear_users_cache()
     
