@@ -245,11 +245,13 @@ def clear_users_cache():
 def clear_logs_cache():
     _load_login_logs.clear()
 def authenticate_user(email, password):
-    # 1. بنحاول نقرأ من ملف الداتا عشان لو الأدمن غير باسورد نلاقيه
     try:
         users_df = _load_users_db()
+        # لو الملف القديم موجود بس الأعمدة بتاعته بايظة، هنوقفه عشان يتفرمت
+        if "Email" not in users_df.columns:
+            raise ValueError("Corrupted DB")
     except:
-        # 2. لو الملف اتمسح أو مش موجود، السيستم هيكريته أوتوماتيك بالحسابات الدائمة دي
+        # السيستم هيكريت الداتا النظيفة ويكتبها فوق الملف البايظ أياً كان مكانه
         users_df = pd.DataFrame([
             {"Email": "mohamed.hatem", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
             {"Email": "ibrahim.khaled", "Name": "Eng. Ibrahim Khaled", "Password": "admin", "Role": "Admin", "Status": "Active"},
@@ -258,8 +260,12 @@ def authenticate_user(email, password):
             {"Email": "bat44@kk.com", "Password": "123", "Name": "Battalion 44", "Role": "User", "Status": "Active"}
         ])
         users_df.to_csv(USERS_DB_FILE, index=False)
-        
-    # 3. البحث عن الإيميل والباسورد
+        try:
+            clear_users_cache()  # مسح الذاكرة القديمة عشان يحس بالجديد
+        except:
+            pass
+            
+    # البحث عن الإيميل والباسورد
     user = users_df[(users_df["Email"].str.lower() == email.lower()) & (users_df["Password"] == password)]
     
     if not user.empty:
