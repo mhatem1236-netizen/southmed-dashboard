@@ -589,7 +589,7 @@ def render_home_page():
     st.markdown(f"""
     <div style="text-align: center; margin-bottom: 50px;">
         <h2 style="color: {ui['text_main']}; font-size: 32px; margin-bottom: 10px;">
-            Welcome Back, {user['Name'].split()[0]}! 👋
+            Welcome Back, {user['Name']}! 👋
         </h2>
         <p style="color: {ui['text_muted']}; font-size: 18px;">
             Choose your workspace to get started
