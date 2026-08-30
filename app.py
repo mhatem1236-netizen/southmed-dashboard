@@ -2119,8 +2119,8 @@ def render_dashboard():
         
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">📊 Pareto Analysis - 80/20 Rule</div>', unsafe_allow_html=True)
-        st.caption("Identify the vital few causes that contribute to the majority of problems. Focus your improvement efforts where they matter most.")
+        st.markdown('<div class="bi-title">📊 Pareto Style </div>', unsafe_allow_html=True)
+        st.caption("ترتيب المقاولين بناءً على حجم الرفض لتحديد أسوأ الجهات أداءً وتوجيه جهود تحسين الجودة نحوهم.")
         
         if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
             rej_by_comp = filtered_df[filtered_df['sample status'].str.upper().isin(['REJECTED', 'REVISE'])].groupby('Company Name').size().reset_index(name='Rejections')
@@ -2142,27 +2142,30 @@ def render_dashboard():
                 create_card(pareto_col2, "Critical Contractors", f"{critical_count} ({critical_percentage:.0f}%)")
                 create_card(pareto_col3, "Total Rejections", f"{total_rejections}")
                 
-                fig_pareto = make_subplots(specs=[[{"secondary_y": True}]])
-                fig_pareto.add_trace(go.Bar(x=rej_by_comp['Company Name'], y=rej_by_comp['Rejections'], name='Rejections', marker_color='#e74c3c', opacity=0.7, hovertemplate='<b>Contractor:</b> %{x}<br><b>Rejections:</b> %{y}<extra></extra>'), secondary_y=False)
-                fig_pareto.add_trace(go.Scatter(x=rej_by_comp['Company Name'], y=rej_by_comp['Cumulative_Percentage'], mode='lines+markers', name='Cumulative %', line=dict(color='#00d2ff', width=3), marker=dict(size=8, color='#00d2ff'), hovertemplate='<b>Contractor:</b> %{x}<br><b>Cumulative %:</b> %{y:.1f}%<extra></extra>'), secondary_y=True)
-                fig_pareto.add_hline(y=80, line_dash="dash", line_color="#ffaa00", line_width=2, annotation_text="80% Threshold", annotation_position="top right", secondary_y=True)
-                fig_pareto.update_layout(title="Pareto Chart - Rejections by Contractor", xaxis_title="Contractor", yaxis_title="Number of Rejections", yaxis2_title="Cumulative Percentage (%)", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=500)
-                fig_pareto.update_yaxes(title_text="Rejections", secondary_y=False)
-                fig_pareto.update_yaxes(title_text="Cumulative %", secondary_y=True, range=[0, 100])
-                fig_pareto = style_3d_glassy(fig_pareto, chart_type="combo")
-                st.plotly_chart(fig_pareto, use_container_width=True, key="pareto_comb")
-                exported_figs["9. Pareto Analysis (80-20 Rule)"] = fig_pareto
+                # الشارت الجديد: أعمدة بس ترتب المقاولين تنازلياً
+                fig_pareto = px.bar(rej_by_comp, x='Company Name', y='Rejections', 
+                                    title="Rejections Volume by Contractor",
+                                    color_discrete_sequence=['#e74c3c'], text_auto=True)
+                
+                fig_pareto.update_traces(hovertemplate='<b>Contractor:</b> %{x}<br><b>Rejections:</b> %{y}')
+                fig_pareto.update_layout(xaxis_title="Contractor", yaxis_title="Number of Rejections", height=500)
+                
+                try: fig_pareto = style_3d_glassy(fig_pareto, chart_type="bar")
+                except: pass
+                
+                st.plotly_chart(fig_pareto, use_container_width=True, key="rejection_bar_chart")
+                exported_figs["9. Top Offenders Analysis"] = fig_pareto
                 
                 st.markdown("#### 🎯 Strategic Insights")
                 insight_col1, insight_col2 = st.columns(2)
-                with insight_col1:
+                with insight_col2:
+                    top_10 = rej_by_comp.head(10)
+                    # استخدمنا لون الخلفية الجديد اللي بيظبط مع الـ Dark/Light mode
+                    top_10_html = "<br>".join([f"<div style='display: flex; justify-content: space-between; padding: 8px; background: rgba(128,128,128,0.1); border-radius: 5px; margin-bottom: 5px;'><span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span><span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span></div>" for _, row in top_10.iterrows()])
                     st.markdown(f"""
-                    <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                        <h4 style="color: #e74c3c; margin: 0 0 10px 0;">🎯 Critical Focus Area</h4>
-                        <p style="color: {ui['text_main']}; margin: 0; font-size: 14px; line-height: 1.6;">
-                            The top <b style="color: #ffaa00;">{critical_count} contractors</b> ({critical_percentage:.0f}% of total) are responsible for 
-                            <b style="color: #ffaa00;">{rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]['Cumulative_Percentage'].max():.1f}%</b> of all rejections.
-                        </p>
+                    <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 10px;">
+                        <h4 style="color: #00d2ff; margin: 0 0 10px 0;">📊 Top 10 Contractors by Rejections</h4>
+                        {top_10_html}
                     </div>
                     """, unsafe_allow_html=True)
                 with insight_col2:
