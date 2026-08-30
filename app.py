@@ -2102,7 +2102,8 @@ def render_dashboard():
 
                     html_content = f"""<div class="metric-card">
 <div class="metric-label">Process Capability (Cpk)</div>
-<div class="metric-value" style="font-size: 32px !important; color: {cpk_color} !important;">{cpk:.3f}</div>
+<!-- شلنا التقريب خالص عشان يعرض الرقم الحقيقي بالظبط -->
+<div class="metric-value" style="font-size: 32px !important; color: {cpk_color} !important;">{cpk}</div>
 <div style="color: {cpk_color}; font-size: 14px; margin-top: 5px; font-weight: bold;">{cpk_status}</div>
 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed rgba(128,128,128,0.3); font-size: 11px; display: flex; justify-content: space-between;">
     <span style="color: #2ecc71; font-weight: 600;">&ge; 1.33 (Excellent)</span>
