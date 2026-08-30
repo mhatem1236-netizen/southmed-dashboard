@@ -150,8 +150,7 @@ def inject_custom_css():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap');
     
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
+    
     [data-testid="stHeader"] {{background: transparent !important;}}
     
     /* 1. الألوان الأساسية والخلفيات */
