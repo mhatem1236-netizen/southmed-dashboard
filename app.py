@@ -3938,7 +3938,7 @@ def render_dashboard():
                                 gauge = {
                                     'axis': {'range': [0, max(1.5, overall_spi+0.2)], 'tickwidth': 1, 'tickcolor': "white"},
                                     'bar': {'color': gauge_color, 'thickness': 0.8},
-                                    'bgcolor': "rgba(15, 23, 42, 0.5)" if is_dark else "rgba(240, 245, 250, 0.8)",
+                                    'bgcolor': "rgba(128, 128, 128, 0.05)",
                                     'borderwidth': 2,
                                     'bordercolor': "rgba(0, 210, 255, 0.1)",
                                     'steps': [
