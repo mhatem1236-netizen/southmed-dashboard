@@ -16,6 +16,30 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 import io
+import os
+
+# ==========================================
+# 🛠️ حيلة برمجية لإجبار السيستم على وضع اللايت مود أوتوماتيكياً
+# ==========================================
+def auto_setup_theme():
+    os.makedirs(".streamlit", exist_ok=True)
+    config_path = ".streamlit/config.toml"
+    
+    config_content = """[theme]
+base="light"
+primaryColor="#0284c7"
+backgroundColor="#f0f4f8"
+secondaryBackgroundColor="#ffffff"
+textColor="#0f172a"
+font="sans serif"
+"""
+    # الكود هيكتب ملف الإعدادات لوحده لو مش موجود
+    if not os.path.exists(config_path):
+        with open(config_path, "w", encoding="utf-8") as f:
+            f.write(config_content)
+
+auto_setup_theme()
+# ==========================================
 
 # ==========================================
 # 1. System Configuration & Constants
