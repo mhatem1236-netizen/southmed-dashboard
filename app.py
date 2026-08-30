@@ -109,111 +109,49 @@ def export_table_tools(df, filename_prefix):
     pdf_href = f'<a href="data:text/html;base64,{b64_html}" download="{filename_prefix}_Printable.html" style="display: block; text-align: center; background-color: #e74c3c; color: white; padding: 6px; border-radius: 4px; text-decoration: none; font-weight: bold; font-family: sans-serif; border: 1px solid #c0392b; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">🖨️ Save as PDF</a>'
     c3.markdown(pdf_href, unsafe_allow_html=True)
 # ==========================================
-# 2. Tactical UI/UX CSS Injection (Dual Mode)
+# 2. Tactical UI/UX CSS Injection (Native System Mode)
 # ==========================================
 def inject_custom_css():
-    is_dark = st.session_state.get("theme", "Dark") == "Dark"
-    
-    if is_dark:
-        # 🌙 Stealth Ops (Dark)
-        bg_main = "#0a0e17"
-        bg_sidebar = "rgba(15, 22, 35, 0.85)" # 💡 شفافية للقائمة الجانبية
-        card_bg = "rgba(15, 23, 42, 0.55)"    # 💡 شفافية أكبر للكروت لظهور الزجاج
-        card_border = "rgba(0, 210, 255, 0.15)"
-        card_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.5)"
-        text_main = "#e2e8f0"
-        text_muted = "#94a3b8"
-        accent_color = "#00d2ff"
-        accent_glow = "0 0 10px rgba(0, 210, 255, 0.3)"
-        input_bg = "rgba(30, 41, 59, 0.6)"
-        btn_bg = accent_color
-        btn_text = bg_main
-    else:
-        # ☀️ Daytime HQ (Light)
-        bg_main = "#f8fafc"
-        bg_sidebar = "rgba(255, 255, 255, 0.85)"
-        card_bg = "rgba(255, 255, 255, 0.65)" # 💡 كروت بيضاء نصف شفافة
-        card_border = "rgba(148, 163, 184, 0.3)"
-        card_shadow = "0 8px 32px 0 rgba(31, 38, 135, 0.1)"
-        text_main = "#0f172a"
-        text_muted = "#475569"
-        accent_color = "#0ea5e9" 
-        accent_glow = "none"
-        input_bg = "rgba(255, 255, 255, 0.6)"
-        btn_bg = accent_color
-        btn_text = "#ffffff"
-
-    custom_css = f"""
+    custom_css = """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap');
     
+    /* لاحظ إني شلت السطر اللي بيخفي التلات نقط */
+    [data-testid="stHeader"] {background: transparent !important;}
+    .block-container {padding-top: 2rem !important; padding-bottom: 2rem !important;}
     
-    [data-testid="stHeader"] {{background: transparent !important;}}
-    .block-container {{padding-top: 2rem !important; padding-bottom: 2rem !important;}}
+    html, body, [class*="css"], p, label, .stMarkdown { font-family: 'Inter', sans-serif; }
     
-    html, body, [class*="css"] {{ color: {text_main} !important; font-family: 'Inter', sans-serif; }}
-    
-    h1, h2, h3, h4, h5, h6, .metric-value, .bi-title, .login-title {{ 
+    h1, h2, h3, h4, h5, h6, .metric-value, .bi-title, .login-title { 
         font-family: 'Rajdhani', sans-serif !important; 
         letter-spacing: 0.5px;
-        color: {text_main} !important;
-    }}
-    p, .stMarkdown, label {{ color: {text_main} !important; }}
+    }
     
-    [data-testid="stAppViewContainer"] {{ background: {bg_main} !important; transition: all 0.4s ease; }}
-    [data-testid="stSidebar"] {{ background-color: {bg_sidebar} !important; border-right: 1px solid {card_border}; transition: all 0.4s ease; }}
-    
-    /* Input Fields */
-    [data-testid="stTextInput"] input, [data-testid="stSelectbox"] div, [data-testid="stMultiselect"] div {{
-        background-color: {input_bg} !important;
-        color: {text_main} !important;
-        border: 1px solid {card_border} !important;
-        border-radius: 4px !important;
-    }}
-    
-    /* Buttons Fix */
-    [data-testid="stButton"] button {{
-        background: {btn_bg} !important;
-        color: {btn_text} !important;
-        border: none !important;
-        font-weight: 700 !important;
-        font-family: 'Rajdhani', sans-serif !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        border-radius: 4px !important;
-    }}
-    [data-testid="stButton"] button:hover {{ opacity: 0.9 !important; transform: translateY(-1px) !important; box-shadow: {accent_glow}; }}
-    
-    /* Cards Fix - True Glassmorphism */
-    .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {{
-        background: {card_bg} !important;
-        backdrop-filter: blur(16px) !important; /* 🌟 سحر الزجاج المصنفر */
-        -webkit-backdrop-filter: blur(16px) !important; /* لدعم متصفحات سفاري وأبل */
+    /* الكروت هتسحب ألوانها من السيستم أوتوماتيك */
+    .metric-card, .leaderboard-card, .simulator-card, .health-card, .custom-card, .navigation-card {
+        background-color: var(--secondary-background-color) !important;
         padding: 20px;
-        border-radius: 12px; /* تدوير عصري للحواف */
-        border: 1px solid {card_border};
-        border-top: 3px solid {accent_color};
-        box-shadow: {card_shadow};
+        border-radius: 12px;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        border-top: 3px solid var(--primary-color);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
         margin-bottom: 15px;
-        transition: transform 0.3s ease, box-shadow 0.3s ease; /* نعومة الحركة */
-    }}
+        transition: transform 0.3s ease;
+    }
     
-    /* 🌟 تأثير الرفع والظل عند مرور الماوس (Hover Animation) */
-    .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover, .navigation-card:hover, .health-card:hover {{
+    .metric-card:hover, .leaderboard-card:hover, .simulator-card:hover, .navigation-card:hover, .health-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 12px 40px 0 {accent_glow if is_dark else 'rgba(14, 165, 233, 0.2)'};
-    }}
+    }
     
-    .bi-title {{ font-size: 28px; font-weight: 700; margin-top: 30px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid {card_border}; padding-bottom: 10px; }}
-    .metric-label {{ color: {text_muted} !important; font-size: 13px; font-weight: 600; text-transform: uppercase; }}
-    .metric-value {{ color: {accent_color} !important; font-size: 38px; font-weight: 700; line-height: 1.2; text-shadow: {accent_glow}; }}
+    .bi-title { 
+        font-size: 28px; font-weight: 700; margin-top: 30px; margin-bottom: 20px; 
+        text-transform: uppercase; border-bottom: 1px solid rgba(128, 128, 128, 0.2); padding-bottom: 10px; 
+        color: var(--primary-color) !important;
+    }
+    .metric-label { font-size: 13px; font-weight: 600; text-transform: uppercase; opacity: 0.7; }
+    .metric-value { color: var(--primary-color) !important; font-size: 38px; font-weight: 700; line-height: 1.2; }
     
-    .gradient-divider {{ height: 1px; background: linear-gradient(90deg, transparent 0%, {accent_color} 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }}
-    
-    /* User Tag Fix */
-    div[style*="background:rgba(255,170,0,0.1)"] {{ background: {card_bg} !important; border-color: {card_border} !important; }}
-    
-    {"[data-testid='stAppViewContainer']::after { content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; opacity: 0.15; }" if is_dark else ""}
+    .gradient-divider { height: 1px; background: linear-gradient(90deg, transparent 0%, var(--primary-color) 50%, transparent 100%); margin: 40px 0; border: none; opacity: 0.5; }
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
@@ -357,52 +295,18 @@ def authenticate_user(email, password):
 # 5. 3D Glassy Chart Styling Function
 # ==========================================
 def style_3d_glassy(fig, chart_type="bar"):
-    is_dark = st.session_state.get("theme", "Dark") == "Dark"
-    
-    # 🧠 ذكاء تحديد الألوان بناءً على المود
-    if is_dark:
-        font_color = "#e2e8f0"
-        grid_color = 'rgba(255, 255, 255, 0.05)' 
-        hover_bg = "rgba(15, 23, 42, 0.95)"
-        title_color = "#00d2ff"
-    else:
-        font_color = "#334155" # رمادي غامق مقروء جداً لللايت
-        grid_color = 'rgba(0, 0, 0, 0.1)' 
-        hover_bg = "rgba(255, 255, 255, 0.95)"
-        title_color = "#0ea5e9"
-
     fig.update_layout(
-        font=dict(family="Rajdhani, sans-serif", color=font_color, size=14),
+        font=dict(family="Rajdhani, sans-serif", size=14),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(t=50, b=30, l=20, r=20),
-        title_font=dict(size=20, color=title_color, family="Rajdhani, sans-serif"),
+        title_font=dict(size=20, family="Rajdhani, sans-serif"),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-            font=dict(size=12, color=font_color),
             bgcolor="rgba(0,0,0,0)"
-        ),
-        # 🔥 الإصلاح هنا: إجبار الـ Tooltip إنه ياخد لون الخط المظبوط (font_color)
-        hoverlabel=dict(
-            bgcolor=hover_bg, 
-            bordercolor=title_color,
-            font=dict(size=14, family="Inter, sans-serif", color=font_color)
         )
     )
-    
-    # شبكة واضحة
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=grid_color, griddash='dot', zerolinecolor=grid_color, tickfont=dict(color=font_color))
-    fig.update_xaxes(showgrid=False, zerolinecolor=grid_color, tickfont=dict(color=font_color))
-    
-    if chart_type in ["bar", "histogram"]:
-        fig.update_traces(marker_line_color='rgba(255, 255, 255, 0.5)' if is_dark else 'rgba(0,0,0,0.2)', marker_line_width=1.5, opacity=0.9)
-    elif chart_type == "pie":
-        fig.update_traces(marker=dict(line=dict(color='#0a0e17' if is_dark else '#ffffff', width=3)))
-    elif chart_type == "line" or chart_type == "scatter":
-        fig.update_traces(line=dict(width=4), marker=dict(size=8, line=dict(color='white', width=2)))
-        
     return fig
-
 # ==========================================
 # 6. History Manager with SQLite
 # ==========================================
