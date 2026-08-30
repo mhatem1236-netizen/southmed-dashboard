@@ -244,12 +244,7 @@ def clear_users_cache():
 
 def clear_logs_cache():
     _load_login_logs.clear()
-
 def init_auth_system():
-    if not os.path.exists(USERS_DB_FILE):
-        # 🛡️ الحسابات الأساسية للسيستم (بتتكريت أوتوماتيك أول ما السيستم يشتغل)
-        # الحسابات الأساسية للسيستم (بتتكريت أوتوماتيك أول ما السيستم يشتغل)
- def init_auth_system():
     # الحسابات الأساسية للسيستم
     default_users = pd.DataFrame([
         {"Email": "mohamed.hatem", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
