@@ -19,25 +19,40 @@ import io
 import os
 
 # ==========================================
-# 🛠️ حيلة برمجية لإجبار السيستم على وضع اللايت مود أوتوماتيكياً
+# 🛠️ حيلة إجبار السيستم على إظهار الـ Settings واللايت مود من داخل الكود
 # ==========================================
-def auto_setup_theme():
+import os
+
+def force_system_settings():
+    # بنعمل الفولدر والملف برمجياً في الخلفية بدون تدخلك
     os.makedirs(".streamlit", exist_ok=True)
     config_path = ".streamlit/config.toml"
     
+    # الإعدادات السحرية اللي هترجع قائمة الـ Settings وتخلي الأساس لايت
     config_content = """[theme]
 base="light"
 primaryColor="#0284c7"
-backgroundColor="#f0f4f8"
-secondaryBackgroundColor="#ffffff"
-textColor="#0f172a"
-font="sans serif"
+
+[client]
+toolbarMode="developer"
 """
-    if not os.path.exists(config_path):
+    
+    # الكود بيفحص لو الإعدادات دي مش موجودة، بيكتبها ويطلب منك تعمل ريفريش
+    write_file = True
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            if 'toolbarMode="developer"' in f.read():
+                write_file = False
+                
+    if write_file:
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(config_content)
+        # الرسالة دي هتظهرلك مرة واحدة بس عشان تعرف إن الحقن نجح
+        st.success("✅ تم تفعيل زرار الـ Settings بنجاح! اعمل Refresh (F5) للصفحة دلوقتي عشان يظهر في التلات نقط فوق.")
+        st.stop()
 
-auto_setup_theme()
+# تنفيذ الدالة فوراً قبل أي حاجة في الداشبورد
+force_system_settings()
 # ==========================================
 
 # ==========================================
