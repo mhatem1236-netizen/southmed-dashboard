@@ -238,10 +238,52 @@ def inject_custom_css():
     """
     st.markdown(custom_css, unsafe_allow_html=True)
 
+    # ==========================================
+    # 2.5 💡 Light Mode Readability Patch
+    # ==========================================
+    # المشكلة: مئات الأماكن في الكود بتستخدم ألوان نيون ثابتة (مصممة أصلاً عشان
+    # تبان واضحة فوق خلفية غامقة) كلون نص مباشر - زي #00d2ff / #ffaa00 / #f1c40f / #2ecc71.
+    # الألوان دي فاتحة جداً، ولما بتتحط كنص فوق خلفية بيضا/فاتحة (زي كروت الايت مود)
+    # بيبقى الكونتراست ضعيف جداً وصعب على العين، وده اللي كان بيخلي الايت مود مش واضح.
+    # الحل هنا: من غير ما نلمس كل سطر في الكود (5000+ سطر)، بنستخدم CSS attribute
+    # selectors عشان نمسك أي عنصر لونه مكتوب inline بنفس الكود ده، ونستبدله بلون
+    # أغمق وأوضح ومريح للعين، بس في الايت مود فقط - الدارك مود مش متأثر خالص.
+    if not is_dark:
+        NEON_TEXT_FIX = {
+            "#00d2ff": "#0369a1",  # سماوي فاقع -> أزرق غامق مقروء
+            "#ffaa00": "#b45309",  # برتقالي فاقع -> كهرماني غامق
+            "#f1c40f": "#a16207",  # أصفر فاقع (كان شبه مختفي فوق الأبيض) -> زيتوني غامق
+            "#2ecc71": "#15803d",  # أخضر فاتح -> أخضر غامق واضح
+            "#38f9d7": "#0f766e",  # تركواز -> أخضر مزرق غامق
+            "#ff007f": "#be185d",  # فوشيا -> وردي غامق
+            "#9b59b6": "#7e22ce",  # بنفسجي فاتح -> بنفسجي غامق
+            "#ff7eb3": "#be185d",  # وردي فاتح -> وردي غامق
+            "#00f2fe": "#0369a1",  # سماوي فاتح جداً -> أزرق غامق
+            "#4facfe": "#1d4ed8",  # أزرق فاتح -> أزرق غامق
+            "#00ff87": "#15803d",  # أخضر نيون فاقع -> أخضر غامق
+            "#ff9900": "#b45309",  # برتقالي (نسخة تانية) -> كهرماني غامق
+            "#8da3b9": "#64748b",  # لون النص الخافت بتاع الدارك مود -> رمادي واضح للايت
+            "#d1d5da": "#475569",  # رمادي فاتح جداً -> رمادي غامق مقروء
+        }
+        fix_rules = []
+        for neon, safe in NEON_TEXT_FIX.items():
+            # يغطي الحالة اللي اللون فيها هو أول property في الـ style، وبمسافة أو من غيرها بعد ":"
+            fix_rules.append(
+                '[style^="color: %s"], [style^="color:%s"] { color: %s !important; }' % (neon, neon, safe)
+            )
+            # يغطي الحالة اللي اللون جه بعد "; " (فاصلة منقوطة) جوه الـ style، بمسافة أو من غيرها
+            fix_rules.append(
+                '[style*="; color: %s"], [style*=";color: %s"], [style*="; color:%s"], [style*=";color:%s"] { color: %s !important; }'
+                % (neon, neon, neon, neon, safe)
+            )
+        st.markdown("<style>\n" + "\n".join(fix_rules) + "\n</style>", unsafe_allow_html=True)
+
 # ==========================================
 # 3. Enhanced UI Components
 # ==========================================
 def show_breadcrumbs(path):
+    is_dark = st.session_state.get("theme", "Dark") == "Dark"
+    subtle_bg = "rgba(255,255,255,0.05)" if is_dark else "rgba(15, 23, 42, 0.04)"
     parts = path.split(" > ")
     breadcrumb_html = " > ".join([
         f'<span style="color: #00d2ff; cursor: pointer;">{p}</span>' 
@@ -252,7 +294,7 @@ def show_breadcrumbs(path):
     
     st.markdown(f"""
     <div style="
-        background: rgba(255,255,255,0.05);
+        background: {subtle_bg};
         padding: 10px 20px;
         border-radius: 8px;
         margin-bottom: 20px;
@@ -692,6 +734,9 @@ def render_home_page():
     ui = {
         'text_main': '#ffffff' if is_dark else '#1a1a1a',
         'text_muted': '#8da3b9' if is_dark else '#4a5568',
+        'card_bg_solid': 'rgba(10, 20, 33, 0.8)' if is_dark else '#ffffff',
+        'inner_border': 'rgba(255,255,255,0.1)' if is_dark else 'rgba(15, 23, 42, 0.1)',
+        'card_shadow': '0 5px 15px rgba(0,0,0,0.3)' if is_dark else '0 5px 15px rgba(0,0,0,0.08)',
     }
     
     # Header
@@ -728,11 +773,11 @@ def render_home_page():
     card_col1, card_col2 = st.columns(2)
     
     with card_col1:
-        st.markdown("""
+        st.markdown(f"""
         <div class="navigation-card">
             <div style="font-size: 80px; margin-bottom: 20px;">📊</div>
             <h3 style="color: #00d2ff; font-size: 28px; margin-bottom: 15px;">Main Dashboard</h3>
-            <p style="color: #8da3b9; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+            <p style="color: {ui['text_muted']}; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
                 Access the full operational dashboard with KPIs, charts, filters, and real-time monitoring
             </p>
             <div style="background: linear-gradient(135deg, #00d2ff, #008cba); padding: 12px 30px; border-radius: 8px; color: white; font-weight: bold; font-size: 16px;">
@@ -835,9 +880,9 @@ def render_home_page():
             with cols[idx]:
                 # تصميم الكارت
                 st.markdown(f"""
-                <div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(255,255,255,0.1); border-top: 4px solid #00d2ff; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); margin-bottom: 15px;">
+                <div style="background: {ui['card_bg_solid']}; border: 1px solid {ui['inner_border']}; border-top: 4px solid #00d2ff; padding: 20px; border-radius: 12px; text-align: center; box-shadow: {ui['card_shadow']}; margin-bottom: 15px;">
                     <div style="font-size: 30px; margin-bottom: 10px;">🛡️</div>
-                    <h3 style="color: #ffffff; margin: 0; font-size: 20px; font-family: 'Montserrat';">{battalion.replace('_', ' ')}</h3>
+                    <h3 style="color: {ui['text_main']}; margin: 0; font-size: 20px; font-family: 'Montserrat';">{battalion.replace('_', ' ')}</h3>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1408,7 +1453,15 @@ def render_dashboard():
         'card_bg': 'rgba(10, 20, 33, 0.8)' if is_dark else '#ffffff',
         'border_color': 'rgba(255, 255, 255, 0.1)' if is_dark else 'rgba(0,0,0,0.12)',
         'shadow': '0 5px 15px rgba(0,0,0,0.4)' if is_dark else '0 5px 15px rgba(0,0,0,0.08)',
-        'highlight_bg': 'rgba(0,210,255,0.05)' if is_dark else 'rgba(41, 128, 185, 0.08)'
+        'highlight_bg': 'rgba(0,210,255,0.05)' if is_dark else 'rgba(41, 128, 185, 0.08)',
+        # 💡 Added: unified tokens so every custom HTML block below (not just CSS classes)
+        # switches correctly with the theme instead of staying hardcoded to dark colors.
+        'card_bg_solid': 'rgba(10, 20, 33, 0.85)' if is_dark else '#ffffff',
+        'card_bg_solid_soft': 'rgba(10, 20, 33, 0.6)' if is_dark else '#f8fafc',
+        'subtle_bg': 'rgba(255,255,255,0.05)' if is_dark else 'rgba(15, 23, 42, 0.04)',
+        'subtle_bg_strong': 'rgba(0,0,0,0.2)' if is_dark else 'rgba(15, 23, 42, 0.06)',
+        'divider': 'rgba(255,255,255,0.1)' if is_dark else 'rgba(15, 23, 42, 0.12)',
+        'inner_border': 'rgba(255,255,255,0.1)' if is_dark else 'rgba(15, 23, 42, 0.1)',
     }
     exported_figs = {}
     if os.path.exists("5.jpg"):
@@ -2280,7 +2333,7 @@ def render_dashboard():
                     """, unsafe_allow_html=True)
                 with insight_col2:
                     top_5 = rej_by_comp.head(5)
-                    top_5_html = "<br>".join([f"<div style='display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 5px;'><span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span><span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span></div>" for _, row in top_5.iterrows()])
+                    top_5_html = "<br>".join([f"<div style='display: flex; justify-content: space-between; padding: 8px; background: {ui['subtle_bg']}; border-radius: 5px; margin-bottom: 5px;'><span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span><span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span></div>" for _, row in top_5.iterrows()])
                     st.markdown(f"""
                     <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 10px;">
                         <h4 style="color: #00d2ff; margin: 0 0 10px 0;">📊 Top 5 Contractors by Rejections</h4>
@@ -2856,11 +2909,11 @@ def render_dashboard():
                                 st.markdown(f"""
                                 <style>
                                     @keyframes scanline {{ 0% {{ transform: translateY(-10px); opacity: 0; }} 50% {{ opacity: 1; }} 100% {{ transform: translateY(0); opacity: 1; }} }}
-                                    .ai-terminal {{ background: linear-gradient(145deg, #0a1118, {status_bg}); border: 1px solid rgba(255,255,255,0.05); border-left: 5px solid {status_color}; border-radius: 12px; padding: 25px; margin: 20px 0; box-shadow: 0 0 20px {status_bg}; animation: scanline 0.8s ease-out forwards; }}
-                                    .ai-badge {{ background: rgba(0,0,0,0.4); border: 1px solid {ui['border_color']}; padding: 5px 12px; border-radius: 20px; font-size: 12px; color: #00d2ff; }}
+                                    .ai-terminal {{ background: linear-gradient(145deg, {'#0a1118' if is_dark else '#ffffff'}, {status_bg}); border: 1px solid {ui['inner_border']}; border-left: 5px solid {status_color}; border-radius: 12px; padding: 25px; margin: 20px 0; box-shadow: 0 0 20px {status_bg}; animation: scanline 0.8s ease-out forwards; }}
+                                    .ai-badge {{ background: {ui['subtle_bg_strong']}; border: 1px solid {ui['border_color']}; padding: 5px 12px; border-radius: 20px; font-size: 12px; color: #00d2ff; }}
                                 </style>
                                 <div class="ai-terminal">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid {ui['divider']}; padding-bottom: 15px; margin-bottom: 20px;">
                                         <h3 style="color: {status_color}; margin: 0; display: flex; align-items: center; font-size: 20px;"><span style="font-size: 24px; margin-right: 10px;">🤖</span> Generative AI Quality Auditor (Volumetric)</h3>
                                         <div style="display: flex; gap: 10px;">
                                             <span class="ai-badge">⚡ Data Confidence: {ai_confidence}%</span>
@@ -2868,15 +2921,15 @@ def render_dashboard():
                                         </div>
                                     </div>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
-                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #00d2ff;">
+                                        <div style="background: {ui['subtle_bg_strong']}; padding: 15px; border-radius: 8px; border-top: 2px solid #00d2ff;">
                                             <div style="color: #00d2ff; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> FIELD_DATA.DETECT()</div>
                                             <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{field_detect_msg}</div>
                                         </div>
-                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid #ffaa00;">
+                                        <div style="background: {ui['subtle_bg_strong']}; padding: 15px; border-radius: 8px; border-top: 2px solid #ffaa00;">
                                             <div style="color: #ffaa00; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> ENGINEERING_GAP.ANALYZE()</div>
                                             <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">{quality_insight}</div>
                                         </div>
-                                        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-top: 2px solid {status_color};">
+                                        <div style="background: {ui['subtle_bg_strong']}; padding: 15px; border-radius: 8px; border-top: 2px solid {status_color};">
                                             <div style="color: {status_color}; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">> QC_ACTION.RECOMMEND()</div>
                                             <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6; font-weight: 500;">{directive}</div>
                                         </div>
@@ -3377,7 +3430,7 @@ def render_dashboard():
                                 <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                                     <b style="color: #f1c40f; font-size: 16px;">🧠 AI Cross-Contractor Insight (Workload Split):</b><br>
                                     <span style="color: #d1d5da; font-size: 14px;">تم العمل على العنصر <b>{sel_elem_chart}</b> بواسطة <b>{len(shared_contractors)} شركات مختلفة</b>. إليك كشف حساب الكميات والجودة لكل شركة:</span>
-                                    <ul style="color: #ffffff; font-size: 14px; margin-top: 10px; background: rgba(0,0,0,0.2); padding: 10px 30px; border-radius: 5px;">
+                                    <ul style="color: {ui['text_main']}; font-size: 14px; margin-top: 10px; background: {ui['subtle_bg_strong']}; padding: 10px 30px; border-radius: 5px;">
                                         {breakdown_html}
                                     </ul>
                                     <span style="color: #d1d5da; font-size: 12px;">اختر من الأسفل طريقة عرض الشارت (مدمج أم شركة محددة).</span>
@@ -3577,13 +3630,13 @@ def render_dashboard():
                             total_dpl = daily_dpl['DPL Tests'].sum() if not daily_dpl.empty else 0
                             
                             st.markdown(f"""
-                            <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; border-left:4px solid #00d2ff; margin-bottom:15px;">
+                            <div style="background:{ui['subtle_bg']}; padding:15px; border-radius:8px; border-left:4px solid #00d2ff; margin-bottom:15px;">
                                 <div style="color:{ui['text_muted']}; font-size:12px;">Total Executed (m³)</div>
                                 <div style="color:{ui['text_main']}; font-size:20px; font-weight:bold;">{total_exec:,.1f}</div>
-                                <hr style="border-color:rgba(255,255,255,0.1); margin:10px 0;">
+                                <hr style="border-color:{ui['divider']}; margin:10px 0;">
                                 <div style="color:{ui['text_muted']}; font-size:12px;">Total DPL Tests</div>
                                 <div style="color:#ffaa00; font-size:20px; font-weight:bold;">{int(total_dpl):,}</div>
-                                <hr style="border-color:rgba(255,255,255,0.1); margin:10px 0;">
+                                <hr style="border-color:{ui['divider']}; margin:10px 0;">
                                 <div style="color:{ui['text_muted']}; font-size:12px;">Target Hit Rate</div>
                                 <div style="color:#2ecc71; font-size:20px; font-weight:bold;">{hit_rate}%</div>
                             </div>
@@ -4140,7 +4193,7 @@ def render_dashboard():
                                 ai_spi_color = "#e74c3c"
                                 
                             st.markdown(f"""
-                            <div style="background: rgba(10, 20, 33, 0.6); border-right: 5px solid {ai_spi_color}; padding: 15px 20px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;" dir="rtl">
+                            <div style="background: {ui['card_bg_solid_soft']}; border-right: 5px solid {ai_spi_color}; padding: 15px 20px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;" dir="rtl">
                                 <div style="text-align: right;">
                                     <div style="color: {ai_spi_color}; font-weight: bold; font-size: 15px; margin-bottom: 5px; font-family: 'Rajdhani', sans-serif;">🤖 رؤية الذكاء الاصطناعي (AI EVM Insight):</div>
                                     <div style="color: {ui['text_main']}; font-size: 15px; line-height: 1.6;">{ai_spi_msg}</div>
@@ -4750,8 +4803,8 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🧊 3D Subsurface Digital Twin (Deep Analytics)</div>', unsafe_allow_html=True)
         
-        st.markdown("""
-        <div style="display: flex; gap: 15px; font-size: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+        st.markdown(f"""
+        <div style="display: flex; gap: 15px; font-size: 12px; background: {ui['subtle_bg_strong']}; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
             <div><b>أشكال الاختبارات:</b> 🟢 (كرة) = DPL | 🔷 (ماسة) = Plate Load</div>
             <div><b>حالة الطبقة:</b> <span style="color:#00ff87;">أخضر</span> = مقبول | <span style="color:#ff007f;">أحمر</span> = مرفوض وتم معالجته | <span style="color:#ff9900; font-weight:bold;">برتقالي</span> = مرفوض معلق (لم يتم قبوله)</div>
         </div>
@@ -4923,7 +4976,7 @@ def render_dashboard():
                         solution_html = "👉 Audit contractor compaction methodology."
 
                     st.markdown(f"""
-<div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
+<div style="background: {ui['card_bg_solid']}; border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
 <div style="border-bottom: 2px solid #00d2ff; margin-bottom: 15px; padding-bottom: 5px;">
 <b style="color: #00d2ff; font-size: 16px;">🧠 AI Diagnostics</b>
 </div>
@@ -4946,7 +4999,7 @@ def render_dashboard():
 <div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#ff9900' if hanging_plate else '#2ecc71'};">{h_plate_str}</span></div>
 <div style="margin-top: 10px; margin-bottom: 5px; color: #f1c40f; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(241,196,15,0.3);">🔁 Repeated (Reworked)</div>
 <div style="font-size: 12px; margin-bottom: 10px;"><b>DPL:</b> <span style="color: {'#f1c40f' if repeated_dpl else '#2ecc71'};">{r_dpl_str}</span></div>
-<hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+<hr style="border-color: {ui['divider']}; margin: 15px 0;">
 <div style="margin-bottom: 10px;"><div style="color: #e74c3c; font-size: 12px; font-weight: bold;">⚠️ AI Diagnostics:</div><div style="color: {ui['text_main']}; font-size: 11px;">{problem_html}</div></div>
 <div><div style="color: #2ecc71; font-size: 12px; font-weight: bold;">💡 AI Prescription:</div><div style="color: {ui['text_main']}; font-size: 11px; background: rgba(46,204,113,0.1); padding: 5px; border-radius: 5px;">{solution_html}</div></div>
 </div>
