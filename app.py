@@ -31,7 +31,7 @@ STATUS_COLORS = {
     'REVISE': '#f1c40f', 
     'REJECTED': '#e74c3c'
 }
-USERS_DB_FILE = "users_db_v2.csv"
+USERS_DB_FILE = "users_v2.csv"
 LOGIN_LOGS_FILE = "login_logs_v2.csv"
 AUDIT_LOG_FILE = "audit_trail.csv"
 
