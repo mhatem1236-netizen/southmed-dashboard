@@ -2117,13 +2117,26 @@ def render_dashboard():
                         cpk = min((ucl - mean_val) / (3 * std_val), (mean_val - lcl) / (3 * std_val))
                         cpk_color = "#2ecc71" if cpk >= 1.33 else ("#f1c40f" if cpk >= 1.0 else "#e74c3c")
                         cpk_status = "Excellent" if cpk >= 1.33 else ("Good" if cpk >= 1.0 else "Needs Improvement")
-                        st.markdown(f"""
-                        <div class="metric-card">
-                            <div class="metric-label">Process Capability (Cpk)</div>
-                            <div class="metric-value" style="font-size: 24px; color: {cpk_color};">{cpk:.2f}</div>
-                            <div style="color: {cpk_color}; font-size: 14px; margin-top: 10px; font-weight: bold;">{cpk_status}</div>
+                    else:
+                        cpk = 0.0
+                        cpk_color = "var(--text-muted)"
+                        cpk_status = "N/A (Std Dev is 0)"
+
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Process Capability (Cpk)</div>
+                        <!-- خلينا التقريب هنا 3 أرقام عشرية عشان الرقم يظهر بدقة بدون تضليل -->
+                        <div class="metric-value" style="font-size: 32px !important; color: {cpk_color} !important;">{cpk:.3f}</div>
+                        <div style="color: {cpk_color}; font-size: 14px; margin-top: 5px; font-weight: bold;">{cpk_status}</div>
+                        
+                        <!-- 💡 الدليل الإرشادي (Legend) -->
+                        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed rgba(128,128,128,0.3); font-size: 11px; display: flex; justify-content: space-between;">
+                            <span style="color: #2ecc71; font-weight: 600;">≥ 1.33 (Excellent)</span>
+                            <span style="color: #f1c40f; font-weight: 600;">≥ 1.00 (Good)</span>
+                            <span style="color: #e74c3c; font-weight: 600;">&lt; 1.00 (Needs Imp.)</span>
                         </div>
-                        """, unsafe_allow_html=True)
+                    </div>
+                    """, unsafe_allow_html=True)
         
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
