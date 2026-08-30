@@ -2177,7 +2177,7 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="bi-title">🤖 Predictive Quality Risk Forecasting (AI)</div>', unsafe_allow_html=True)
-        st.caption("يتتبع الذكاء الاصطناعي المسار الزمني لنتائج الاختبارات (DPL, Sieve #200) لكل مقاول، للتنبؤ بانهيار الجودة ورفض العينات قبل حدوثه.")
+        st.caption("يتتبع الذكاء الاصطناعي المسار الزمني لنتائج الاختبارات (DPL, Sieve #200) لكل مقاول، للتنبؤ بانهيار الجودة ورفض العينات قبل حدوثه بناءً على تدهور الأرقام.")
 
         if 'Date ( test)' in filtered_df.columns and 'Company Name' in filtered_df.columns:
             q_c1, q_c2 = st.columns(2)
@@ -2186,10 +2186,11 @@ def render_dashboard():
             with q_c1:
                 selected_risk_comp = st.selectbox("🏗️ Select Contractor (اختيار المقاول):", avail_comps, key="risk_comp_sel")
             with q_c2:
-                risk_metric = st.selectbox("🔬 Select Predictor (اختيار مؤشر التنبؤ):", 
+                risk_metric = st.selectbox("🔬 Select Predictor (مؤشر التنبؤ):", 
                                            ["Compaction Deterioration (DPL)", "Material Fines Increase (Sieve #200)"], 
                                            key="risk_metric_sel")
 
+            # ترتيب التواريخ من الأقدم للأحدث
             risk_df = filtered_df[filtered_df['Company Name'] == selected_risk_comp].dropna(subset=['Date ( test)']).sort_values('Date ( test)')
             
             col_to_plot = None
@@ -2200,34 +2201,43 @@ def render_dashboard():
             
             if risk_metric == "Compaction Deterioration (DPL)":
                 if 'AVERAGE VALUE' in risk_df.columns and 'Test Type' in risk_df.columns:
-                    dpl_risk = risk_df[risk_df['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)].copy()
+                    dpl_risk = risk_df.copy()
+                    
+                    # 1. فلترة على DPL فقط
+                    dpl_risk = dpl_risk[dpl_risk['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)]
+                    
+                    # 2. استبعاد المرفوض لأننا بنقيس مسار الناجح لو بينهار
+                    if 'sample status' in dpl_risk.columns:
+                        dpl_risk = dpl_risk[~dpl_risk['sample status'].astype(str).str.upper().str.contains('REVISE|REJECT|FAIL', na=False)]
+                    
+                    # 3. استخلاص الرقم الصافي وتجاهل أي علامات (✔️ أو ❌)
+                    dpl_risk['AVERAGE VALUE'] = dpl_risk['AVERAGE VALUE'].astype(str).str.extract(r'(\d+\.?\d*)')[0]
                     dpl_risk['AVERAGE VALUE'] = pd.to_numeric(dpl_risk['AVERAGE VALUE'], errors='coerce')
                     dpl_risk = dpl_risk.dropna(subset=['AVERAGE VALUE'])
                     
                     if not dpl_risk.empty:
                         dpl_daily = dpl_risk.groupby('Date ( test)')['AVERAGE VALUE'].mean().reset_index()
-                        dpl_daily['7-Day Trend'] = dpl_daily['AVERAGE VALUE'].rolling(window=7, min_periods=1).mean()
+                        dpl_daily['Trend'] = dpl_daily['AVERAGE VALUE'].rolling(window=3, min_periods=1).mean()
                         plot_data = dpl_daily
                         col_to_plot = 'AVERAGE VALUE'
                         y_title = "DPL Blows (Avg)"
                         is_valid = True
                         
                         if len(dpl_daily) >= 3:
-                            recent_trend = dpl_daily['7-Day Trend'].iloc[-1]
-                            old_trend = dpl_daily['7-Day Trend'].iloc[max(0, len(dpl_daily)-4)]
-                            overall_avg = dpl_daily['AVERAGE VALUE'].mean()
+                            recent_trend = dpl_daily['Trend'].iloc[-1]
+                            old_trend = dpl_daily['Trend'].iloc[-3]
                             
-                            if recent_trend < old_trend and recent_trend < overall_avg:
+                            if recent_trend < old_trend - 2.0: # لو القيم بتقل بشكل كبير
                                 ai_color = "#e74c3c"
-                                ai_msg = f"🚨 **خطر متوقع (CRITICAL):** المسار الزمني لنتائج الـ DPL لشركة **{selected_risk_comp}** في انحدار مستمر (المتوسط الحالي: {recent_trend:.1f}). هذا يشير إلى تدهور واضح في جودة معدات أو طريقة الدمك، ومن المتوقع بدء رفض العينات قريباً."
+                                ai_msg = f"🚨 **إنذار تدهور (CRITICAL):** مؤشر دمك DPL لشركة **{selected_risk_comp}** في هبوط مستمر. التوجه الحالي يشير لاحتمالية رفض العينات القادمة لعدم تحقيق جهد الدمك، يجب تنبيه المقاول لزيادة الدمك."
                             elif recent_trend < old_trend:
                                 ai_color = "#f1c40f"
-                                ai_msg = f"⚠️ **تحذير (WARNING):** جودة الدمك تتراجع تدريجياً، المسار الزمني ينحدر للأسفل ولكن لا يزال قريباً من المتوسط العام."
+                                ai_msg = f"⚠️ **تحذير (WARNING):** قيم الـ DPL تتناقص تدريجياً. يجب مراقبة هراسات الدمك أو نسبة المياه (OMC) قبل الوصول للحد الأدنى للرفض."
                             else:
                                 ai_color = "#2ecc71"
-                                ai_msg = f"✅ **مستقر (STABLE):** جودة الدمك لشركة **{selected_risk_comp}** مستقرة، والمسار الزمني يحقق النتائج المطلوبة للنجاح."
+                                ai_msg = f"✅ **مستقر (STABLE):** قيم الدمك لشركة **{selected_risk_comp}** مستقرة ولا يوجد مؤشر لانهيار الجودة."
                         else:
-                            ai_msg = "لا توجد نقاط بيانات كافية لحساب المسار الزمني."
+                            ai_msg = "جاري تجميع بيانات كافية لرسم المسار الزمني..."
                             ai_color = "var(--text-muted)"
             
             else: # Sieve 200 Prediction
@@ -2235,42 +2245,76 @@ def render_dashboard():
                 if sieve_col:
                     sieve_risk = risk_df.copy()
                     
-                    # 💡 الربط الهندسي: فلترة لاختبارات التربة (Soil) فقط
+                    # 1. فلترة على التربة (SOIL)
                     if 'Test Type' in sieve_risk.columns:
-                        sieve_risk = sieve_risk[sieve_risk['Test Type'].astype(str).str.upper().str.contains('SOIL|SIEVE', na=False)]
+                        sieve_risk = sieve_risk[sieve_risk['Test Type'].astype(str).str.upper().str.contains('SOIL', na=False)]
                         
-                    # 💡 الربط الهندسي: فلترة لمواقع التوشينات (Stockpile / مشون) فقط
+                    # 2. فلترة على التوشينات (Stockpile)
                     if 'Sampling Location' in sieve_risk.columns:
-                        sieve_risk = sieve_risk[sieve_risk['Sampling Location'].astype(str).str.contains('stock|مشون', case=False, na=False)]
+                        sieve_risk = sieve_risk[sieve_risk['Sampling Location'].astype(str).str.upper().str.contains('STOCK|مشون|توشين', na=False)]
                     
-                    sieve_risk[sieve_col] = sieve_risk[sieve_col].astype(str).str.replace('%', '', regex=False).str.strip()
+                    # 3. تنظيف الرقم من علامة % أو أي نصوص
+                    sieve_risk[sieve_col] = sieve_risk[sieve_col].astype(str).str.extract(r'(\d+\.?\d*)')[0]
                     sieve_risk[sieve_col] = pd.to_numeric(sieve_risk[sieve_col], errors='coerce')
                     sieve_risk = sieve_risk.dropna(subset=[sieve_col])
                     
                     if not sieve_risk.empty:
                         sieve_daily = sieve_risk.groupby('Date ( test)')[sieve_col].max().reset_index()
-                        sieve_daily['7-Day Trend'] = sieve_daily[sieve_col].rolling(window=7, min_periods=1).mean()
+                        sieve_daily['Trend'] = sieve_daily[sieve_col].rolling(window=3, min_periods=1).mean()
                         plot_data = sieve_daily
                         col_to_plot = sieve_col
                         y_title = "Passing Sieve #200 (%)"
                         is_valid = True
                         
                         if len(sieve_daily) >= 2:
-                            recent_trend = sieve_daily['7-Day Trend'].iloc[-1]
-                            old_trend = sieve_daily['7-Day Trend'].iloc[max(0, len(sieve_daily)-4)]
+                            recent_trend = sieve_daily['Trend'].iloc[-1]
+                            old_trend = sieve_daily['Trend'].iloc[0] if len(sieve_daily) < 3 else sieve_daily['Trend'].iloc[-3]
                             
                             if recent_trend >= 35:
                                 ai_color = "#e74c3c"
-                                ai_msg = f"🚨 **خطر متوقع (CRITICAL):** نسبة المواد الناعمة (منخل 200) لتوشينات شركة **{selected_risk_comp}** تجاوزت خط الـ 35% (الحالي: {recent_trend:.1f}%). التوريدات الحالية ستترفض لا محالة ويجب إيقاف التوريد من هذا المحجر."
-                            elif recent_trend >= 30 and recent_trend > old_trend:
+                                ai_msg = f"🚨 **رفض متوقع (CRITICAL):** نسبة المواد الناعمة بتوشينات شركة **{selected_risk_comp}** كسرت أو تلامس حاجز الـ 35% (الحالي: {recent_trend:.1f}%). التوريدات القادمة ستسقط ويجب إيقاف هذا المحجر."
+                            elif recent_trend >= 30 and recent_trend > old_trend: # القيم بتزيد وبتقرب من 35
                                 ai_color = "#f1c40f"
-                                ai_msg = f"⚠️ **تحذير (WARNING):** نسبة المواد الناعمة في التوشينات ترتفع بشكل متسارع (الحالي: {recent_trend:.1f}%). المورد يقترب من حد الرفض (35%). يُنصح بالبدء في إجراءات المعالجة (Screening) أو تحذير المورد."
+                                ai_msg = f"⚠️ **تحذير (WARNING):** نسبة منخل 200 في التوشينات تتزايد وتقترب من حد الرفض (الحالي: {recent_trend:.1f}%). يجب معالجة التوشينات (Screening) فوراً."
                             else:
                                 ai_color = "#2ecc71"
-                                ai_msg = f"✅ **مستقر (STABLE):** نسبة المار من منخل 200 لتوشينات الشركة ضمن الحدود الآمنة للمواصفات."
+                                ai_msg = f"✅ **مستقر (STABLE):** نسبة المار من منخل 200 في توشينات المقاول ضمن الحدود الآمنة."
                         else:
-                            ai_msg = "لا توجد عينات توشينات (Soil) كافية لحساب المسار الزمني."
+                            ai_msg = "جاري تجميع بيانات كافية لرسم المسار الزمني..."
                             ai_color = "var(--text-muted)"
+
+            # رسم الشارت النهائي
+            if is_valid:
+                fig_risk = px.line(plot_data, x='Date ( test)', y=[col_to_plot, 'Trend'], 
+                                   title=f"AI Forecasting: {risk_metric} for {selected_risk_comp}", 
+                                   color_discrete_sequence=['#00d2ff', '#ffaa00'])
+                
+                # إضافة خطوط التحذير لمنخل 200
+                if risk_metric == "Material Fines Increase (Sieve #200)":
+                    fig_risk.add_hline(y=35, line_dash="dash", line_color="#e74c3c", annotation_text="35% Rejection Limit")
+                    fig_risk.add_hline(y=30, line_dash="dash", line_color="#f1c40f", annotation_text="30% Warning Limit")
+                    
+                fig_risk.update_layout(yaxis_title=y_title, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                try: fig_risk = style_3d_glassy(fig_risk, chart_type="line")
+                except: pass
+                
+                p1, p2 = st.columns([0.7, 0.3])
+                p1.plotly_chart(fig_risk, use_container_width=True, key="quality_pred_risk_chart")
+                exported_figs["10. Predictive Quality Risk"] = fig_risk
+                
+                with p2:
+                    st.markdown(f"""
+                    <div style="background: {ui['card_bg']}; border: 1px solid {ui['border_color']}; border-left: 5px solid {ai_color}; padding: 20px; border-radius: 8px; margin-top: 50px; box-shadow: {ui['shadow']};">
+                        <h4 style="color: {ai_color}; margin: 0 0 15px 0;">🤖 AI Engineering Assessment</h4>
+                        <p style="color: {ui['text_main']}; font-size: 15px; line-height: 1.8; margin: 0;">
+                            {ai_msg}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info(f"عفواً، لا توجد داتا صحيحة مسجلة (بعد الفلترة) لحساب توقعات {risk_metric} لشركة {selected_risk_comp}.")
+        else:
+            st.warning("⚠️ الأعمدة المطلوبة غير موجودة في الشيت المرفوع.")
 
         
 
