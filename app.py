@@ -2168,15 +2168,7 @@ def render_dashboard():
                         {top_10_html}
                     </div>
                     """, unsafe_allow_html=True)
-                with insight_col2:
-                    top_5 = rej_by_comp.head(5)
-                    top_5_html = "<br>".join([f"<div style='display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 5px;'><span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span><span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span></div>" for _, row in top_5.iterrows()])
-                    st.markdown(f"""
-                    <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 10px;">
-                        <h4 style="color: #00d2ff; margin: 0 0 10px 0;">📊 Top 5 Contractors by Rejections</h4>
-                        {top_5_html}
-                    </div>
-                    """, unsafe_allow_html=True)
+                
                 
                 with st.expander("📋 View Detailed Pareto Analysis Table"):
                     st.dataframe(rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={'Company Name': 'Contractor', 'Rejections': 'Total Rejections', 'Percentage': '% of Total', 'Cumulative_Percentage': 'Cumulative %'}), use_container_width=True)
