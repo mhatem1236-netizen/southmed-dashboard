@@ -3685,13 +3685,12 @@ def render_dashboard():
                             
                             # إضافة الـ Annotations التحليلية (بعد تعديل الإحداثيات لمنع التداخل)
                             # المربعات اللي في اليمين (وديناها عند x=3000 عشان تبعد تماماً)
-                            fig_kpi.add_annotation(x=3000, y=95, text="🌟 High Intensity & Consistent", showarrow=False, font=dict(color="#2ecc71" if is_dark else "#27ae60", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
-                            fig_kpi.add_annotation(x=3000, y=5, text="🚀 High Speed, Poor Consistency", showarrow=False, font=dict(color="#f1c40f" if is_dark else "#d35400", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
-                            
+                            fig_kpi.add_annotation(x=3000, y=95, text="🌟 High Intensity & Consistent", showarrow=False, font=dict(color="#2ecc71", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
+                            fig_kpi.add_annotation(x=3000, y=5, text="🚀 High Speed, Poor Consistency", showarrow=False, font=dict(color="#d35400", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
+
                             # المربعات اللي في الشمال (عند x=50)
-                            fig_kpi.add_annotation(x=50, y=95, text="🐢 Consistent but Slow", showarrow=False, font=dict(color="#00d2ff" if is_dark else "#0984e3", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
-                            fig_kpi.add_annotation(x=50, y=5, text="🚨 Slow & Erratic", showarrow=False, font=dict(color="#e74c3c" if is_dark else "#c0392b", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
-                            
+                            fig_kpi.add_annotation(x=50, y=95, text="🐢 Consistent but Slow", showarrow=False, font=dict(color="#0984e3", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
+                            fig_kpi.add_annotation(x=50, y=5, text="🚨 Slow & Erratic", showarrow=False, font=dict(color="#e74c3c", size=11, family="Rajdhani"), bgcolor=anno_bg, bordercolor=anno_border, borderwidth=1, borderpad=5)
                             fig_kpi.update_layout(
                                 title="Execution Intensity Matrix (EII)", # ✅ إضافة عنوان صريح
                                 showlegend=False, # ✅ إخفاء الليجند العملاق لتوفير المساحة
