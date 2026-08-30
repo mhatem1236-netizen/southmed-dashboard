@@ -4789,14 +4789,14 @@ def render_dashboard():
                         solution_html = "👉 Audit contractor compaction methodology."
 
                     st.markdown(f"""
-<div style="background: rgba(10, 20, 33, 0.8); border: 1px solid rgba(0, 210, 255, 0.3); padding: 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);">
-<div style="border-bottom: 2px solid #00d2ff; margin-bottom: 15px; padding-bottom: 5px;">
-<b style="color: #00d2ff; font-size: 16px;">🧠 AI Diagnostics</b>
+<div style="background: {ui['card_bg']}; border: 1px solid {ui['border_color']}; padding: 15px; border-radius: 8px; box-shadow: {ui['shadow']};">
+<div style="border-bottom: 2px solid var(--primary-color); margin-bottom: 15px; padding-bottom: 5px;">
+<b style="color: var(--primary-color); font-size: 16px;">🧠 AI Diagnostics</b>
 </div>
 <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
 <div>
 <div style="color: {ui['text_muted']}; font-size: 10px; text-transform: uppercase;">Max DPL Layer</div>
-<div style="color: #00d2ff; font-size: 16px; font-weight: bold;">{max_dpl}</div>
+<div style="color: var(--primary-color); font-size: 16px; font-weight: bold;">{max_dpl}</div>
 </div>
 <div>
 <div style="color: {ui['text_muted']}; font-size: 10px; text-transform: uppercase;">Max Plate Level</div>
@@ -4812,7 +4812,7 @@ def render_dashboard():
 <div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#ff9900' if hanging_plate else '#2ecc71'};">{h_plate_str}</span></div>
 <div style="margin-top: 10px; margin-bottom: 5px; color: #f1c40f; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(241,196,15,0.3);">🔁 Repeated (Reworked)</div>
 <div style="font-size: 12px; margin-bottom: 10px;"><b>DPL:</b> <span style="color: {'#f1c40f' if repeated_dpl else '#2ecc71'};">{r_dpl_str}</span></div>
-<hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+<hr style="border-color: {ui['border_color']}; margin: 15px 0;">
 <div style="margin-bottom: 10px;"><div style="color: #e74c3c; font-size: 12px; font-weight: bold;">⚠️ AI Diagnostics:</div><div style="color: {ui['text_main']}; font-size: 11px;">{problem_html}</div></div>
 <div><div style="color: #2ecc71; font-size: 12px; font-weight: bold;">💡 AI Prescription:</div><div style="color: {ui['text_main']}; font-size: 11px; background: rgba(46,204,113,0.1); padding: 5px; border-radius: 5px;">{solution_html}</div></div>
 </div>
