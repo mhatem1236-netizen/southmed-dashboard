@@ -2131,15 +2131,16 @@ def render_dashboard():
                 rej_by_comp['Percentage'] = (rej_by_comp['Rejections'] / total_rejections * 100).round(2)
                 rej_by_comp['Cumulative_Percentage'] = rej_by_comp['Percentage'].cumsum().round(2)
                 
-                critical_threshold = 80
-                critical_contractors = rej_by_comp[rej_by_comp['Cumulative_Percentage'] <= critical_threshold]
-                critical_count = len(critical_contractors)
+                # حسابات أسوأ 10 مقاولين بدلاً من باريتو
+                top_10_offenders = rej_by_comp.head(10)
+                top_10_rejections_sum = top_10_offenders['Rejections'].sum()
+                top_10_impact_pct = (top_10_rejections_sum / total_rejections * 100) if total_rejections > 0 else 0
                 total_contractors = len(rej_by_comp)
-                critical_percentage = (critical_count / total_contractors * 100) if total_contractors > 0 else 0
                 
                 pareto_col1, pareto_col2, pareto_col3 = st.columns(3)
                 create_card(pareto_col1, "Total Contractors", f"{total_contractors}")
-                create_card(pareto_col2, "Critical Contractors", f"{critical_count} ({critical_percentage:.0f}%)")
+                # الكارت الجديد اللي هيعجب المدير جداً
+                create_card(pareto_col2, "Top 10 Impact", f"{top_10_impact_pct:.1f}%", delta_html=f"<span style='color:#e74c3c;font-size:12px;font-weight:bold;'>{top_10_rejections_sum} Rejections</span>")
                 create_card(pareto_col3, "Total Rejections", f"{total_rejections}")
                 
                 # الشارت الجديد: أعمدة بس ترتب المقاولين تنازلياً
@@ -2158,14 +2159,15 @@ def render_dashboard():
                 
                 st.markdown("#### 🎯 Strategic Insights")
                 insight_col1, insight_col2 = st.columns(2)
-                with insight_col2:
-                    top_10 = rej_by_comp.head(10)
-                    # استخدمنا لون الخلفية الجديد اللي بيظبط مع الـ Dark/Light mode
-                    top_10_html = "<br>".join([f"<div style='display: flex; justify-content: space-between; padding: 8px; background: rgba(128,128,128,0.1); border-radius: 5px; margin-bottom: 5px;'><span style='color: {ui['text_main']}; font-weight: 600;'>{row['Company Name']}</span><span style='color: #e74c3c; font-weight: bold;'>{row['Rejections']} rejections ({row['Percentage']:.1f}%)</span></div>" for _, row in top_10.iterrows()])
+                with insight_col1:
                     st.markdown(f"""
-                    <div style="background: rgba(0, 210, 255, 0.05); border-left: 4px solid #00d2ff; padding: 20px; border-radius: 10px;">
-                        <h4 style="color: #00d2ff; margin: 0 0 10px 0;">📊 Top 10 Contractors by Rejections</h4>
-                        {top_10_html}
+                    <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
+                        <h4 style="color: #e74c3c; margin: 0 0 10px 0;">🎯 Management Focus Area</h4>
+                        <p style="color: {ui['text_main']}; margin: 0; font-size: 14px; line-height: 1.6;">
+                            Focusing corrective actions on the <b style="color: #ffaa00;">Top 10 Offenders</b> will resolve 
+                            <b style="color: #e74c3c; font-size: 16px;">{top_10_impact_pct:.1f}%</b> of all current site rejections. 
+                            These contractors require immediate QA/QC intervention.
+                        </p>
                     </div>
                     """, unsafe_allow_html=True)
                 
