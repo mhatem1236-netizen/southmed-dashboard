@@ -125,19 +125,19 @@ def inject_custom_css():
         text_muted = "#94a3b8"
         accent_color = "#00d2ff"
         input_bg = "#1e293b"
-        toggle_track = "#334155" # لون مسار الزراير في الدارك
+        toggle_track_off = "#334155" # لون مسار الزراير في الدارك
     else:
-        # ☀️ Light Mode (ألوان احترافية مريحة جداً)
+        # ☀️ Light Mode (ألوان احترافية مريحة جداً ومحددة)
         bg_main = "#f0f4f8"            
         bg_sidebar = "#ffffff"         
         card_bg = "#ffffff"            
         card_border = "#cbd5e1"        
         card_shadow = "0 4px 15px rgba(0, 0, 0, 0.05)" 
         text_main = "#0f172a"          
-        text_muted = "#475569"         
+        text_muted = "#64748b"         
         accent_color = "#0284c7"       
-        input_bg = "#ffffff"
-        toggle_track = "#94a3b8" # لون رمادي واضح لمسار الزراير في اللايت عشان متختفيش
+        input_bg = "#f8fafc"
+        toggle_track_off = "#cbd5e1" # لون رمادي واضح لمسار الزراير في اللايت عشان متختفيش
         
     custom_css = f"""
     <style>
@@ -154,12 +154,12 @@ def inject_custom_css():
     
     h1, h2, h3, h4, h5, h6, .login-title, .bi-title {{ color: {text_main} !important; font-family: 'Rajdhani', sans-serif !important; }}
     .bi-title {{ color: {accent_color} !important; border-bottom: 2px solid {card_border}; }}
-    p, label, span {{ color: {text_main} !important; }}
+    p, label, span, div {{ color: {text_main} !important; }}
     
     /* 💡 2. إصلاح مربع رفع الملفات (File Uploader) عشان ميبقاش أسود */
     [data-testid="stFileUploadDropzone"] {{
         background-color: {input_bg} !important;
-        border: 2px dashed {card_border} !important;
+        border: 2px dashed {text_muted} !important;
         border-radius: 8px !important;
     }}
     [data-testid="stFileUploadDropzone"] * {{
@@ -174,7 +174,7 @@ def inject_custom_css():
     /* 💡 3. إصلاح علامة الصح (Checkboxes) عشان المربع بتاعها يظهر */
     [data-testid="stCheckbox"] div[data-baseweb="checkbox"] > div:first-child {{
         background-color: {input_bg} !important;
-        border: 2px solid {toggle_track} !important;
+        border: 2px solid {text_muted} !important;
     }}
     [data-testid="stCheckbox"] div[data-baseweb="checkbox"] input:checked + div {{
         background-color: {accent_color} !important;
@@ -183,10 +183,12 @@ def inject_custom_css():
     
     /* 💡 4. إصلاح زراير التشغيل (Toggles) عشان المسار والزرار يظهروا */
     [data-testid="stToggle"] div[data-baseweb="checkbox"] > div:first-child {{
-        background-color: {toggle_track} !important;
+        background-color: {toggle_track_off} !important;
+        border: 1px solid {text_muted} !important;
     }}
     [data-testid="stToggle"] div[data-baseweb="checkbox"] input:checked + div {{
         background-color: {accent_color} !important;
+        border-color: {accent_color} !important;
     }}
     /* الزرار الدائري (الـ Knob) اللي بيتحرك جوه الـ Toggle */
     [data-testid="stToggle"] div[data-baseweb="checkbox"] > div:first-child > div {{
