@@ -247,8 +247,8 @@ def clear_logs_cache():
 def init_auth_system():
     # الحسابات الأساسية للسيستم
     default_users = pd.DataFrame([
-        {"Email": "mohamed.hatem", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
-        {"Email": "ibrahim.khaled", "Name": "Eng. Ibrahim Khaled", "Password": "admin", "Role": "Admin", "Status": "Active"},
+        {"Email": "mohamed.hatem@kk.com", "Name": "Mohamed Hatem", "Password": "123", "Role": "Admin", "Status": "Active"},
+        {"Email": "Eng.ibrahim.khaled@kk.com", "Name": "Eng. Ibrahim Khaled", "Password": "admin", "Role": "Admin", "Status": "Active"},
         {"Email": "bat36@kk.com", "Password": "123", "Name": "Battalion 36", "Role": "User", "Status": "Active"},
         {"Email": "bat73@kk.com", "Password": "123", "Name": "Battalion 73", "Role": "User", "Status": "Active"},
         {"Email": "bat44@kk.com", "Password": "123", "Name": "Battalion 44", "Role": "User", "Status": "Active"}
