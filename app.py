@@ -33,7 +33,6 @@ secondaryBackgroundColor="#ffffff"
 textColor="#0f172a"
 font="sans serif"
 """
-    # الكود هيكتب ملف الإعدادات لوحده لو مش موجود
     if not os.path.exists(config_path):
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(config_content)
