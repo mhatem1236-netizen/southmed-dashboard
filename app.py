@@ -539,9 +539,8 @@ def render_login_screen():
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
     col_space1, col_center, col_space2 = st.columns([1, 2, 1])
     with col_center:
-        is_dark = st.session_state.get("theme", "Dark") == "Dark"
-        bg_color = "#ffffff" if not is_dark else "rgba(20, 35, 54, 0.8)"
-        text_col = "#1e3d59" if not is_dark else "#00d2ff"
+        bg_color = "var(--secondary-background-color)"
+        text_col = "var(--primary-color)"
         
         st.markdown(f"""
             <div style="background: {bg_color}; padding: 50px; border-radius: 15px; box-shadow: 0px 10px 40px rgba(0,0,0,0.2);">
@@ -572,10 +571,13 @@ def render_home_page():
     """Main navigation page after login"""
     user = st.session_state["current_user"]
     
-    is_dark = st.session_state.get("theme", "Dark") == "Dark"
     ui = {
-        'text_main': '#ffffff' if is_dark else '#1a1a1a',
-        'text_muted': '#8da3b9' if is_dark else '#4a5568',
+        'text_main': 'var(--text-color)',
+        'text_muted': 'rgba(128, 128, 128, 0.8)',
+        'card_bg': 'var(--secondary-background-color)',
+        'border_color': 'rgba(128, 128, 128, 0.2)',
+        'shadow': '0 4px 15px rgba(0,0,0,0.05)',
+        'highlight_bg': 'rgba(128, 128, 128, 0.05)'
     }
     
     # Header
@@ -848,10 +850,13 @@ def render_analytics_hub(df):
     st.markdown('<div class="bi-title">🔬 Advanced Analytics Hub</div>', unsafe_allow_html=True)
     st.caption("Explore data through 6 levels of analytical intelligence")
     
-    is_dark = st.session_state.get("theme", "Dark") == "Dark"
     ui = {
-        'text_main': '#ffffff' if is_dark else '#1a1a1a',
-        'text_muted': '#8da3b9' if is_dark else '#4a5568',
+        'text_main': 'var(--text-color)',
+        'text_muted': 'rgba(128, 128, 128, 0.8)',
+        'card_bg': 'var(--secondary-background-color)',
+        'border_color': 'rgba(128, 128, 128, 0.2)',
+        'shadow': '0 4px 15px rgba(0,0,0,0.05)',
+        'highlight_bg': 'rgba(128, 128, 128, 0.05)'
     }
     
     with st.expander("📥 Upload / Change Dataset for Analytics Hub", expanded=False):
@@ -1285,14 +1290,13 @@ def generate_executive_pptx(metrics, figs_dict, file_name):
 def render_dashboard():
     user = st.session_state["current_user"]
     
-    is_dark = st.session_state.get("theme", "Dark") == "Dark"
     ui = {
-        'text_main': '#ffffff' if is_dark else '#1a1a1a',
-        'text_muted': '#8da3b9' if is_dark else '#4a5568',
-        'card_bg': 'rgba(10, 20, 33, 0.8)' if is_dark else '#ffffff',
-        'border_color': 'rgba(255, 255, 255, 0.1)' if is_dark else 'rgba(0,0,0,0.12)',
-        'shadow': '0 5px 15px rgba(0,0,0,0.4)' if is_dark else '0 5px 15px rgba(0,0,0,0.08)',
-        'highlight_bg': 'rgba(0,210,255,0.05)' if is_dark else 'rgba(41, 128, 185, 0.08)'
+        'text_main': 'var(--text-color)',
+        'text_muted': 'rgba(128, 128, 128, 0.8)',
+        'card_bg': 'var(--secondary-background-color)',
+        'border_color': 'rgba(128, 128, 128, 0.2)',
+        'shadow': '0 4px 15px rgba(0,0,0,0.05)',
+        'highlight_bg': 'rgba(128, 128, 128, 0.05)'
     }
     exported_figs = {}
     if os.path.exists("5.jpg"):
@@ -1849,7 +1853,7 @@ def render_dashboard():
                 gauge={
                     'axis': {'range': [0, 100], 'tickwidth': 2, 'tickcolor': "rgba(0, 210, 255, 0.3)", 'tickfont': {'family': 'Rajdhani', 'size': 14, 'color': '#8da3b9'}},
                     'bar': {'color': gauge_color, 'thickness': 0.8},
-                    'bgcolor': "rgba(15, 23, 42, 0.5)" if is_dark else "rgba(240, 245, 250, 0.8)",
+                    'bgcolor': "rgba(128, 128, 128, 0.05)",
                     'borderwidth': 2,
                     'bordercolor': "rgba(0, 210, 255, 0.1)",
                     'steps': [
@@ -3671,15 +3675,9 @@ def render_dashboard():
                                 color_discrete_sequence=NEON_COLORS
                             )
                             
-                            # 💡 تعريف الألوان ديناميكياً بناءً على المود (Dark / Light)
-                            is_dark = st.session_state.get("theme", "Dark") == "Dark"
-                            
-                            # ألوان الخطوط المتقاطعة (أبيض شفاف للدارك، أسود شفاف للايت)
-                            grid_line_color = "rgba(255,255,255,0.3)" if is_dark else "rgba(0,0,0,0.15)"
-                            
-                            # ألوان خلفيات النصوص (أسود شفاف للدارك، أبيض ناصع مع ضل خفيف للايت)
-                            anno_bg = "rgba(0,0,0,0.6)" if is_dark else "rgba(255,255,255,0.9)"
-                            anno_border = "rgba(255,255,255,0.1)" if is_dark else "rgba(0,0,0,0.1)"
+                            grid_line_color = "rgba(128, 128, 128, 0.3)"
+                            anno_bg = "var(--secondary-background-color)"
+                            anno_border = "rgba(128, 128, 128, 0.2)"
                             
                             # خط المنتصف للاستمرارية وللكثافة
                             fig_kpi.add_hline(y=50, line_dash="dash", line_color=grid_line_color, line_width=1.5)
