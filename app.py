@@ -1309,15 +1309,7 @@ def render_dashboard():
             st.session_state["authenticated"] = False
             st.rerun()
 
-    st.sidebar.markdown("### 🎨 UI/UX Mode")
-    theme_col1, theme_col2 = st.sidebar.columns(2)
-    if theme_col1.button("🌙 Dark"):
-        st.session_state["theme"] = "Dark"
-        st.rerun()
-    if theme_col2.button("☀️ Light"):
-        st.session_state["theme"] = "Light"
-        st.rerun()
-    st.sidebar.divider()
+  
     st.sidebar.markdown(f"### 🌍 {_t('Language / اللغة')}")
     lang_col1, lang_col2 = st.sidebar.columns(2)
     if lang_col1.button("🇬🇧 EN", use_container_width=True, key="lang_en"):
