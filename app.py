@@ -1971,27 +1971,7 @@ def render_dashboard():
         st.markdown(f"<div style='font-size: 15px; color: {ui['text_main']}; line-height: 1.6; background: {ui['highlight_bg']}; padding: 20px; border-radius: 10px; border-left: 4px solid #00d2ff; margin-bottom: 25px;'>{narrative}</div>", unsafe_allow_html=True)
 
        
-        st.markdown('<div class="bi-title">🏆 Benchmark Engine</div>', unsafe_allow_html=True)
-        if 'Company Name' in filtered_df.columns:
-            bm_comp = st.selectbox("Select Contractor for Benchmarking against Global Averages:", companies, key="bm_engine")
-            if bm_comp:
-                bm_df = filtered_df[filtered_df['Company Name'] == bm_comp]
-                bm_acc = len(bm_df[bm_df['sample status'].str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]) if 'sample status' in bm_df.columns else 0
-                bm_yield = (bm_acc / len(bm_df) * 100) if len(bm_df) > 0 else 0
-                bm_dur = bm_df['DURATION'].mean() if 'DURATION' in bm_df.columns else 0
-                b1, b2 = st.columns(2)
-                y_diff = bm_yield - overall_rate
-                y_color = "#2ecc71" if y_diff >= 0 else "#e74c3c"
-                y_icon = "▲" if y_diff >= 0 else "▼"
-                b1.markdown(f"<div class='metric-card'><h4>Yield vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_yield:.1f}%</h2><p style='color:{y_color}; font-weight:bold;'>{y_icon} {abs(y_diff):.1f}% vs Global ({overall_rate:.1f}%)</p></div>", unsafe_allow_html=True)
-                d_diff = bm_dur - avg_duration_value
-                d_color = "#e74c3c" if d_diff > 0 else "#2ecc71" 
-                d_icon = "▲" if d_diff > 0 else "▼"
-                b2.markdown(f"<div class='metric-card'><h4>Delay vs Sector Avg</h4><h2 style='color:{ui['text_main']};'>{bm_dur:.1f} Days</h2><p style='color:{d_color}; font-weight:bold;'>{d_icon} {abs(d_diff):.1f} Days vs Global ({avg_duration_value:.1f})</p></div>", unsafe_allow_html=True)
-        else:
-            st.info("Company Name column is required for benchmarking.")
-
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        
 
         st.markdown('<div class="bi-title">⚔️ Head-to-Head: Contractor vs Contractor</div>', unsafe_allow_html=True)
         if 'Company Name' in filtered_df.columns and len(companies) >= 2:
@@ -2361,34 +2341,7 @@ def render_dashboard():
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="bi-title">🏗️ Contractor Materials & Sourcing Analysis</div>', unsafe_allow_html=True)
-        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns:
-            comp_stats = []
-            for comp in filtered_df['Company Name'].dropna().unique():
-                cdf = filtered_df[filtered_df['Company Name'] == comp]
-                c_total = len(cdf)
-                c_acc = len(cdf[cdf['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])])
-                rate = (c_acc / c_total * 100) if c_total > 0 else 0
-                comp_stats.append({'Company': comp, 'Total': c_total, 'Rate': rate})
-            c_df = pd.DataFrame(comp_stats)
-            if not c_df.empty:
-                valid_c_df = c_df[c_df['Total'] >= 5] if len(c_df[c_df['Total'] >= 5]) > 0 else c_df
-                best_comp = valid_c_df.loc[valid_c_df['Rate'].idxmax()]
-                worst_comp = valid_c_df.loc[valid_c_df['Rate'].idxmin()]
-                l_col1, l_col2 = st.columns(2)
-                l_col1.markdown(f"""
-                    <div class="leaderboard-card" style="border-left-color: #2ecc71;">
-                        <h4 style="margin:0; color:#2ecc71; text-transform: uppercase; font-size: 14px;">🏆 Top Performer Contractor</h4>
-                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{best_comp['Company']}</h2>
-                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#2ecc71; font-size: 18px;">{best_comp['Rate']:.1f}%</b> (from {best_comp['Total']} submittals)</span>
-                    </div>
-                """, unsafe_allow_html=True)
-                l_col2.markdown(f"""
-                    <div class="leaderboard-card" style="border-left-color: #e74c3c;">
-                        <h4 style="margin:0; color:#e74c3c; text-transform: uppercase; font-size: 14px;">⚠️ Needs Attention</h4>
-                        <h2 style="margin:8px 0; color:{ui['text_main']}; font-size: 28px;">{worst_comp['Company']}</h2>
-                        <span style="color:{ui['text_muted']};">Approval Rate: <b style="color:#e74c3c; font-size: 18px;">{worst_comp['Rate']:.1f}%</b> (from {worst_comp['Total']} submittals)</span>
-                    </div>
-                """, unsafe_allow_html=True)
+        
 
         if 'Company Name' in filtered_df.columns and 'Sampling Location' in filtered_df.columns:
             mat_df = filtered_df.copy()
