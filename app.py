@@ -215,14 +215,14 @@ def inject_custom_css():
     }}
 
     /* 7. الأزرار الأساسية وأزرار التحميل */
-    [data-testid="stButton"] button, [data-testid="stDownloadButton"] button {
+    [data-testid="stButton"] button, [data-testid="stDownloadButton"] button {{
         background: {accent_color} !important;
         color: #ffffff !important;
         border: none !important;
         font-family: 'Rajdhani', sans-serif !important;
         text-transform: uppercase;
         border-radius: 6px !important;
-    }
+    }}
     
     /* 8. الكروت */
     .metric-card, .leaderboard-card, .simulator-card, .health-card, .navigation-card {{
