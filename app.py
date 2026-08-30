@@ -2176,25 +2176,101 @@ def render_dashboard():
                     st.dataframe(rej_by_comp[['Company Name', 'Rejections', 'Percentage', 'Cumulative_Percentage']].rename(columns={'Company Name': 'Contractor', 'Rejections': 'Total Rejections', 'Percentage': '% of Total', 'Cumulative_Percentage': 'Cumulative %'}), use_container_width=True, hide_index=True)
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="bi-title">🤖 Predictive Risk Forecasting</div>', unsafe_allow_html=True)
-        if 'Date ( test)' in filtered_df.columns and 'DURATION' in filtered_df.columns:
-            pred_df = filtered_df.dropna(subset=['Date ( test)', 'DURATION']).sort_values('Date ( test)')
-            # الحل (يتم تطبيقه بعد التأكد أن Date(test) هو Index)
-            pred_df = pred_df.set_index('Date ( test)')
-            pred_df['7-Day Trend'] = pred_df['DURATION'].rolling('7D', min_periods=1).mean()
-            pred_df = pred_df.reset_index()
-            fig_pred = px.line(pred_df, x='Date ( test)', y=['DURATION', '7-Day Trend'], title="Duration Forecasting & Trendline Tracking", color_discrete_sequence=['#ffaa00', '#00d2ff'])
-            fig_pred = style_3d_glassy(fig_pred, chart_type="line")
-            latest_trend = pred_df['7-Day Trend'].iloc[-1] if not pred_df.empty else 0
-            p1, p2 = st.columns([0.7, 0.3])
-            p1.plotly_chart(fig_pred, use_container_width=True, key="pred_risk")
-            exported_figs["10. Duration Forecasting & Trend"] = fig_pred
-            with p2:
-                st.info("**AI Risk Assessment:**")
-                if latest_trend > current_metrics["Avg_Duration"]:
-                    st.error(f"🚨 **Warning:** The recent workflow trend is rising ({latest_trend:.1f} days) compared to the overall average. Bottlenecks are forming.")
-                else:
-                    st.success(f"✅ **Stable:** Workflow trend is improving or stable at {latest_trend:.1f} days.")
+        st.markdown('<div class="bi-title">🤖 Predictive Quality Risk Forecasting (AI)</div>', unsafe_allow_html=True)
+        st.caption("يتتبع الذكاء الاصطناعي المسار الزمني لنتائج الاختبارات (DPL, Sieve #200) لكل مقاول، للتنبؤ بانهيار الجودة ورفض العينات قبل حدوثه.")
+
+        if 'Date ( test)' in filtered_df.columns and 'Company Name' in filtered_df.columns:
+            q_c1, q_c2 = st.columns(2)
+            avail_comps = sorted([c for c in filtered_df['Company Name'].dropna().unique() if str(c).strip() != ''])
+            
+            with q_c1:
+                selected_risk_comp = st.selectbox("🏗️ Select Contractor (اختيار المقاول):", avail_comps, key="risk_comp_sel")
+            with q_c2:
+                risk_metric = st.selectbox("🔬 Select Predictor (اختيار مؤشر التنبؤ):", 
+                                           ["Compaction Deterioration (DPL)", "Material Fines Increase (Sieve #200)"], 
+                                           key="risk_metric_sel")
+
+            risk_df = filtered_df[filtered_df['Company Name'] == selected_risk_comp].dropna(subset=['Date ( test)']).sort_values('Date ( test)')
+            
+            col_to_plot = None
+            y_title = ""
+            is_valid = False
+            ai_msg = ""
+            ai_color = ""
+            
+            if risk_metric == "Compaction Deterioration (DPL)":
+                if 'AVERAGE VALUE' in risk_df.columns and 'Test Type' in risk_df.columns:
+                    dpl_risk = risk_df[risk_df['Test Type'].astype(str).str.upper().str.contains('DPL', na=False)].copy()
+                    dpl_risk['AVERAGE VALUE'] = pd.to_numeric(dpl_risk['AVERAGE VALUE'], errors='coerce')
+                    dpl_risk = dpl_risk.dropna(subset=['AVERAGE VALUE'])
+                    
+                    if not dpl_risk.empty:
+                        dpl_daily = dpl_risk.groupby('Date ( test)')['AVERAGE VALUE'].mean().reset_index()
+                        dpl_daily['7-Day Trend'] = dpl_daily['AVERAGE VALUE'].rolling(window=7, min_periods=1).mean()
+                        plot_data = dpl_daily
+                        col_to_plot = 'AVERAGE VALUE'
+                        y_title = "DPL Blows (Avg)"
+                        is_valid = True
+                        
+                        if len(dpl_daily) >= 3:
+                            recent_trend = dpl_daily['7-Day Trend'].iloc[-1]
+                            old_trend = dpl_daily['7-Day Trend'].iloc[max(0, len(dpl_daily)-4)]
+                            overall_avg = dpl_daily['AVERAGE VALUE'].mean()
+                            
+                            if recent_trend < old_trend and recent_trend < overall_avg:
+                                ai_color = "#e74c3c"
+                                ai_msg = f"🚨 **خطر متوقع (CRITICAL):** المسار الزمني لنتائج الـ DPL لشركة **{selected_risk_comp}** في انحدار مستمر (المتوسط الحالي: {recent_trend:.1f}). هذا يشير إلى تدهور واضح في جودة معدات أو طريقة الدمك، ومن المتوقع بدء رفض العينات قريباً."
+                            elif recent_trend < old_trend:
+                                ai_color = "#f1c40f"
+                                ai_msg = f"⚠️ **تحذير (WARNING):** جودة الدمك تتراجع تدريجياً، المسار الزمني ينحدر للأسفل ولكن لا يزال قريباً من المتوسط العام."
+                            else:
+                                ai_color = "#2ecc71"
+                                ai_msg = f"✅ **مستقر (STABLE):** جودة الدمك لشركة **{selected_risk_comp}** مستقرة، والمسار الزمني يحقق النتائج المطلوبة للنجاح."
+                        else:
+                            ai_msg = "لا توجد نقاط بيانات كافية لحساب المسار الزمني."
+                            ai_color = "var(--text-muted)"
+            
+            else: # Sieve 200 Prediction
+                sieve_col = next((c for c in risk_df.columns if '200' in str(c)), None)
+                if sieve_col:
+                    sieve_risk = risk_df.copy()
+                    
+                    # 💡 الربط الهندسي: فلترة لاختبارات التربة (Soil) فقط
+                    if 'Test Type' in sieve_risk.columns:
+                        sieve_risk = sieve_risk[sieve_risk['Test Type'].astype(str).str.upper().str.contains('SOIL|SIEVE', na=False)]
+                        
+                    # 💡 الربط الهندسي: فلترة لمواقع التوشينات (Stockpile / مشون) فقط
+                    if 'Sampling Location' in sieve_risk.columns:
+                        sieve_risk = sieve_risk[sieve_risk['Sampling Location'].astype(str).str.contains('stock|مشون', case=False, na=False)]
+                    
+                    sieve_risk[sieve_col] = sieve_risk[sieve_col].astype(str).str.replace('%', '', regex=False).str.strip()
+                    sieve_risk[sieve_col] = pd.to_numeric(sieve_risk[sieve_col], errors='coerce')
+                    sieve_risk = sieve_risk.dropna(subset=[sieve_col])
+                    
+                    if not sieve_risk.empty:
+                        sieve_daily = sieve_risk.groupby('Date ( test)')[sieve_col].max().reset_index()
+                        sieve_daily['7-Day Trend'] = sieve_daily[sieve_col].rolling(window=7, min_periods=1).mean()
+                        plot_data = sieve_daily
+                        col_to_plot = sieve_col
+                        y_title = "Passing Sieve #200 (%)"
+                        is_valid = True
+                        
+                        if len(sieve_daily) >= 2:
+                            recent_trend = sieve_daily['7-Day Trend'].iloc[-1]
+                            old_trend = sieve_daily['7-Day Trend'].iloc[max(0, len(sieve_daily)-4)]
+                            
+                            if recent_trend >= 35:
+                                ai_color = "#e74c3c"
+                                ai_msg = f"🚨 **خطر متوقع (CRITICAL):** نسبة المواد الناعمة (منخل 200) لتوشينات شركة **{selected_risk_comp}** تجاوزت خط الـ 35% (الحالي: {recent_trend:.1f}%). التوريدات الحالية ستترفض لا محالة ويجب إيقاف التوريد من هذا المحجر."
+                            elif recent_trend >= 30 and recent_trend > old_trend:
+                                ai_color = "#f1c40f"
+                                ai_msg = f"⚠️ **تحذير (WARNING):** نسبة المواد الناعمة في التوشينات ترتفع بشكل متسارع (الحالي: {recent_trend:.1f}%). المورد يقترب من حد الرفض (35%). يُنصح بالبدء في إجراءات المعالجة (Screening) أو تحذير المورد."
+                            else:
+                                ai_color = "#2ecc71"
+                                ai_msg = f"✅ **مستقر (STABLE):** نسبة المار من منخل 200 لتوشينات الشركة ضمن الحدود الآمنة للمواصفات."
+                        else:
+                            ai_msg = "لا توجد عينات توشينات (Soil) كافية لحساب المسار الزمني."
+                            ai_color = "var(--text-muted)"
 
         
 
