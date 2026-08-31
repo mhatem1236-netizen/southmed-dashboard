@@ -2309,19 +2309,31 @@ def render_dashboard():
                     fig_risk.add_hline(y=30, line_dash="dash", line_color="#f1c40f", annotation_text="30% Warning Limit")
                     fig_risk.update_layout(yaxis=dict(range=[0, max(40, plot_data[col_to_plot].max() + 5)]))
                     
+                # 💡 التعديل المبهر (الـ Hover الموحد وخطوط الليزر)
                 fig_risk.update_layout(
                     yaxis_title=y_title, 
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    hovermode="closest" # 💡 السحر هنا: بيخليك تقف على نقطة معينة يفتحلك الداتا بتاعتها هي بس
+                    hovermode="x unified", # بيجمع بيانات النقطة الزرقا والخط الأصفر في بوكس واحد شيك
+                    hoverlabel=dict(bgcolor="rgba(15, 15, 15, 0.9)", font_size=14, font_color="white", bordercolor="#ffaa00") 
+                )
+                
+                # تشغيل خطوط التقاطع الطولية والعرضية (Spikelines)
+                fig_risk.update_xaxes(
+                    showspikes=True, 
+                    spikemode="across", # بيخلي الخط يطول الشاشة كلها فوق وتحت
+                    spikecolor="#ffaa00", # لون الخط طولي أصفر عشان يربط بالتريند
+                    spikethickness=2, 
+                    spikedash="dashdot" # شكل الخط متقطع
+                )
+                fig_risk.update_yaxes(
+                    showspikes=True, 
+                    spikemode="across", 
+                    spikecolor="#00d2ff", # لون الخط العرضي أزرق عشان يربط بالعينة
+                    spikethickness=1, 
+                    spikedash="dot"
                 )
                 
                 try: fig_risk = style_3d_glassy(fig_risk, chart_type="scatter")
-                except: pass
-                
-                p1, p2 = st.columns([0.7, 0.3])
-                p1.plotly_chart(fig_risk, use_container_width=True, key="quality_pred_risk_chart")
-                
-                try: exported_figs["10. Predictive Quality Risk"] = fig_risk
                 except: pass
                 
                 with p2:
