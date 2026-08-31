@@ -2292,13 +2292,17 @@ def render_dashboard():
                     name="Lab Samples"
                 )
                 
-                # 2. إضافة خط الذكاء الاصطناعي (Trend) كمسار مستقل
+                # 2. إضافة خط الذكاء الاصطناعي (Trend) كمسار مستقل بنقط بارزة
                 fig_risk.add_scatter(
                     x=plot_data['Date ( test)'], 
                     y=plot_data['Trend'],
-                    mode='lines',
+                    mode='lines+markers', # 💡 ضفنا markers عشان النقط تظهر على الخط
                     name='AI Trend',
-                    line=dict(color='#ffaa00', width=3, shape='spline')
+                    line=dict(color='#ffaa00', width=3, shape='spline'),
+                    # 💡 ميزنا نقط التريند بشكل الماسة (diamond) ولون برتقالي وإطار أبيض
+                    marker=dict(size=10, color='#ffaa00', symbol='diamond', line=dict(width=1.5, color='white')),
+                    # 💡 ظبطنا شكل البوكس عشان يعرض قيمة التريند برقم عشري واحد بشكل شيك
+                    hovertemplate="<b>Date:</b> %{x}<br><b>AI Trend:</b> %{y:.1f}<extra></extra>" 
                 )
                 
                 # إضافة خطوط التحذير وضبط مقاس الشارت
