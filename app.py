@@ -2311,7 +2311,7 @@ def render_dashboard():
                 fig_risk.update_layout(
                     yaxis_title=y_title, 
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    hovermode="x unified", 
+                    hovermode="closest", 
                     hoverlabel=dict(bgcolor="rgba(15, 15, 15, 0.9)", font_size=14, font_color="white", bordercolor="#ffaa00") 
                 )
                 
