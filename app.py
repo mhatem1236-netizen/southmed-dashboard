@@ -2275,8 +2275,13 @@ def render_dashboard():
             # رسم الشارت النهائي
             # رسم الشارت النهائي
             if is_valid:
+                # 💡 كرتنا عمود جديد بيدي رقم تسلسلي لكل عينة (1, 2, 3...)
+                plot_data['Serial No'] = plot_data.index + 1
+                
                 # 1. رسم العينات كنقط منفصلة
                 extra_hover = plot_data.columns.intersection(['Req No', 'Sampling Location', 'Test Type']).tolist()
+                # 💡 ضفنا السيريال في أول لستة الداتا اللي بتظهر عشان يبقى أول حاجة عينك تقع عليها
+                extra_hover = ['Serial No'] + extra_hover 
                 
                 fig_risk = px.scatter(
                     plot_data, 
@@ -2288,21 +2293,21 @@ def render_dashboard():
                 )
                 
                 fig_risk.update_traces(
-                    marker=dict(size=12, opacity=0.8, line=dict(width=1.5, color='white')), 
+                    marker=dict(size=14, opacity=0.8, line=dict(width=1.5, color='white')), 
                     name="Lab Samples"
                 )
                 
-                # 2. إضافة خط الذكاء الاصطناعي (Trend) كمسار مستقل بنقط بارزة
+                # 2. إضافة خط الذكاء الاصطناعي (Trend) كمسار مستقل
                 fig_risk.add_scatter(
                     x=plot_data['Date ( test)'], 
                     y=plot_data['Trend'],
-                    mode='lines+markers', # 💡 ضفنا markers عشان النقط تظهر على الخط
+                    mode='lines+markers',
                     name='AI Trend',
                     line=dict(color='#ffaa00', width=3, shape='spline'),
-                    # 💡 ميزنا نقط التريند بشكل الماسة (diamond) ولون برتقالي وإطار أبيض
-                    marker=dict(size=10, color='#ffaa00', symbol='diamond', line=dict(width=1.5, color='white')),
-                    # 💡 ظبطنا شكل البوكس عشان يعرض قيمة التريند برقم عشري واحد بشكل شيك
-                    hovertemplate="<b>Date:</b> %{x}<br><b>AI Trend:</b> %{y:.1f}<extra></extra>" 
+                    marker=dict(size=8, color='#ffaa00', symbol='diamond', line=dict(width=1.5, color='white')),
+                    # 💡 بعتنا السيريال للتريند هنا وحدثنا شكل البوكس عشان يعرضه
+                    customdata=plot_data[['Serial No']],
+                    hovertemplate="<b>Serial No:</b> %{customdata[0]}<br><b>Date:</b> %{x}<br><b>AI Trend:</b> %{y:.1f}<extra></extra>"
                 )
                 
                 # إضافة خطوط التحذير وضبط مقاس الشارت
@@ -2329,7 +2334,6 @@ def render_dashboard():
                 try: fig_risk = style_3d_glassy(fig_risk, chart_type="scatter")
                 except: pass
                 
-                # هنا السطر اللي كان طار ورجعناه:
                 p1, p2 = st.columns([0.7, 0.3])
                 
                 p1.plotly_chart(fig_risk, use_container_width=True, key="quality_pred_risk_chart")
