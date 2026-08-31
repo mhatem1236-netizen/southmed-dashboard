@@ -2205,7 +2205,7 @@ def render_dashboard():
                     if not dpl_risk.empty:
                         # إلغاء التجميع باليوم والاعتماد على تسلسل العينات
                         dpl_risk = dpl_risk.reset_index(drop=True)
-                        dpl_risk['Trend'] = dpl_risk['AVERAGE VALUE'].rolling(window=3, min_periods=1).mean()
+                        dpl_risk['Trend'] = dpl_risk['AVERAGE VALUE'].rolling(window=3, min_periods=2).mean()
                         plot_data = dpl_risk
                         col_to_plot = 'AVERAGE VALUE'
                         y_title = "DPL Blows (Avg)"
