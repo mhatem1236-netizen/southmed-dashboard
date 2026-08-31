@@ -2273,18 +2273,32 @@ def render_dashboard():
                             ai_color = "var(--text-muted)"
 
             # رسم الشارت النهائي
+            # رسم الشارت النهائي
             if is_valid:
+                # شلنا markers=True من هنا عشان هنتحكم فيها باحترافية تحت
                 fig_risk = px.line(plot_data, x='Date ( test)', y=[col_to_plot, 'Trend'], 
                                    title=f"AI Forecasting: {risk_metric} for {selected_risk_comp}", 
-                                   color_discrete_sequence=['#00d2ff', '#ffaa00'],
-                                   markers=True)
+                                   color_discrete_sequence=['#00d2ff', '#ffaa00'])
                 
+                # 💡 التعديل السحري لشكل الشارت:
+                # 1. نخلي العينات الأصلية تظهر كنقط (بدون خطوط) مع نسبة شفافية 70%
+                fig_risk.update_traces(mode='markers', marker=dict(size=8, opacity=0.7), selector=dict(name=col_to_plot))
+                
+                # 2. نخلي خط التريند (الذكاء الاصطناعي) عبارة عن خط ناعم وتقيل يمر وسط النقط
+                fig_risk.update_traces(mode='lines', line=dict(width=3, shape='spline'), selector=dict(name='Trend'))
+                
+                # إضافة خطوط التحذير لمنخل 200 وضبط الـ Scale
                 if risk_metric == "Material Fines Increase (Sieve #200)":
                     fig_risk.add_hline(y=35, line_dash="dash", line_color="#e74c3c", annotation_text="35% Rejection Limit")
                     fig_risk.add_hline(y=30, line_dash="dash", line_color="#f1c40f", annotation_text="30% Warning Limit")
                     fig_risk.update_layout(yaxis=dict(range=[0, max(40, plot_data[col_to_plot].max() + 5)]))
                     
-                fig_risk.update_layout(yaxis_title=y_title, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                fig_risk.update_layout(
+                    yaxis_title=y_title, 
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    hovermode="x unified" # بيعمل خط طولي يوريك تفاصيل اليوم كله في بوكس واحد شيك
+                )
+                
                 try: fig_risk = style_3d_glassy(fig_risk, chart_type="line")
                 except: pass
                 
@@ -2303,9 +2317,6 @@ def render_dashboard():
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
-            else:
-                st.info(f"عفواً، لا توجد داتا صحيحة مسجلة (بعد الفلترة) لحساب توقعات {risk_metric} لشركة {selected_risk_comp}.")
-
         
 
         st.markdown('<div class="bi-title">🖨️ Smart PDF Executive Report</div>', unsafe_allow_html=True)
