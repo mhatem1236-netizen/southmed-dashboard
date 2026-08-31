@@ -2275,19 +2275,35 @@ def render_dashboard():
             # رسم الشارت النهائي
             # رسم الشارت النهائي
             if is_valid:
-                # شلنا markers=True من هنا عشان هنتحكم فيها باحترافية تحت
-                fig_risk = px.line(plot_data, x='Date ( test)', y=[col_to_plot, 'Trend'], 
-                                   title=f"AI Forecasting: {risk_metric} for {selected_risk_comp}", 
-                                   color_discrete_sequence=['#00d2ff', '#ffaa00'])
+                # 1. رسم العينات كنقط منفصلة تماماً بدون خطوط توصيل
+                # هنضيف داتا زيادة تظهر في الـ Hover لو موجودة في الشيت (رقم الطلب، مكان التوشين)
+                extra_hover = plot_data.columns.intersection(['Req No', 'Sampling Location', 'Test Type']).tolist()
                 
-                # 💡 التعديل السحري لشكل الشارت:
-                # 1. نخلي العينات الأصلية تظهر كنقط (بدون خطوط) مع نسبة شفافية 70%
-                fig_risk.update_traces(mode='markers', marker=dict(size=8, opacity=0.7), selector=dict(name=col_to_plot))
+                fig_risk = px.scatter(
+                    plot_data, 
+                    x='Date ( test)', 
+                    y=col_to_plot,
+                    title=f"AI Forecasting: {risk_metric} for {selected_risk_comp}", 
+                    color_discrete_sequence=['#00d2ff'],
+                    hover_data=extra_hover # ده هيعرض بيانات العينة بالتفصيل
+                )
                 
-                # 2. نخلي خط التريند (الذكاء الاصطناعي) عبارة عن خط ناعم وتقيل يمر وسط النقط
-                fig_risk.update_traces(mode='lines', line=dict(width=3, shape='spline'), selector=dict(name='Trend'))
+                # تكبير حجم النقط وعمل إطار أبيض حواليها عشان تميزهم لو قريبين من بعض
+                fig_risk.update_traces(
+                    marker=dict(size=12, opacity=0.8, line=dict(width=1.5, color='white')), 
+                    name="Lab Samples"
+                )
                 
-                # إضافة خطوط التحذير لمنخل 200 وضبط الـ Scale
+                # 2. إضافة خط الذكاء الاصطناعي (Trend) كمسار مستقل
+                fig_risk.add_scatter(
+                    x=plot_data['Date ( test)'], 
+                    y=plot_data['Trend'],
+                    mode='lines',
+                    name='AI Trend',
+                    line=dict(color='#ffaa00', width=3, shape='spline')
+                )
+                
+                # إضافة خطوط التحذير وضبط مقاس الشارت
                 if risk_metric == "Material Fines Increase (Sieve #200)":
                     fig_risk.add_hline(y=35, line_dash="dash", line_color="#e74c3c", annotation_text="35% Rejection Limit")
                     fig_risk.add_hline(y=30, line_dash="dash", line_color="#f1c40f", annotation_text="30% Warning Limit")
@@ -2296,10 +2312,10 @@ def render_dashboard():
                 fig_risk.update_layout(
                     yaxis_title=y_title, 
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    hovermode="x unified" # بيعمل خط طولي يوريك تفاصيل اليوم كله في بوكس واحد شيك
+                    hovermode="closest" # 💡 السحر هنا: بيخليك تقف على نقطة معينة يفتحلك الداتا بتاعتها هي بس
                 )
                 
-                try: fig_risk = style_3d_glassy(fig_risk, chart_type="line")
+                try: fig_risk = style_3d_glassy(fig_risk, chart_type="scatter")
                 except: pass
                 
                 p1, p2 = st.columns([0.7, 0.3])
