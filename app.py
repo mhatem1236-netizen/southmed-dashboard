@@ -2215,7 +2215,7 @@ def render_dashboard():
                             recent_trend = plot_data['Trend'].iloc[-1]
                             old_trend = plot_data['Trend'].iloc[-3]
                             
-                            if recent_trend < old_trend - 2.0: # لو القيم بتقل بشكل كبير
+                            if recent_trend < old_trend - 2.0:
                                 ai_color = "#e74c3c"
                                 ai_msg = f"🚨 **إنذار تدهور (CRITICAL):** مؤشر دمك DPL لشركة **{selected_risk_comp}** في هبوط مستمر. التوجه الحالي يشير لاحتمالية رفض العينات القادمة لعدم تحقيق جهد الدمك، يجب تنبيه المقاول لزيادة الدمك."
                             elif recent_trend < old_trend:
@@ -2262,7 +2262,7 @@ def render_dashboard():
                             if recent_trend >= 35:
                                 ai_color = "#e74c3c"
                                 ai_msg = f"🚨 **رفض متوقع (CRITICAL):** نسبة المواد الناعمة بتوشينات شركة **{selected_risk_comp}** كسرت أو تلامس حاجز الـ 35% (الحالي: {recent_trend:.1f}%). التوريدات القادمة ستسقط ويجب إيقاف هذا المحجر."
-                            elif recent_trend >= 30 and recent_trend > old_trend: # القيم بتزيد وبتقرب من 35
+                            elif recent_trend >= 30 and recent_trend > old_trend:
                                 ai_color = "#f1c40f"
                                 ai_msg = f"⚠️ **تحذير (WARNING):** نسبة منخل 200 في التوشينات تتزايد وتقترب من حد الرفض (الحالي: {recent_trend:.1f}%). يجب معالجة التوشينات (Screening) فوراً."
                             else:
@@ -2271,6 +2271,40 @@ def render_dashboard():
                         else:
                             ai_msg = "جاري تجميع بيانات كافية لرسم المسار الزمني..."
                             ai_color = "var(--text-muted)"
+
+            # رسم الشارت النهائي
+            if is_valid:
+                fig_risk = px.line(plot_data, x='Date ( test)', y=[col_to_plot, 'Trend'], 
+                                   title=f"AI Forecasting: {risk_metric} for {selected_risk_comp}", 
+                                   color_discrete_sequence=['#00d2ff', '#ffaa00'],
+                                   markers=True)
+                
+                if risk_metric == "Material Fines Increase (Sieve #200)":
+                    fig_risk.add_hline(y=35, line_dash="dash", line_color="#e74c3c", annotation_text="35% Rejection Limit")
+                    fig_risk.add_hline(y=30, line_dash="dash", line_color="#f1c40f", annotation_text="30% Warning Limit")
+                    fig_risk.update_layout(yaxis=dict(range=[0, max(40, plot_data[col_to_plot].max() + 5)]))
+                    
+                fig_risk.update_layout(yaxis_title=y_title, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+                try: fig_risk = style_3d_glassy(fig_risk, chart_type="line")
+                except: pass
+                
+                p1, p2 = st.columns([0.7, 0.3])
+                p1.plotly_chart(fig_risk, use_container_width=True, key="quality_pred_risk_chart")
+                
+                try: exported_figs["10. Predictive Quality Risk"] = fig_risk
+                except: pass
+                
+                with p2:
+                    st.markdown(f"""
+                    <div style="background: {ui['card_bg']}; border: 1px solid {ui['border_color']}; border-left: 5px solid {ai_color}; padding: 20px; border-radius: 8px; margin-top: 50px; box-shadow: {ui['shadow']};">
+                        <h4 style="color: {ai_color}; margin: 0 0 15px 0;">🤖 AI Engineering Assessment</h4>
+                        <p style="color: {ui['text_main']}; font-size: 15px; line-height: 1.8; margin: 0;">
+                            {ai_msg}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info(f"عفواً، لا توجد داتا صحيحة مسجلة (بعد الفلترة) لحساب توقعات {risk_metric} لشركة {selected_risk_comp}.")
 
         
 
