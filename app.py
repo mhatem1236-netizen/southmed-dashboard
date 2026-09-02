@@ -3070,16 +3070,27 @@ def render_dashboard():
                     
                     elem_col_lg = next((c for c in comp_df_full.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
                     test_col_lg = next((c for c in comp_df_full.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
-                    date_col_lg = next((c for c in comp_df_full.columns if 'DATE ( TEST)' in c.upper() or 'DATE' in c.upper()), None)
+                    
+                    test_date_col_lg = next((c for c in comp_df_full.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
+                    sub_date_col_lg = next((c for c in comp_df_full.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
+                    
                     status_col_lg = next((c for c in comp_df_full.columns if 'SAMPLE STATUS' in c.upper() or c.strip() == 'sample status'), None)
                     layer_col_lg = next((c for c in comp_df_full.columns if 'LAYER' in c.upper() or c.strip() == 'layer'), None)
                     done_by_col_lg = next((c for c in comp_df_full.columns if 'DONE BY' in c.upper()), None)
                     pts_col_lg = next((c for c in comp_df_full.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
 
-                    if elem_col_lg and test_col_lg and date_col_lg and status_col_lg and layer_col_lg:
+                    if elem_col_lg and test_date_col_lg and status_col_lg and layer_col_lg:
                         ledger_df = comp_df_full.copy()
                         
-                        ledger_df[date_col_lg] = pd.to_datetime(ledger_df[date_col_lg], dayfirst=True, errors='coerce')
+                        # 💡 التعديل هنا: استبعاد اختبارات الـ SOIL عشان نركز على اختبارات الدمك بس
+                        if test_col_lg:
+                            ledger_df = ledger_df[~ledger_df[test_col_lg].astype(str).str.upper().str.contains('SOIL', na=False)]
+                        
+                        # تظبيط صيغة التواريخ للعمودين
+                        ledger_df[test_date_col_lg] = pd.to_datetime(ledger_df[test_date_col_lg], dayfirst=True, errors='coerce')
+                        if sub_date_col_lg:
+                            ledger_df[sub_date_col_lg] = pd.to_datetime(ledger_df[sub_date_col_lg], dayfirst=True, errors='coerce')
+                            
                         if pts_col_lg:
                             ledger_df[pts_col_lg] = pd.to_numeric(ledger_df[pts_col_lg].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
                         else:
@@ -3092,7 +3103,8 @@ def render_dashboard():
                         for _, row in ledger_df.iterrows():
                             elem = str(row[elem_col_lg])
                             t_type = str(row[test_col_lg])
-                            t_date = row[date_col_lg]
+                            test_d = row[test_date_col_lg]
+                            sub_d = row[sub_date_col_lg] if sub_date_col_lg else pd.NaT
                             status = str(row[status_col_lg]).upper()
                             layer = str(row[layer_col_lg])
                             done_by = str(row.get(done_by_col_lg, 'N/A'))
@@ -3103,7 +3115,7 @@ def render_dashboard():
                                     (accepted_df[elem_col_lg].astype(str) == elem) &
                                     (accepted_df[layer_col_lg].astype(str) == layer) &
                                     (accepted_df[test_col_lg].astype(str) == t_type) &
-                                    (accepted_df[date_col_lg] >= t_date)
+                                    (accepted_df[test_date_col_lg] >= test_d)
                                 ]
                                 resolution = "🔄 Resolved" if not future_accepts.empty else "🚨 Pending"
                             elif status in ['ACCEPTED', 'APPROVED AS NOTED']:
@@ -3119,10 +3131,11 @@ def render_dashboard():
                                 'Status': status,
                                 'Resolution': resolution,
                                 'Office': done_by,
-                                'Date': t_date.strftime('%Y-%m-%d') if pd.notna(t_date) else 'N/A'
+                                'Test Date': test_d.strftime('%Y-%m-%d') if pd.notna(test_d) else 'N/A',
+                                'Sub Date': sub_d.strftime('%Y-%m-%d') if pd.notna(sub_d) else 'N/A'
                             })
                             
-                        final_ledger = pd.DataFrame(ledger_data).sort_values(by=['Date', 'Element'], ascending=[False, True])
+                        final_ledger = pd.DataFrame(ledger_data).sort_values(by=['Test Date', 'Element'], ascending=[False, True])
                         
                         l_col1, l_col2 = st.columns(2)
                         with l_col1:
@@ -3144,7 +3157,8 @@ def render_dashboard():
                             return ''
                             
                         st.dataframe(display_ledger.style.map(color_res, subset=['Resolution']), use_container_width=True, hide_index=True)
-                        export_table_tools(display_ledger, f"QA_QC_Ledger_{selected_comp}")    
+                        
+                        export_table_tools(display_ledger, f"QA_QC_Ledger_{selected_comp}") 
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                     st.markdown("#### 🧠 Executive AI Insights & Alerts")
                     
