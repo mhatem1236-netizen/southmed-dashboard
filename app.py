@@ -3143,7 +3143,8 @@ def render_dashboard():
                             elif 'Accepted' in str(val): return 'color: #2ecc71;'
                             return ''
                             
-                        st.dataframe(display_ledger.style.map(color_res, subset=['Resolution']), use_container_width=True, hide_index=True)    
+                        st.dataframe(display_ledger.style.map(color_res, subset=['Resolution']), use_container_width=True, hide_index=True)
+                        export_table_tools(display_ledger, f"QA_QC_Ledger_{selected_comp}")    
                     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                     st.markdown("#### 🧠 Executive AI Insights & Alerts")
                     
