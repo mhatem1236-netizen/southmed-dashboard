@@ -1770,6 +1770,106 @@ def render_dashboard():
             except: pass
             
             st.plotly_chart(fig_office, use_container_width=True, key="overall_office_work_chart")
+            # ==========================================
+            # 📋 مدمج مع الشارت: Office Detailed Ledger 
+            # ==========================================
+            st.markdown("##### 🔍 Office Portfolio Explorer (سجل الفحص التفصيلي للمكاتب)")
+            
+            # اكتشاف الأعمدة المطلوبة
+            done_by_col_off = next((c for c in filtered_df.columns if 'DONE BY' in c.upper()), None)
+            comp_name_col_off = next((c for c in filtered_df.columns if c.strip() == 'Company Name'), None)
+            elem_col_off = next((c for c in filtered_df.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
+            test_col_off = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+            test_date_col_off = next((c for c in filtered_df.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
+            sub_date_col_off = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
+            status_col_off = next((c for c in filtered_df.columns if 'SAMPLE STATUS' in c.upper() or c.strip() == 'sample status'), None)
+            layer_col_off = next((c for c in filtered_df.columns if 'LAYER' in c.upper() or c.strip() == 'layer'), None)
+            pts_col_off = next((c for c in filtered_df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
+
+            if done_by_col_off and comp_name_col_off and elem_col_off and test_date_col_off and status_col_off and layer_col_off:
+                
+                # قائمة المكاتب للفلترة
+                avail_offices = ["All Offices"] + sorted([str(o) for o in filtered_df[done_by_col_off].dropna().unique() if str(o).strip() != ''])
+                
+                # الفلتر هيكون حجمه صغير وشيك تحت الشارت
+                o_col1, o_col2 = st.columns([0.4, 0.6])
+                with o_col1:
+                    selected_office_lg = st.selectbox("👨‍💼 اختر المكتب لعرض تفاصيل عمله:", avail_offices, key="office_ledger_filter")
+                
+                # فلترة الداتا بناءً على المكتب المختار
+                if selected_office_lg != "All Offices":
+                    off_df = filtered_df[filtered_df[done_by_col_off].astype(str).str.strip() == selected_office_lg].copy()
+                else:
+                    off_df = filtered_df.copy()
+                    
+                # تظبيط التواريخ والأرقام
+                off_df[test_date_col_off] = pd.to_datetime(off_df[test_date_col_off], dayfirst=True, errors='coerce')
+                if sub_date_col_off:
+                    off_df[sub_date_col_off] = pd.to_datetime(off_df[sub_date_col_off], dayfirst=True, errors='coerce')
+                    
+                if pts_col_off:
+                    off_df[pts_col_off] = pd.to_numeric(off_df[pts_col_off].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                else:
+                    off_df['Total Points'] = 1
+                    pts_col_off = 'Total Points'
+
+                # داتا العينات الناجحة في المشروع كله
+                full_accepted_df = filtered_df[filtered_df[status_col_off].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].copy()
+                full_accepted_df[test_date_col_off] = pd.to_datetime(full_accepted_df[test_date_col_off], dayfirst=True, errors='coerce')
+
+                off_ledger_data = []
+                
+                for _, row in off_df.iterrows():
+                    comp = str(row[comp_name_col_off])
+                    elem = str(row[elem_col_off])
+                    t_type = str(row[test_col_off])
+                    test_d = row[test_date_col_off]
+                    sub_d = row[sub_date_col_off] if sub_date_col_off else pd.NaT
+                    status = str(row[status_col_off]).upper()
+                    layer = str(row[layer_col_off])
+                    office_name = str(row[done_by_col_off])
+                    pts = row[pts_col_off]
+                    
+                    if status in ['REJECTED', 'REVISE']:
+                        future_accepts = full_accepted_df[
+                            (full_accepted_df[comp_name_col_off].astype(str) == comp) &
+                            (full_accepted_df[elem_col_off].astype(str) == elem) &
+                            (full_accepted_df[layer_col_off].astype(str) == layer) &
+                            (full_accepted_df[test_col_off].astype(str) == t_type) &
+                            (full_accepted_df[test_date_col_off] >= test_d)
+                        ]
+                        resolution = "🔄 Resolved" if not future_accepts.empty else "🚨 Pending"
+                    elif status in ['ACCEPTED', 'APPROVED AS NOTED']:
+                        resolution = "✅ Accepted"
+                    else:
+                        resolution = "ℹ️ Unknown"
+                        
+                    off_ledger_data.append({
+                        'Office': office_name,
+                        'Contractor': comp,
+                        'Element': elem,
+                        'Layer': layer,
+                        'Test Type': t_type,
+                        'Points': pts,
+                        'Status': status,
+                        'Resolution': resolution,
+                        'Test Date': test_d.strftime('%Y-%m-%d') if pd.notna(test_d) else 'N/A',
+                        'Sub Date': sub_d.strftime('%Y-%m-%d') if pd.notna(sub_d) else 'N/A'
+                    })
+                    
+                final_off_ledger = pd.DataFrame(off_ledger_data).sort_values(by=['Test Date', 'Contractor'], ascending=[False, True])
+                
+                if selected_office_lg != "All Offices":
+                    final_off_ledger = final_off_ledger.drop(columns=['Office'])
+                    
+                def color_res_off(val):
+                    if 'Pending' in str(val): return 'color: #e74c3c; font-weight: bold'
+                    elif 'Resolved' in str(val): return 'color: #f1c40f; font-weight: bold'
+                    elif 'Accepted' in str(val): return 'color: #2ecc71;'
+                    return ''
+                    
+                st.dataframe(final_off_ledger.style.map(color_res_off, subset=['Resolution']), use_container_width=True, hide_index=True)
+                export_table_tools(final_off_ledger, f"Office_Workload_Ledger_{selected_office_lg.replace(' ', '_')}")
 
         # ==========================================
         # 🪨 Overall Soil Classifications
