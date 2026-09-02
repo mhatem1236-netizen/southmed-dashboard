@@ -3016,12 +3016,12 @@ def render_dashboard():
                                 mode = "gauge+number+delta",
                                 value = exe_qty,
                                 title = {'text': "Completed Volume", 'font': {'size': 16, 'color': ui['text_main']}},
-                                number = {'font': {'size': 35, 'color': "white" if is_dark else "#2C3E50"}},
+                                number = {'font': {'size': 35, 'color': ui['text_main']}},
                                 delta = {'reference': tot_qty, 'increasing': {'color': "#2ecc71"}, 'decreasing': {'color': "#e74c3c"}},
                                 gauge = {
-                                    'axis': {'range': [None, tot_qty], 'tickwidth': 1, 'tickcolor': "rgba(255,255,255,0.2)"},
+                                    'axis': {'range': [None, tot_qty], 'tickwidth': 1, 'tickcolor': "rgba(128,128,128,0.2)"},
                                     'bar': {'color': "#00d2ff"},
-                                    'bgcolor': "rgba(255,255,255,0.05)" if is_dark else "rgba(0,0,0,0.02)",
+                                    'bgcolor': "rgba(128,128,128,0.1)",
                                     'steps': [
                                         {'range': [0, tot_qty*0.5], 'color': "rgba(231,76,60,0.3)"},
                                         {'range': [tot_qty*0.5, tot_qty*0.8], 'color': "rgba(241,196,15,0.3)"},
