@@ -3015,7 +3015,7 @@ def render_dashboard():
                             fig_exec_kpi = go.Figure(go.Indicator(
                                 mode = "gauge+number+delta",
                                 value = exe_qty,
-                                title = {'text': "Completed Volume", 'font': {'size': 16, 'color': "white" if is_dark else "#2C3E50"}},
+                                title = {'text': "Completed Volume", 'font': {'size': 16, 'color': ui['text_main']}},
                                 number = {'font': {'size': 35, 'color': "white" if is_dark else "#2C3E50"}},
                                 delta = {'reference': tot_qty, 'increasing': {'color': "#2ecc71"}, 'decreasing': {'color': "#e74c3c"}},
                                 gauge = {
