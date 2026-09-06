@@ -2714,7 +2714,7 @@ def render_dashboard():
                     with col_d2:
                         if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
                             st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
-                            st.caption("يخصم النقاط المرفوضة من النقاط المقبولة (لكل مكان) ويظهر العجز فقط.")
+                            st.caption("يخصم النقاط المرفوضة من النقاط المقبولة ويظهر العجز فقط (باستثناء اختبارات التربة SOIL).")
                             
                             samp_loc_col_rf = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
                             zone_col_rf = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
@@ -2745,10 +2745,13 @@ def render_dashboard():
                             else:
                                 all_data['Points'] = 1
 
-                            # 💡 إنشاء بنك النقاط المقبولة (للمشروع كله)
                             accepted_data = all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
                             
                             comp_df_rf = comp_df_full.copy()
+                            # 💡 استبعاد اختبارات التربة (SOIL) من التنبيهات
+                            if test_col_rf:
+                                comp_df_rf = comp_df_rf[~comp_df_rf[test_col_rf].astype(str).str.upper().str.contains('SOIL', na=False)]
+                                
                             comp_df_rf['Unique_Loc'] = build_loc_id(comp_df_rf)
                             if test_date_col_rf:
                                 comp_df_rf['Comp_Date'] = pd.to_datetime(comp_df_rf[test_date_col_rf], errors='coerce')
@@ -2765,7 +2768,6 @@ def render_dashboard():
                             unresolved_indices = []
                             deficit_status = {}
                             
-                            # 💡 خوارزمية السداد الهندسي (Reconciliation)
                             for idx, rej_row in rejected_df.iterrows():
                                 loc = rej_row['Unique_Loc']
                                 r_date = rej_row['Comp_Date']
@@ -2782,7 +2784,7 @@ def render_dashboard():
                                     if a_pts > 0 and (pd.isna(r_date) or pd.isna(a_date) or a_date >= r_date):
                                         take = min(r_pts - resolved_pts, a_pts)
                                         resolved_pts += take
-                                        accepted_data.at[a_idx, 'Points'] -= take # خصم النقط من بنك القبول
+                                        accepted_data.at[a_idx, 'Points'] -= take 
                                         
                                 deficit = r_pts - resolved_pts
                                 if deficit > 0:
@@ -2842,6 +2844,10 @@ def render_dashboard():
                         global_accepted_df = all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
                         
                         comp_df_rf = comp_df_full.copy()
+                        # 💡 استبعاد اختبارات التربة (SOIL)
+                        if test_col_rf:
+                            comp_df_rf = comp_df_rf[~comp_df_rf[test_col_rf].astype(str).str.upper().str.contains('SOIL', na=False)]
+                            
                         comp_df_rf['Unique_Loc'] = build_loc_id(comp_df_rf)
                         if num_tests_col_rf:
                             comp_df_rf['Points'] = pd.to_numeric(comp_df_rf[num_tests_col_rf].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
@@ -2886,7 +2892,7 @@ def render_dashboard():
                                 
                                 if deficit == 0:
                                     status_text = "Resolved ✅"
-                                    acc_sub_date = max(acc_sub_dates) if acc_sub_dates else pd.NaT # تاريخ آخر نقطة نجحت
+                                    acc_sub_date = max(acc_sub_dates) if acc_sub_dates else pd.NaT 
                                     delay_days = (acc_sub_date - rej_sub_date).days if pd.notna(acc_sub_date) and pd.notna(rej_sub_date) else 0
                                     total_delay_days += max(0, delay_days)
                                 elif resolved_pts > 0:
@@ -2916,7 +2922,7 @@ def render_dashboard():
                             <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <h3 style="margin: 0; color: #e74c3c; font-size: 18px;">Total Rework Time Leakage</h3>
-                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">يحسب التأخير بناءً على تاريخ آخر نقطة تم إغلاق الطلب المرفوض بها.</p>
+                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">يحسب التأخير بناءً على تاريخ آخر نقطة تم إغلاق الطلب المرفوض بها (باستثناء التربة).</p>
                                 </div>
                                 <div style="font-size: 32px; font-weight: bold; color: #e74c3c;">{total_delay_days} Days Lost</div>
                             </div>
@@ -4860,6 +4866,10 @@ def render_dashboard():
                             global_accepted_df = all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
                             
                             bh_df_rf = bh_df.copy()
+                            # 💡 استبعاد اختبارات التربة (SOIL)
+                            if test_col_rf:
+                                bh_df_rf = bh_df_rf[~bh_df_rf[test_col_rf].astype(str).str.upper().str.contains('SOIL', na=False)]
+                                
                             bh_df_rf['Unique_Loc'] = build_loc_id(bh_df_rf)
                             if test_date_col_rf:
                                 bh_df_rf['Comp_Date'] = pd.to_datetime(bh_df_rf[test_date_col_rf], errors='coerce')
@@ -5040,7 +5050,7 @@ def render_dashboard():
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🚨 Action Tracker: Unresolved Rejections (سجل العينات المرفوضة المعلقة)</div>', unsafe_allow_html=True)
-        st.caption("يفرز هذا الجدول العجز في النقط (Points Deficit). لا يغلق التنبيه إلا إذا نجحت نقاط مساوية للنقاط المرفوضة في نفس الموقع الفعلي.")
+        st.caption("يفرز هذا الجدول العجز في النقط (Points Deficit). لا يغلق التنبيه إلا إذا نجحت نقاط مساوية للنقاط المرفوضة في نفس الموقع الفعلي (باستثناء اختبارات التربة).")
 
         test_col = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
         sub_date_col = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
@@ -5051,7 +5061,8 @@ def render_dashboard():
         num_tests_col_m = next((c for c in filtered_df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
         
         if test_col and sub_date_col and test_date_col and serial_col and elem_col:
-            target_tests = filtered_df[filtered_df[test_col].astype(str).str.upper().str.contains('DPL|PLATE', na=False)].copy()
+            # 💡 استبعاد اختبارات التربة (SOIL) تماماً من حسابات العجز هنا
+            target_tests = filtered_df[~filtered_df[test_col].astype(str).str.upper().str.contains('SOIL', na=False)].copy()
             
             if not target_tests.empty:
                 target_tests['status_upper'] = target_tests['sample status'].astype(str).str.upper()
@@ -5131,7 +5142,6 @@ def render_dashboard():
                     export_table_tools(unresolved_display, f"Unresolved_Rejections_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
                 else:
                     st.success("✅ ممتاز! لا توجد أي عينات مرفوضة معلقة حالياً (جميع النقاط المرفوضة تم الرد عليها بنقاط مقبولة).")
-
         # ==========================================
         # 🚨 MODULE 1.5: Missing Layers Tracker (سجل الطبقات المفقودة)
         # ==========================================
