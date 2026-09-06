@@ -5142,72 +5142,7 @@ def render_dashboard():
                     export_table_tools(unresolved_display, f"Unresolved_Rejections_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
                 else:
                     st.success("✅ ممتاز! لا توجد أي عينات مرفوضة معلقة حالياً (جميع النقاط المرفوضة تم الرد عليها بنقاط مقبولة).")
-        # ==========================================
-        # 🚨 MODULE 1.5: Missing Layers Tracker (سجل الطبقات المفقودة)
-        # ==========================================
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="bi-title">🚨 Action Tracker: Missing Layers (سجل الطبقات المفقودة)</div>', unsafe_allow_html=True)
-        st.caption("يكتشف الفجوات في تسلسل طبقات الردم لكل مكان هندسي (مبنى/عنصر) بغض النظر عن المقاول المنفذ.")
-
-        elem_col_missing = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
-        test_col_missing = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
-
-        if 'layer' in filtered_df.columns and elem_col_missing:
-            if test_col_missing:
-                layer_tests_df = filtered_df[filtered_df[test_col_missing].astype(str).str.upper().str.contains('DPL|SAND', na=False)].copy()
-            else:
-                layer_tests_df = filtered_df.copy()
-                
-            layer_tests_df['Layer_Num'] = layer_tests_df['layer'].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
-            layer_tests_df = layer_tests_df[layer_tests_df['Layer_Num'] > 0]
-            
-            # 💡 التجميع بناءً على البصمة المكانية مش المقاول
-            samp_loc_col_m = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
-            zone_col_m = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
-            bldg_col_m = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
-            comp_col_m = next((c for c in filtered_df.columns if c.strip() == 'Company Name' or 'COMPANY' in c.upper()), None)
-            
-            grouping_cols = []
-            if zone_col_m: grouping_cols.append(zone_col_m)
-            if bldg_col_m: grouping_cols.append(bldg_col_m)
-            if samp_loc_col_m: grouping_cols.append(samp_loc_col_m)
-            grouping_cols.append(elem_col_missing)
-            
-            missing_records = []
-            
-            for name, group in layer_tests_df.groupby(grouping_cols):
-                layers = group['Layer_Num'].unique()
-                if len(layers) > 1:
-                    min_l = int(layers.min())
-                    max_l = int(layers.max())
-                    
-                    expected_layers = set(range(min_l, max_l + 1))
-                    actual_layers = set(layers)
-                    missing_layers = sorted(list(expected_layers - actual_layers))
-                    
-                    if missing_layers:
-                        comps_involved = ", ".join(group[comp_col_m].dropna().unique()) if comp_col_m else "N/A"
-                        loc_name_parts = [str(n) for n in (name if isinstance(name, tuple) else [name])]
-                        loc_full_name = " | ".join(loc_name_parts)
-                        
-                        missing_records.append({
-                            'Location Details (المكان)': loc_full_name,
-                            'Contractors Involved (المقاولين)': comps_involved,
-                            'Missing Layers (الفجوات)': ", ".join([str(m) for m in missing_layers]),
-                            'Highest Layer Reached': max_l
-                        })
-            
-            if missing_records:
-                missing_df = pd.DataFrame(missing_records).sort_values(by=['Location Details (المكان)'])
-                st.markdown(f"""
-                <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <b style="color: #f1c40f;">يوجد عدد ({len(missing_df)}) موقع هندسي به ثغرات في تسلسل طبقات (DPL / Sand Cone)!</b>
-                </div>
-                """, unsafe_allow_html=True)
-                st.dataframe(missing_df, use_container_width=True, hide_index=True)
-                export_table_tools(missing_df, f"Missing_Layers_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
-            else:
-                st.success("✅ هندسياً ممتاز! لا توجد أي ثغرات أو طبقات ناقصة في تسلسل الاختبارات للموقع بالكامل.")
+        
 
         # ==========================================
         # 🚨 MODULE 1.5: Missing Layers Tracker (سجل الطبقات الناقصة)
