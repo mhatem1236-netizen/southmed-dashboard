@@ -2714,17 +2714,41 @@ def render_dashboard():
                     with col_d2:
                         if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
                             st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
-                            st.caption("Shows rejections ONLY IF the same Layer/Element wasn't approved later.")
-                            rejected_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                            accepted_mask = comp_df_full['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                            st.caption("Shows rejections ONLY IF the exact Location/Layer wasn't approved later by ANY contractor.")
+                            
+                            # 💡 البصمة المكانية (تتجاهل اسم المقاول تماماً)
+                            samp_loc_col_rf = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
+                            zone_col_rf = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
+                            bldg_col_rf = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
+                            test_col_rf = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+
+                            def build_loc_id(df_target):
+                                s = df_target[samp_loc_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if samp_loc_col_rf else 'N/A'
+                                z = df_target[zone_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if zone_col_rf else 'N/A'
+                                e = df_target[elment_col_360].fillna('N/A').astype(str).str.strip().str.upper() if elment_col_360 else 'N/A'
+                                b = df_target[bldg_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if bldg_col_rf else 'N/A'
+                                l = df_target['layer'].fillna('N/A').astype(str).str.strip().str.upper()
+                                t = df_target[test_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if test_col_rf else 'N/A'
+                                return s + "_" + z + "_" + e + "_" + b + "_" + l + "_" + t
+
+                            # 1. كل البصمات المقبولة في المشروع بالكامل (من كل المقاولين)
+                            all_data = filtered_df.copy()
+                            all_data['Unique_Loc'] = build_loc_id(all_data)
+                            accepted_mask_global = all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
+                            approved_locs = set(all_data[accepted_mask_global]['Unique_Loc'].unique())
+
+                            # 2. بصمات المرفوض للمقاول الحالي
                             comp_df_rf = comp_df_full.copy()
-                            comp_df_rf['Loc_ID'] = comp_df_rf[elment_col_360].astype(str) + "_" + comp_df_rf['layer'].astype(str)
-                            approved_locs = set(comp_df_rf[accepted_mask]['Loc_ID'].unique())
-                            red_flags = comp_df_rf[rejected_mask & (~comp_df_rf['Loc_ID'].isin(approved_locs))]
+                            comp_df_rf['Unique_Loc'] = build_loc_id(comp_df_rf)
+                            rejected_mask = comp_df_rf['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
+                            
+                            # 3. المقارنة (لو العينة المرفوضة دي ملهاش نجاح في المشروع كله = تظهر)
+                            red_flags = comp_df_rf[rejected_mask & (~comp_df_rf['Unique_Loc'].isin(approved_locs))]
+                            
                             if not red_flags.empty:
                                 display_cols = ['serial', 'sample status', elment_col_360, 'layer']
-                                if battalion_col_360: display_cols.append(battalion_col_360)
-                                if 'Test Type' in red_flags.columns: display_cols.append('Test Type')
+                                if bldg_col_rf: display_cols.insert(2, bldg_col_rf)
+                                if test_col_rf: display_cols.append(test_col_rf)
                                 existing_cols = [c for c in display_cols if c in red_flags.columns]
                                 st.dataframe(red_flags[existing_cols].head(100), use_container_width=True)
                                 st.caption(f"Total unresolved layers: {len(red_flags)}")
@@ -2737,39 +2761,48 @@ def render_dashboard():
                         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
                         st.markdown("#### 🧾 Rework & Delay Ledger (Rejected Items Analysis)")
                         
+                        samp_loc_col_rf = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
+                        zone_col_rf = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
+                        bldg_col_rf = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
+                        test_col_rf = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+
                         rework_df = comp_df_full.copy()
                         rejected_items = rework_df[rework_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
+                        
+                        # القائمة الشاملة للمشروع (كل المقاولين) للبحث عن الحل فيها
+                        global_accepted_df = filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].copy()
                         
                         if not rejected_items.empty:
                             ledger_data = []
                             total_delay_days = 0
-                            el_col = elment_col_360 if elment_col_360 else None
                             
                             for _, rej_row in rejected_items.iterrows():
                                 serial = rej_row.get('serial', 'N/A')
                                 rej_date = rej_row['Date( SUB)']
                                 layer = str(rej_row.get('layer', 'Unknown'))
-                                test_type = str(rej_row.get('Test Type', 'Unknown'))
+                                test_type = str(rej_row.get(test_col_rf, 'Unknown')) if test_col_rf else 'Unknown'
+                                element_val = str(rej_row.get(elment_col_360, 'Unknown')) if elment_col_360 else 'Unknown'
+                                bldg_val = str(rej_row.get(bldg_col_rf, 'Unknown')) if bldg_col_rf else 'Unknown'
+                                zone_val = str(rej_row.get(zone_col_rf, 'Unknown')) if zone_col_rf else 'Unknown'
+                                samp_val = str(rej_row.get(samp_loc_col_rf, 'Unknown')) if samp_loc_col_rf else 'Unknown'
                                 
+                                # مطابقة بالبصمة المكانية الشاملة
                                 filter_mask = (
-                                    (rework_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])) & 
-                                    (rework_df['Date( SUB)'] >= rej_date) &
-                                    (rework_df['layer'].astype(str) == layer) &
-                                    (rework_df['Test Type'].astype(str) == test_type)
+                                    (global_accepted_df['Date( SUB)'] >= rej_date) &
+                                    (global_accepted_df['layer'].astype(str).str.strip().str.upper() == layer.strip().upper())
                                 )
-                                
-                                if el_col:
-                                    element_val = str(rej_row.get(el_col, 'Unknown'))
-                                    filter_mask = filter_mask & (rework_df[el_col].astype(str) == element_val)
-                                else:
-                                    element_val = "N/A"
+                                if test_col_rf: filter_mask &= (global_accepted_df[test_col_rf].astype(str).str.strip().str.upper() == test_type.strip().upper())
+                                if elment_col_360: filter_mask &= (global_accepted_df[elment_col_360].astype(str).str.strip().str.upper() == element_val.strip().upper())
+                                if bldg_col_rf: filter_mask &= (global_accepted_df[bldg_col_rf].astype(str).str.strip().str.upper() == bldg_val.strip().upper())
+                                if zone_col_rf: filter_mask &= (global_accepted_df[zone_col_rf].astype(str).str.strip().str.upper() == zone_val.strip().upper())
+                                if samp_loc_col_rf: filter_mask &= (global_accepted_df[samp_loc_col_rf].astype(str).str.strip().str.upper() == samp_val.strip().upper())
 
-                                future_accepts = rework_df[filter_mask]
+                                future_accepts = global_accepted_df[filter_mask]
                                 
                                 if not future_accepts.empty:
                                     acc_date = future_accepts['Date( SUB)'].min()
-                                    delay_days = (acc_date - rej_date).days
-                                    total_delay_days += delay_days
+                                    delay_days = (acc_date - rej_date).days if pd.notna(acc_date) and pd.notna(rej_date) else 0
+                                    total_delay_days += max(0, delay_days)
                                     status_text = "Resolved ✅"
                                 else:
                                     acc_date = pd.NaT
@@ -2778,6 +2811,7 @@ def render_dashboard():
                                     
                                 ledger_data.append({
                                     "Rejected Serial": serial,
+                                    "Building": bldg_val,
                                     "Element": element_val,
                                     "Layer": layer,
                                     "Test Type": test_type,
@@ -2793,7 +2827,7 @@ def render_dashboard():
                             <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <h3 style="margin: 0; color: #e74c3c; font-size: 18px;">Total Rework Time Leakage</h3>
-                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">Total project days lost tracking re-submissions for the same rejected layers/elements.</p>
+                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">إجمالي تأخير الأيام لنفس النقطة المكانية (بغض النظر عن المقاول الذي قام بالمعالجة).</p>
                                 </div>
                                 <div style="font-size: 32px; font-weight: bold; color: #e74c3c;">{total_delay_days} Days Lost</div>
                             </div>
@@ -4705,24 +4739,50 @@ def render_dashboard():
                                 """, unsafe_allow_html=True)
 
                         if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
-                            rejected_mask = bh_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
-                            accepted_mask = bh_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])
-                            approved_layers = set(bh_df[accepted_mask]['layer'].dropna().astype(str).unique())
-                            unresolved_alerts = list(set([(str(row.get('layer', 'Unknown')), row.get('Test Type', 'N/A'), row.get('serial', 'N/A')) for _, row in bh_df[rejected_mask].iterrows() if str(row.get('layer', 'Unknown')) not in approved_layers]))
-                            if unresolved_alerts:
+                            # 💡 البصمة المكانية للمشروع كله
+                            samp_loc_col_rf = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
+                            zone_col_rf = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
+                            bldg_col_rf = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
+                            test_col_rf = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+                            
+                            def build_loc_id(df_target):
+                                s = df_target[samp_loc_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if samp_loc_col_rf else 'N/A'
+                                z = df_target[zone_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if zone_col_rf else 'N/A'
+                                e = df_target[bh_col_name].fillna('N/A').astype(str).str.strip().str.upper() if bh_col_name else 'N/A'
+                                b = df_target[bldg_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if bldg_col_rf else 'N/A'
+                                l = df_target['layer'].fillna('N/A').astype(str).str.strip().str.upper()
+                                t = df_target[test_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if test_col_rf else 'N/A'
+                                return s + "_" + z + "_" + e + "_" + b + "_" + l + "_" + t
+
+                            all_data = filtered_df.copy()
+                            all_data['Unique_Loc'] = build_loc_id(all_data)
+                            global_approved_locs = set(all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]['Unique_Loc'].unique())
+                            
+                            bh_df_rf = bh_df.copy()
+                            bh_df_rf['Unique_Loc'] = build_loc_id(bh_df_rf)
+                            rejected_mask = bh_df_rf['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])
+                            
+                            unresolved_alerts_df = bh_df_rf[rejected_mask & (~bh_df_rf['Unique_Loc'].isin(global_approved_locs))]
+                            
+                            if not unresolved_alerts_df.empty:
                                 st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
-                                alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
-                                for idx, alert in enumerate(unresolved_alerts[:8]): 
-                                    l, t_type, ser = alert
+                                alert_cols = st.columns(min(len(unresolved_alerts_df), 4) if len(unresolved_alerts_df) > 0 else 1)
+                                for idx, (_, row) in enumerate(unresolved_alerts_df.head(8).iterrows()): 
+                                    l = row.get('layer', 'Unknown')
+                                    t_type = row.get(test_col_rf, 'N/A') if test_col_rf else 'N/A'
+                                    ser = row.get('serial', 'N/A')
+                                    bldg = row.get(bldg_col_rf, 'N/A') if bldg_col_rf else 'N/A'
                                     alert_cols[idx % 4].markdown(f"""
                                         <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
                                             <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
                                             <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
-                                                <b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
-                                                <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found!</span>
+                                                <b>Bldg:</b> {bldg}<br><b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
+                                                <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found across ALL contractors!</span>
                                             </div>
                                         </div>
                                         """, unsafe_allow_html=True)
+                            else:
+                                st.success("✅ All rejected layers in this element have been successfully re-tested and approved by contractors!")
                         st.divider()
 
                         if 'layer' in bh_df.columns and 'Date ( test)' in bh_df.columns:
@@ -4841,64 +4901,125 @@ def render_dashboard():
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🚨 Action Tracker: Unresolved Rejections (سجل العينات المرفوضة المعلقة)</div>', unsafe_allow_html=True)
-        st.caption("هذا الجدول يحصر العينات (DPL & Plate Load) المرفوضة والتي لم يتم تسجيل عينة ناجحة لها في نفس المنسوب، لتوجيهها للمكتب الفني لإغلاقها.")
+        st.caption("هذا الجدول يحصر العينات المرفوضة والتي لم يتم تسجيل عينة ناجحة لها في نفس المكان الفعلي من أي مقاول.")
 
-        if 'Company Name' in filtered_df.columns and 'sample status' in filtered_df.columns and 'layer' in filtered_df.columns:
-            # تحديد الأعمدة المطلوبة بدقة
-            test_col = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
-            sub_date_col = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
-            test_date_col = next((c for c in filtered_df.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
-            serial_col = next((c for c in filtered_df.columns if 'SERIAL' in c.upper() or c.strip() == 'serial'), None)
-            elem_col = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
-            done_by_col = next((c for c in filtered_df.columns if 'DONE BY' in c.upper()), None) # 💡 إضافة عمود المكتب
+        test_col = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+        sub_date_col = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
+        test_date_col = next((c for c in filtered_df.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
+        serial_col = next((c for c in filtered_df.columns if 'SERIAL' in c.upper() or c.strip() == 'serial'), None)
+        elem_col = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
+        done_by_col = next((c for c in filtered_df.columns if 'DONE BY' in c.upper()), None)
+        
+        if test_col and sub_date_col and test_date_col and serial_col and elem_col:
+            target_tests = filtered_df[filtered_df[test_col].astype(str).str.upper().str.contains('DPL|PLATE', na=False)].copy()
             
-            if test_col and sub_date_col and test_date_col and serial_col and elem_col:
-                # فلترة الداتا لـ DPL و Plate Load فقط
-                target_tests = filtered_df[filtered_df[test_col].astype(str).str.upper().str.contains('DPL|PLATE', na=False)].copy()
+            if not target_tests.empty:
+                target_tests['status_upper'] = target_tests['sample status'].astype(str).str.upper()
                 
-                if not target_tests.empty:
-                    target_tests['status_upper'] = target_tests['sample status'].astype(str).str.upper()
+                # 💡 البصمة المكانية
+                samp_loc_col_m = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
+                zone_col_m = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
+                bldg_col_m = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
+                
+                def build_loc_id(df_target):
+                    s = df_target[samp_loc_col_m].fillna('N/A').astype(str).str.strip().str.upper() if samp_loc_col_m else 'N/A'
+                    z = df_target[zone_col_m].fillna('N/A').astype(str).str.strip().str.upper() if zone_col_m else 'N/A'
+                    e = df_target[elem_col].fillna('N/A').astype(str).str.strip().str.upper() if elem_col else 'N/A'
+                    b = df_target[bldg_col_m].fillna('N/A').astype(str).str.strip().str.upper() if bldg_col_m else 'N/A'
+                    l = df_target['layer'].fillna('N/A').astype(str).str.strip().str.upper()
+                    t = df_target[test_col].fillna('N/A').astype(str).str.strip().str.upper()
+                    return s + "_" + z + "_" + e + "_" + b + "_" + l + "_" + t
+
+                target_tests['Unique_Loc'] = build_loc_id(target_tests)
+                approved_locs = set(target_tests[target_tests['status_upper'].isin(['ACCEPTED', 'APPROVED AS NOTED'])]['Unique_Loc'].unique())
+                
+                unresolved_df = target_tests[
+                    (target_tests['status_upper'].isin(['REJECTED', 'REVISE'])) & 
+                    (~target_tests['Unique_Loc'].isin(approved_locs))
+                ].copy()
+                
+                if not unresolved_df.empty:
+                    display_cols = ['Company Name', done_by_col, serial_col, sub_date_col, test_date_col, 'layer', test_col, bldg_col_m, elem_col, zone_col_m]
+                    display_cols = [c for c in display_cols if c is not None and c in unresolved_df.columns]
                     
-                    # الحل
-                    target_tests['Unique_Loc'] = (target_tests['Company Name'].astype(str).str.strip().str.upper() + "_" + 
-                              target_tests[elem_col].astype(str).str.strip().str.upper() + "_" + 
-                              target_tests['layer'].astype(str).str.strip().str.upper() + "_" + 
-                              target_tests[test_col].astype(str).str.strip().str.upper())
+                    unresolved_display = unresolved_df[display_cols].sort_values(by=['Company Name', sub_date_col])
                     
-                    # سحب كل الأماكن اللي اتوافق عليها
-                    approved_locs = set(target_tests[target_tests['status_upper'].isin(['ACCEPTED', 'APPROVED AS NOTED'])]['Unique_Loc'].unique())
-                    
-                    # فلترة العينات المرفوضة اللي مش موجودة في قايمة المقبول
-                    unresolved_df = target_tests[
-                        (target_tests['status_upper'].isin(['REJECTED', 'REVISE'])) & 
-                        (~target_tests['Unique_Loc'].isin(approved_locs))
-                    ].copy()
-                    
-                    if not unresolved_df.empty:
-                        # 💡 إضافة عمود المكتب (done_by_col) لترتيب العرض
-                        display_cols = ['Company Name', done_by_col, serial_col, sub_date_col, test_date_col, 'layer', test_col, elem_col]
-                        
-                        # التأكد إن الأعمدة دي موجودة فعلاً في الداتا
-                        display_cols = [c for c in display_cols if c is not None and c in unresolved_df.columns]
-                        
-                        unresolved_display = unresolved_df[display_cols].sort_values(by=['Company Name', sub_date_col])
-                        
-                        st.markdown(f"""
-                        <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                            <b style="color: #e74c3c;">يوجد عدد ({len(unresolved_display)}) طلب مرفوض لم يتم إغلاقه هندسياً حتى الآن!</b><br>
-                            <span style="font-size: 13px; color: {{ui['text_muted']}};">يرجى تحميل الجدول وإرساله للمكتب الفني للتعامل معها.</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
-                        
-                        # السطر السحري بديل زرار التحميل القديم
-                        export_table_tools(unresolved_display, f"Unresolved_Rejections_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
-                        
-                    else:
-                        st.success("✅ ممتاز! لا توجد أي عينات DPL أو Plate Load مرفوضة معلقة حالياً.")
+                    st.markdown(f"""
+                    <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <b style="color: #e74c3c;">يوجد عدد ({len(unresolved_display)}) طلب مرفوض لم يتم إغلاقه هندسياً حتى الآن!</b>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
+                    export_table_tools(unresolved_display, f"Unresolved_Rejections_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
+                else:
+                    st.success("✅ ممتاز! لا توجد أي عينات مرفوضة معلقة حالياً.")
+
+        # ==========================================
+        # 🚨 MODULE 1.5: Missing Layers Tracker (سجل الطبقات المفقودة)
+        # ==========================================
+        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="bi-title">🚨 Action Tracker: Missing Layers (سجل الطبقات المفقودة)</div>', unsafe_allow_html=True)
+        st.caption("يكتشف الفجوات في تسلسل طبقات الردم لكل مكان هندسي (مبنى/عنصر) بغض النظر عن المقاول المنفذ.")
+
+        elem_col_missing = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
+        test_col_missing = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+
+        if 'layer' in filtered_df.columns and elem_col_missing:
+            if test_col_missing:
+                layer_tests_df = filtered_df[filtered_df[test_col_missing].astype(str).str.upper().str.contains('DPL|SAND', na=False)].copy()
             else:
-                st.info("⚠️ بعض الأعمدة المطلوبة (مثل Date, Serial, Element) غير مكتملة لتوليد السجل.")
+                layer_tests_df = filtered_df.copy()
+                
+            layer_tests_df['Layer_Num'] = layer_tests_df['layer'].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
+            layer_tests_df = layer_tests_df[layer_tests_df['Layer_Num'] > 0]
+            
+            # 💡 التجميع بناءً على البصمة المكانية مش المقاول
+            samp_loc_col_m = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
+            zone_col_m = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
+            bldg_col_m = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
+            comp_col_m = next((c for c in filtered_df.columns if c.strip() == 'Company Name' or 'COMPANY' in c.upper()), None)
+            
+            grouping_cols = []
+            if zone_col_m: grouping_cols.append(zone_col_m)
+            if bldg_col_m: grouping_cols.append(bldg_col_m)
+            if samp_loc_col_m: grouping_cols.append(samp_loc_col_m)
+            grouping_cols.append(elem_col_missing)
+            
+            missing_records = []
+            
+            for name, group in layer_tests_df.groupby(grouping_cols):
+                layers = group['Layer_Num'].unique()
+                if len(layers) > 1:
+                    min_l = int(layers.min())
+                    max_l = int(layers.max())
+                    
+                    expected_layers = set(range(min_l, max_l + 1))
+                    actual_layers = set(layers)
+                    missing_layers = sorted(list(expected_layers - actual_layers))
+                    
+                    if missing_layers:
+                        comps_involved = ", ".join(group[comp_col_m].dropna().unique()) if comp_col_m else "N/A"
+                        loc_name_parts = [str(n) for n in (name if isinstance(name, tuple) else [name])]
+                        loc_full_name = " | ".join(loc_name_parts)
+                        
+                        missing_records.append({
+                            'Location Details (المكان)': loc_full_name,
+                            'Contractors Involved (المقاولين)': comps_involved,
+                            'Missing Layers (الفجوات)': ", ".join([str(m) for m in missing_layers]),
+                            'Highest Layer Reached': max_l
+                        })
+            
+            if missing_records:
+                missing_df = pd.DataFrame(missing_records).sort_values(by=['Location Details (المكان)'])
+                st.markdown(f"""
+                <div style="background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <b style="color: #f1c40f;">يوجد عدد ({len(missing_df)}) موقع هندسي به ثغرات في تسلسل طبقات (DPL / Sand Cone)!</b>
+                </div>
+                """, unsafe_allow_html=True)
+                st.dataframe(missing_df, use_container_width=True, hide_index=True)
+                export_table_tools(missing_df, f"Missing_Layers_Log_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
+            else:
+                st.success("✅ هندسياً ممتاز! لا توجد أي ثغرات أو طبقات ناقصة في تسلسل الاختبارات للموقع بالكامل.")
 
         # ==========================================
         # 🚨 MODULE 1.5: Missing Layers Tracker (سجل الطبقات الناقصة)
