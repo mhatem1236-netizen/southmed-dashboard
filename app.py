@@ -5280,24 +5280,74 @@ def render_dashboard():
                     # لو مفيش DPL خالص، نرص الـ Plate فوق بعضه برقم تسلسلي
                     for i, idx in enumerate(plate_idx): plot_df.loc[idx, 'Visual_Z'] = i + 1
 
-                # 💡 2. اكتشاف الطبقات المعلقة (الذكاء الجديد)
-                hanging_layers = []
-                success_statuses = ['ACCEPTED', 'APPROVED AS NOTED', 'APPROVED']
+                # 💡 2. اكتشاف الطبقات المعلقة (بالذكاء المحاسبي الجديد - البصمة المكانية والنقاط)
+                samp_loc_col_3d = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
+                zone_col_3d = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
+                bldg_col_3d = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
+                sub_date_col_3d = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
+                num_tests_col_3d = next((c for c in filtered_df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
+
+                def build_loc_id_3d(df_target):
+                    s = df_target[samp_loc_col_3d].fillna('N/A').astype(str).str.strip().str.upper() if samp_loc_col_3d else 'N/A'
+                    z = df_target[zone_col_3d].fillna('N/A').astype(str).str.strip().str.upper() if zone_col_3d else 'N/A'
+                    e = df_target[elem_col].fillna('N/A').astype(str).str.strip().str.upper() if elem_col else 'N/A'
+                    b = df_target[bldg_col_3d].fillna('N/A').astype(str).str.strip().str.upper() if bldg_col_3d else 'N/A'
+                    l = df_target[layer_col].fillna('N/A').astype(str).str.strip().str.upper()
+                    t = df_target[test_col].fillna('N/A').astype(str).str.strip().str.upper() if test_col else 'N/A'
+                    return s + "_" + z + "_" + e + "_" + b + "_" + l + "_" + t
+
+                # سحب الداتا للمشروع كله لعمل البنك الناجح
+                all_data_3d = filtered_df.copy()
+                all_data_3d['Unique_Loc'] = build_loc_id_3d(all_data_3d)
                 
-                for test_cat in ['DPL', 'PLATE']:
-                    cat_df = plot_df[plot_df['Test_Category'] == test_cat]
-                    for layer in cat_df['Layer_Num'].unique():
-                        layer_df = cat_df[cat_df['Layer_Num'] == layer]
-                        max_date = layer_df['Time_Axis'].max()
-                        latest_tests = layer_df[layer_df['Time_Axis'] == max_date]
+                if test_date_col:
+                    all_data_3d['Comp_Date'] = pd.to_datetime(all_data_3d[test_date_col], errors='coerce')
+                if 'Comp_Date' not in all_data_3d.columns or all_data_3d['Comp_Date'].isna().all():
+                    all_data_3d['Comp_Date'] = pd.to_datetime(all_data_3d[sub_date_col_3d], errors='coerce') if sub_date_col_3d else pd.NaT
+
+                if num_tests_col_3d:
+                    all_data_3d['Points'] = pd.to_numeric(all_data_3d[num_tests_col_3d].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                else:
+                    all_data_3d['Points'] = 1
+
+                global_accepted_3d = all_data_3d[all_data_3d[status_col].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
+
+                # داتا الـ 3D المعروضة حالياً
+                plot_df['Unique_Loc'] = build_loc_id_3d(plot_df)
+                plot_df['Comp_Date'] = plot_df['Time_Axis']
+                if num_tests_col_3d:
+                    plot_df['Points'] = pd.to_numeric(plot_df[num_tests_col_3d].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                else:
+                    plot_df['Points'] = 1
+
+                rejected_plot_df = plot_df[plot_df['status_upper'].isin(['REJECTED', 'REVISE'])].sort_values('Comp_Date')
+
+                hanging_layers = []
+                
+                for idx, rej_row in rejected_plot_df.iterrows():
+                    loc = rej_row['Unique_Loc']
+                    r_date = rej_row['Comp_Date']
+                    r_pts = rej_row['Points']
+                    
+                    loc_accepts = global_accepted_3d[global_accepted_3d['Unique_Loc'] == loc]
+                    resolved_pts = 0
+                    
+                    for a_idx, a_row in loc_accepts.iterrows():
+                        if resolved_pts >= r_pts: break
+                        a_date = a_row['Comp_Date']
+                        a_pts = a_row['Points']
                         
-                        # لو آخر يوم مفيش فيه أي كلمة تدل على النجاح، وفي كلمة تدل على الرفض = معلق
-                        has_success = any(status in success_statuses for status in latest_tests['status_upper'].values)
-                        has_reject = any(status in ['REJECTED', 'REVISE'] for status in latest_tests['status_upper'].values)
-                        
-                        if not has_success and has_reject:
-                            hanging_layers.append((layer, test_cat))
+                        # 💡 التعديل هنا لضمان الحل في نفس اليوم والتوافق مع الجداول
+                        if a_pts > 0 and (pd.isna(r_date) or pd.isna(a_date) or a_date >= r_date):
+                            take = min(r_pts - resolved_pts, a_pts)
+                            resolved_pts += take
+                            global_accepted_3d.at[a_idx, 'Points'] -= take # خصم النقط
                             
+                    deficit = r_pts - resolved_pts
+                    if deficit > 0:
+                        hanging_layers.append((rej_row['Layer_Num'], rej_row['Test_Category']))
+
+                hanging_layers = list(set(hanging_layers))
                 hanging_dpl = [lyr for lyr, cat in hanging_layers if cat == 'DPL']
                 hanging_plate = [lyr for lyr, cat in hanging_layers if cat == 'PLATE']
 
