@@ -2714,7 +2714,7 @@ def render_dashboard():
                     with col_d2:
                         if 'sample status' in comp_df_full.columns and 'layer' in comp_df_full.columns and elment_col_360:
                             st.markdown("#### 🚨 Smart Red Flags (Unresolved Layers)")
-                            st.caption("Shows rejections ONLY IF the exact Location wasn't approved on a LATER date by ANY contractor.")
+                            st.caption("يخصم النقاط المرفوضة من النقاط المقبولة (لكل مكان) ويظهر العجز فقط.")
                             
                             samp_loc_col_rf = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
                             zone_col_rf = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
@@ -2722,6 +2722,7 @@ def render_dashboard():
                             test_col_rf = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
                             test_date_col_rf = next((c for c in filtered_df.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
                             sub_date_col_rf = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
+                            num_tests_col_rf = next((c for c in filtered_df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
 
                             def build_loc_id(df_target):
                                 s = df_target[samp_loc_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if samp_loc_col_rf else 'N/A'
@@ -2739,7 +2740,13 @@ def render_dashboard():
                             if 'Comp_Date' not in all_data.columns or all_data['Comp_Date'].isna().all():
                                 all_data['Comp_Date'] = pd.to_datetime(all_data[sub_date_col_rf], errors='coerce') if sub_date_col_rf else pd.NaT
 
-                            accepted_data = all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]
+                            if num_tests_col_rf:
+                                all_data['Points'] = pd.to_numeric(all_data[num_tests_col_rf].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                            else:
+                                all_data['Points'] = 1
+
+                            # 💡 إنشاء بنك النقاط المقبولة (للمشروع كله)
+                            accepted_data = all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
                             
                             comp_df_rf = comp_df_full.copy()
                             comp_df_rf['Unique_Loc'] = build_loc_id(comp_df_rf)
@@ -2748,38 +2755,55 @@ def render_dashboard():
                             if 'Comp_Date' not in comp_df_rf.columns or comp_df_rf['Comp_Date'].isna().all():
                                 comp_df_rf['Comp_Date'] = pd.to_datetime(comp_df_rf[sub_date_col_rf], errors='coerce') if sub_date_col_rf else pd.NaT
                                 
-                            rejected_df = comp_df_rf[comp_df_rf['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
+                            if num_tests_col_rf:
+                                comp_df_rf['Points'] = pd.to_numeric(comp_df_rf[num_tests_col_rf].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                            else:
+                                comp_df_rf['Points'] = 1
+
+                            rejected_df = comp_df_rf[comp_df_rf['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])].sort_values('Comp_Date')
                             
                             unresolved_indices = []
+                            deficit_status = {}
+                            
+                            # 💡 خوارزمية السداد الهندسي (Reconciliation)
                             for idx, rej_row in rejected_df.iterrows():
                                 loc = rej_row['Unique_Loc']
                                 r_date = rej_row['Comp_Date']
+                                r_pts = rej_row['Points']
                                 
                                 loc_accepts = accepted_data[accepted_data['Unique_Loc'] == loc]
-                                is_resolved = False
-                                if not loc_accepts.empty:
-                                    if pd.notna(r_date):
-                                        # الشرط الصارم: لازم تاريخ القبول يكون أكبر من الرفض
-                                        valid_accepts = loc_accepts[loc_accepts['Comp_Date'] > r_date]
-                                        if not valid_accepts.empty:
-                                            is_resolved = True
-                                    else:
-                                        is_resolved = True
-                                        
-                                if not is_resolved:
-                                    unresolved_indices.append(idx)
+                                resolved_pts = 0
+                                
+                                for a_idx, a_row in loc_accepts.iterrows():
+                                    if resolved_pts >= r_pts: break
+                                    a_date = a_row['Comp_Date']
+                                    a_pts = a_row['Points']
                                     
-                            red_flags = rejected_df.loc[unresolved_indices]
+                                    if a_pts > 0 and (pd.isna(r_date) or pd.isna(a_date) or a_date >= r_date):
+                                        take = min(r_pts - resolved_pts, a_pts)
+                                        resolved_pts += take
+                                        accepted_data.at[a_idx, 'Points'] -= take # خصم النقط من بنك القبول
+                                        
+                                deficit = r_pts - resolved_pts
+                                if deficit > 0:
+                                    unresolved_indices.append(idx)
+                                    if resolved_pts > 0:
+                                        deficit_status[idx] = f"🟡 Partial (Missing {int(deficit)}/{int(r_pts)})"
+                                    else:
+                                        deficit_status[idx] = f"🚨 Missing {int(deficit)} Pts"
+                                        
+                            red_flags = rejected_df.loc[unresolved_indices].copy()
                             
                             if not red_flags.empty:
-                                display_cols = ['serial', 'sample status', elment_col_360, 'layer']
+                                red_flags['Deficit'] = red_flags.index.map(deficit_status)
+                                display_cols = ['serial', 'sample status', elment_col_360, 'layer', 'Deficit']
                                 if bldg_col_rf: display_cols.insert(2, bldg_col_rf)
                                 if test_col_rf: display_cols.append(test_col_rf)
                                 existing_cols = [c for c in display_cols if c in red_flags.columns]
                                 st.dataframe(red_flags[existing_cols].head(100), use_container_width=True)
-                                st.caption(f"Total unresolved layers: {len(red_flags)}")
+                                st.caption(f"Total unresolved submittals: {len(red_flags)}")
                             else:
-                                st.success("✅ All rejected layers have been successfully re-tested and approved!")
+                                st.success("✅ All rejected layers have been fully re-tested and approved (Points Matched)!")
                         else:
                             st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
 
@@ -2792,17 +2816,39 @@ def render_dashboard():
                         bldg_col_rf = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
                         test_col_rf = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
                         test_date_col_rf = next((c for c in filtered_df.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
+                        num_tests_col_rf = next((c for c in filtered_df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
 
-                        rework_df = comp_df_full.copy()
-                        rejected_items = rework_df[rework_df['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
-                        
-                        global_accepted_df = filtered_df[filtered_df['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].copy()
-                        
-                        # Prepare dates
+                        def build_loc_id(df_target):
+                            s = df_target[samp_loc_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if samp_loc_col_rf else 'N/A'
+                            z = df_target[zone_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if zone_col_rf else 'N/A'
+                            e = df_target[elment_col_360].fillna('N/A').astype(str).str.strip().str.upper() if elment_col_360 else 'N/A'
+                            b = df_target[bldg_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if bldg_col_rf else 'N/A'
+                            l = df_target['layer'].fillna('N/A').astype(str).str.strip().str.upper()
+                            t = df_target[test_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if test_col_rf else 'N/A'
+                            return s + "_" + z + "_" + e + "_" + b + "_" + l + "_" + t
+
+                        all_data = filtered_df.copy()
+                        all_data['Unique_Loc'] = build_loc_id(all_data)
                         if test_date_col_rf:
-                            global_accepted_df['Comp_Date'] = pd.to_datetime(global_accepted_df[test_date_col_rf], errors='coerce')
-                        if 'Comp_Date' not in global_accepted_df.columns or global_accepted_df['Comp_Date'].isna().all():
-                            global_accepted_df['Comp_Date'] = pd.to_datetime(global_accepted_df['Date( SUB)'], errors='coerce')
+                            all_data['Comp_Date'] = pd.to_datetime(all_data[test_date_col_rf], errors='coerce')
+                        if 'Comp_Date' not in all_data.columns or all_data['Comp_Date'].isna().all():
+                            all_data['Comp_Date'] = pd.to_datetime(all_data['Date( SUB)'], errors='coerce')
+
+                        if num_tests_col_rf:
+                            all_data['Points'] = pd.to_numeric(all_data[num_tests_col_rf].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                        else:
+                            all_data['Points'] = 1
+
+                        global_accepted_df = all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
+                        
+                        comp_df_rf = comp_df_full.copy()
+                        comp_df_rf['Unique_Loc'] = build_loc_id(comp_df_rf)
+                        if num_tests_col_rf:
+                            comp_df_rf['Points'] = pd.to_numeric(comp_df_rf[num_tests_col_rf].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                        else:
+                            comp_df_rf['Points'] = 1
+                            
+                        rejected_items = comp_df_rf[comp_df_rf['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])].sort_values('Date( SUB)')
 
                         if not rejected_items.empty:
                             ledger_data = []
@@ -2812,43 +2858,45 @@ def render_dashboard():
                                 serial = rej_row.get('serial', 'N/A')
                                 rej_sub_date = rej_row['Date( SUB)']
                                 r_comp_date = pd.to_datetime(rej_row[test_date_col_rf]) if test_date_col_rf and pd.notna(rej_row.get(test_date_col_rf)) else pd.to_datetime(rej_sub_date)
+                                r_pts = rej_row['Points']
+                                loc = rej_row['Unique_Loc']
                                 
                                 layer = str(rej_row.get('layer', 'Unknown'))
                                 test_type = str(rej_row.get(test_col_rf, 'Unknown')) if test_col_rf else 'Unknown'
                                 element_val = str(rej_row.get(elment_col_360, 'Unknown')) if elment_col_360 else 'Unknown'
                                 bldg_val = str(rej_row.get(bldg_col_rf, 'Unknown')) if bldg_col_rf else 'Unknown'
-                                zone_val = str(rej_row.get(zone_col_rf, 'Unknown')) if zone_col_rf else 'Unknown'
-                                samp_val = str(rej_row.get(samp_loc_col_rf, 'Unknown')) if samp_loc_col_rf else 'Unknown'
                                 
-                                filter_mask = (global_accepted_df['layer'].astype(str).str.strip().str.upper() == layer.strip().upper())
-                                if test_col_rf: filter_mask &= (global_accepted_df[test_col_rf].astype(str).str.strip().str.upper() == test_type.strip().upper())
-                                if elment_col_360: filter_mask &= (global_accepted_df[elment_col_360].astype(str).str.strip().str.upper() == element_val.strip().upper())
-                                if bldg_col_rf: filter_mask &= (global_accepted_df[bldg_col_rf].astype(str).str.strip().str.upper() == bldg_val.strip().upper())
-                                if zone_col_rf: filter_mask &= (global_accepted_df[zone_col_rf].astype(str).str.strip().str.upper() == zone_val.strip().upper())
-                                if samp_loc_col_rf: filter_mask &= (global_accepted_df[samp_loc_col_rf].astype(str).str.strip().str.upper() == samp_val.strip().upper())
-
-                                loc_accepts = global_accepted_df[filter_mask]
+                                loc_accepts = global_accepted_df[global_accepted_df['Unique_Loc'] == loc]
                                 
-                                resolved = False
-                                acc_sub_date = pd.NaT
-                                if not loc_accepts.empty:
-                                    if pd.notna(r_comp_date):
-                                        # التأكد إن النجاح كان بعد الرفض
-                                        valid_accepts = loc_accepts[loc_accepts['Comp_Date'] > r_comp_date]
-                                        if not valid_accepts.empty:
-                                            resolved = True
-                                            acc_sub_date = valid_accepts['Date( SUB)'].min()
-                                    else:
-                                        resolved = True
-                                        acc_sub_date = loc_accepts['Date( SUB)'].min()
+                                resolved_pts = 0
+                                acc_sub_dates = []
                                 
-                                if resolved:
+                                for a_idx, a_row in loc_accepts.iterrows():
+                                    if resolved_pts >= r_pts: break
+                                    a_date = a_row['Comp_Date']
+                                    a_pts = a_row['Points']
+                                    
+                                    if a_pts > 0 and (pd.isna(r_comp_date) or pd.isna(a_date) or a_date >= r_comp_date):
+                                        take = min(r_pts - resolved_pts, a_pts)
+                                        resolved_pts += take
+                                        global_accepted_df.at[a_idx, 'Points'] -= take
+                                        acc_sub_dates.append(a_row['Date( SUB)'])
+                                
+                                deficit = r_pts - resolved_pts
+                                
+                                if deficit == 0:
+                                    status_text = "Resolved ✅"
+                                    acc_sub_date = max(acc_sub_dates) if acc_sub_dates else pd.NaT # تاريخ آخر نقطة نجحت
                                     delay_days = (acc_sub_date - rej_sub_date).days if pd.notna(acc_sub_date) and pd.notna(rej_sub_date) else 0
                                     total_delay_days += max(0, delay_days)
-                                    status_text = "Resolved ✅"
-                                else:
+                                elif resolved_pts > 0:
+                                    status_text = f"Partial 🟡 (-{int(deficit)} Pts)"
+                                    acc_sub_date = pd.NaT
                                     delay_days = 0
+                                else:
                                     status_text = "Pending 🚨"
+                                    acc_sub_date = pd.NaT
+                                    delay_days = 0
                                     
                                 ledger_data.append({
                                     "Rejected Serial": serial,
@@ -2868,7 +2916,7 @@ def render_dashboard():
                             <div style="background: rgba(231, 76, 60, 0.1); border-left: 5px solid #e74c3c; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <h3 style="margin: 0; color: #e74c3c; font-size: 18px;">Total Rework Time Leakage</h3>
-                                    <p style="margin: 5px 0 0 0; color: {{ui['text_muted']}}; font-size: 14px;">إجمالي تأخير الأيام لنفس النقطة المكانية (يُشترط أن يكون تاريخ العينة الناجحة أحدث من المرفوضة).</p>
+                                    <p style="margin: 5px 0 0 0; color: {ui['text_muted']}; font-size: 14px;">يحسب التأخير بناءً على تاريخ آخر نقطة تم إغلاق الطلب المرفوض بها.</p>
                                 </div>
                                 <div style="font-size: 32px; font-weight: bold; color: #e74c3c;">{total_delay_days} Days Lost</div>
                             </div>
@@ -4780,13 +4828,13 @@ def render_dashboard():
                                 """, unsafe_allow_html=True)
 
                         if 'layer' in bh_df.columns and 'sample status' in bh_df.columns:
-                            # 💡 البصمة المكانية الشاملة للطبقات جوه العنصر ده
                             samp_loc_col_rf = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
                             zone_col_rf = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
                             bldg_col_rf = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
                             test_col_rf = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
                             test_date_col_rf = next((c for c in filtered_df.columns if 'DATE ( TEST)' in c.upper() or c.strip() == 'Date ( test)'), None)
                             sub_date_col_rf = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
+                            num_tests_col_rf = next((c for c in filtered_df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
                             
                             def build_loc_id(df_target):
                                 s = df_target[samp_loc_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if samp_loc_col_rf else 'N/A'
@@ -4797,7 +4845,20 @@ def render_dashboard():
                                 t = df_target[test_col_rf].fillna('N/A').astype(str).str.strip().str.upper() if test_col_rf else 'N/A'
                                 return s + "_" + z + "_" + e + "_" + b + "_" + l + "_" + t
 
-                            # تحضير تواريخ المقارنة للعنصر الحالي
+                            all_data = filtered_df.copy()
+                            all_data['Unique_Loc'] = build_loc_id(all_data)
+                            if test_date_col_rf:
+                                all_data['Comp_Date'] = pd.to_datetime(all_data[test_date_col_rf], errors='coerce')
+                            if 'Comp_Date' not in all_data.columns or all_data['Comp_Date'].isna().all():
+                                all_data['Comp_Date'] = pd.to_datetime(all_data[sub_date_col_rf], errors='coerce') if sub_date_col_rf else pd.NaT
+
+                            if num_tests_col_rf:
+                                all_data['Points'] = pd.to_numeric(all_data[num_tests_col_rf].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                            else:
+                                all_data['Points'] = 1
+
+                            global_accepted_df = all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
+                            
                             bh_df_rf = bh_df.copy()
                             bh_df_rf['Unique_Loc'] = build_loc_id(bh_df_rf)
                             if test_date_col_rf:
@@ -4805,62 +4866,60 @@ def render_dashboard():
                             if 'Comp_Date' not in bh_df_rf.columns or bh_df_rf['Comp_Date'].isna().all():
                                 bh_df_rf['Comp_Date'] = pd.to_datetime(bh_df_rf[sub_date_col_rf], errors='coerce') if sub_date_col_rf else pd.NaT
 
-                            # تحضير الداتا المقبولة في المشروع كله لضمان عدم سقوط أي معالجة (من أي مقاول)
-                            all_data = filtered_df.copy()
-                            all_data['Unique_Loc'] = build_loc_id(all_data)
-                            if test_date_col_rf:
-                                all_data['Comp_Date'] = pd.to_datetime(all_data[test_date_col_rf], errors='coerce')
-                            if 'Comp_Date' not in all_data.columns or all_data['Comp_Date'].isna().all():
-                                all_data['Comp_Date'] = pd.to_datetime(all_data[sub_date_col_rf], errors='coerce') if sub_date_col_rf else pd.NaT
-                                
-                            global_accepted_df = all_data[all_data['sample status'].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])]
+                            if num_tests_col_rf:
+                                bh_df_rf['Points'] = pd.to_numeric(bh_df_rf[num_tests_col_rf].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                            else:
+                                bh_df_rf['Points'] = 1
 
-                            rejected_df = bh_df_rf[bh_df_rf['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])]
+                            rejected_df = bh_df_rf[bh_df_rf['sample status'].astype(str).str.upper().isin(['REJECTED', 'REVISE'])].sort_values('Comp_Date')
                             
                             unresolved_alerts = []
                             for _, rej_row in rejected_df.iterrows():
                                 loc = rej_row['Unique_Loc']
                                 r_date = rej_row['Comp_Date']
+                                r_pts = rej_row['Points']
                                 
                                 loc_accepts = global_accepted_df[global_accepted_df['Unique_Loc'] == loc]
-                                is_resolved = False
+                                resolved_pts = 0
                                 
-                                if not loc_accepts.empty:
-                                    if pd.notna(r_date):
-                                        # 💡 شرط التاريخ (تأكيد إن المعالجة تمت في يوم لاحق مش نفس اليوم)
-                                        valid_accepts = loc_accepts[loc_accepts['Comp_Date'] > r_date]
-                                        if not valid_accepts.empty:
-                                            is_resolved = True
-                                    else:
-                                        is_resolved = True
+                                for a_idx, a_row in loc_accepts.iterrows():
+                                    if resolved_pts >= r_pts: break
+                                    a_date = a_row['Comp_Date']
+                                    a_pts = a_row['Points']
+                                    
+                                    if a_pts > 0 and (pd.isna(r_date) or pd.isna(a_date) or a_date >= r_date):
+                                        take = min(r_pts - resolved_pts, a_pts)
+                                        resolved_pts += take
+                                        global_accepted_df.at[a_idx, 'Points'] -= take
                                         
-                                if not is_resolved:
+                                deficit = r_pts - resolved_pts
+                                if deficit > 0:
                                     l = rej_row.get('layer', 'Unknown')
                                     t_type = rej_row.get(test_col_rf, 'N/A') if test_col_rf else 'N/A'
                                     ser = rej_row.get('serial', 'N/A')
                                     bldg = rej_row.get(bldg_col_rf, 'N/A') if bldg_col_rf else 'N/A'
                                     comp_name = rej_row.get('Company Name', 'N/A')
-                                    unresolved_alerts.append((str(l), str(t_type), str(ser), str(bldg), str(comp_name)))
+                                    unresolved_alerts.append((str(l), str(t_type), str(ser), str(bldg), str(comp_name), int(deficit), int(r_pts)))
 
-                            # إزالة التكرارات لنفس العينة المرفوضة
                             unresolved_alerts = list(set(unresolved_alerts))
                             
                             if unresolved_alerts:
                                 st.markdown("#### 🚨 Critical Quality Alerts (Unresolved Submittals)")
                                 alert_cols = st.columns(min(len(unresolved_alerts), 4) if len(unresolved_alerts) > 0 else 1)
                                 for idx, alert in enumerate(unresolved_alerts[:8]): 
-                                    l, t_type, ser, bldg, comp_name = alert
+                                    l, t_type, ser, bldg, comp_name, deficit, r_pts = alert
+                                    status_msg = f"Missing {deficit}/{r_pts} Points!" if deficit < r_pts else "No subsequent approval found!"
                                     alert_cols[idx % 4].markdown(f"""
                                         <div style="background: rgba(231, 76, 60, 0.15); backdrop-filter: blur(5px); padding: 15px; border-radius: 15px; border: 1px solid #e74c3c; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);">
                                             <div style="color: #e74c3c; font-size: 16px; font-weight: bold; margin-bottom: 5px;">⚠️ Action Required</div>
                                             <div style="color: {ui['text_main']}; font-size: 14px; line-height: 1.6;">
                                                 <b>Contractor:</b> {comp_name}<br><b>Bldg:</b> {bldg}<br><b>Layer:</b> {l}<br><b>Test:</b> {t_type}<br><b>Serial No:</b> {ser}<br>
-                                                <span style="font-size:12px; color:#e74c3c;">Status is REVISE/REJECTED with no subsequent approval found from ANY contractor!</span>
+                                                <span style="font-size:12px; color:#e74c3c;">{status_msg}</span>
                                             </div>
                                         </div>
                                         """, unsafe_allow_html=True)
                             else:
-                                st.success("✅ All rejected layers for this element have been successfully re-tested and approved!")
+                                st.success("✅ All rejected layers for this element have been fully re-tested and approved (Points Matched)!")
                         else:
                             st.info("Requires 'sample status', 'layer', and 'Element' columns for Smart Red Flags.")
                         st.divider()
@@ -4981,7 +5040,7 @@ def render_dashboard():
         # ==========================================
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🚨 Action Tracker: Unresolved Rejections (سجل العينات المرفوضة المعلقة)</div>', unsafe_allow_html=True)
-        st.caption("يظهر هنا العينات المرفوضة فقط إذا لم ينجح أي مقاول في معالجة نفس المكان الفعلي (مبنى/منطقة/عنصر) في تاريخ أحدث من تاريخ الرفض.")
+        st.caption("يفرز هذا الجدول العجز في النقط (Points Deficit). لا يغلق التنبيه إلا إذا نجحت نقاط مساوية للنقاط المرفوضة في نفس الموقع الفعلي.")
 
         test_col = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
         sub_date_col = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
@@ -4989,6 +5048,7 @@ def render_dashboard():
         serial_col = next((c for c in filtered_df.columns if 'SERIAL' in c.upper() or c.strip() == 'serial'), None)
         elem_col = next((c for c in filtered_df.columns if c.strip() in ['ELMENT', 'Elment', 'ELEMENT', 'Element (all)', 'Element (All)']), None)
         done_by_col = next((c for c in filtered_df.columns if 'DONE BY' in c.upper()), None)
+        num_tests_col_m = next((c for c in filtered_df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
         
         if test_col and sub_date_col and test_date_col and serial_col and elem_col:
             target_tests = filtered_df[filtered_df[test_col].astype(str).str.upper().str.contains('DPL|PLATE', na=False)].copy()
@@ -5016,46 +5076,61 @@ def render_dashboard():
                 if 'Comp_Date' not in target_tests.columns or target_tests['Comp_Date'].isna().all():
                     target_tests['Comp_Date'] = pd.to_datetime(target_tests[sub_date_col], errors='coerce')
 
-                accepted_df = target_tests[target_tests['status_upper'].isin(['ACCEPTED', 'APPROVED AS NOTED'])].copy()
-                rejected_df = target_tests[target_tests['status_upper'].isin(['REJECTED', 'REVISE'])].copy()
+                if num_tests_col_m:
+                    target_tests['Points'] = pd.to_numeric(target_tests[num_tests_col_m].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
+                else:
+                    target_tests['Points'] = 1
+
+                accepted_df = target_tests[target_tests['status_upper'].isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
+                rejected_df = target_tests[target_tests['status_upper'].isin(['REJECTED', 'REVISE'])].sort_values('Comp_Date')
                 
                 unresolved_indices = []
+                deficit_status = {}
+                
                 for idx, rej_row in rejected_df.iterrows():
                     loc = rej_row['Unique_Loc']
                     r_date = rej_row['Comp_Date']
+                    r_pts = rej_row['Points']
                     
                     loc_accepts = accepted_df[accepted_df['Unique_Loc'] == loc]
-                    is_resolved = False
+                    resolved_pts = 0
                     
-                    if not loc_accepts.empty:
-                        if pd.notna(r_date):
-                            # شرط التاريخ (لا يقبل الحل من نفس اليوم للهروب من مشكلة السيريال)
-                            valid_accepts = loc_accepts[loc_accepts['Comp_Date'] > r_date]
-                            if not valid_accepts.empty:
-                                is_resolved = True
-                        else:
-                            is_resolved = True
+                    for a_idx, a_row in loc_accepts.iterrows():
+                        if resolved_pts >= r_pts: break
+                        a_date = a_row['Comp_Date']
+                        a_pts = a_row['Points']
+                        
+                        if a_pts > 0 and (pd.isna(r_date) or pd.isna(a_date) or a_date >= r_date):
+                            take = min(r_pts - resolved_pts, a_pts)
+                            resolved_pts += take
+                            accepted_df.at[a_idx, 'Points'] -= take
                             
-                    if not is_resolved:
+                    deficit = r_pts - resolved_pts
+                    if deficit > 0:
                         unresolved_indices.append(idx)
+                        if resolved_pts > 0:
+                            deficit_status[idx] = f"🟡 Partial (Missing {int(deficit)}/{int(r_pts)} Pts)"
+                        else:
+                            deficit_status[idx] = f"🚨 Missing {int(deficit)} Pts"
                         
                 unresolved_display = rejected_df.loc[unresolved_indices].copy()
 
                 if not unresolved_display.empty:
-                    display_cols = ['Company Name', done_by_col, serial_col, sub_date_col, test_date_col, 'layer', test_col, bldg_col_m, elem_col, zone_col_m]
+                    unresolved_display['Deficit (العجز)'] = unresolved_display.index.map(deficit_status)
+                    display_cols = ['Company Name', done_by_col, serial_col, sub_date_col, test_date_col, 'layer', test_col, bldg_col_m, elem_col, zone_col_m, 'Deficit (العجز)']
                     display_cols = [c for c in display_cols if c is not None and c in unresolved_display.columns]
                     
                     unresolved_display = unresolved_display[display_cols].sort_values(by=['Company Name', sub_date_col])
                     
                     st.markdown(f"""
                     <div style="background: rgba(231, 76, 60, 0.1); border-left: 4px solid #e74c3c; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                        <b style="color: #e74c3c;">يوجد عدد ({len(unresolved_display)}) طلب مرفوض لم يتم إغلاقه هندسياً من أي مقاول حتى الآن!</b>
+                        <b style="color: #e74c3c;">يوجد عدد ({len(unresolved_display)}) طلب مرفوض لم يتم إغلاقه كلياً من أي مقاول حتى الآن!</b>
                     </div>
                     """, unsafe_allow_html=True)
                     st.dataframe(unresolved_display, use_container_width=True, hide_index=True)
                     export_table_tools(unresolved_display, f"Unresolved_Rejections_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
                 else:
-                    st.success("✅ ممتاز! لا توجد أي عينات مرفوضة معلقة حالياً.")
+                    st.success("✅ ممتاز! لا توجد أي عينات مرفوضة معلقة حالياً (جميع النقاط المرفوضة تم الرد عليها بنقاط مقبولة).")
 
         # ==========================================
         # 🚨 MODULE 1.5: Missing Layers Tracker (سجل الطبقات المفقودة)
