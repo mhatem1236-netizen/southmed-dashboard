@@ -1775,7 +1775,6 @@ def render_dashboard():
             # ==========================================
             st.markdown("##### 🔍 Office Portfolio Explorer (سجل الفحص التفصيلي للمكاتب)")
             
-            # اكتشاف الأعمدة المطلوبة
             done_by_col_off = next((c for c in filtered_df.columns if 'DONE BY' in c.upper()), None)
             comp_name_col_off = next((c for c in filtered_df.columns if c.strip() == 'Company Name'), None)
             elem_col_off = next((c for c in filtered_df.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
@@ -1788,21 +1787,17 @@ def render_dashboard():
 
             if done_by_col_off and comp_name_col_off and elem_col_off and test_date_col_off and status_col_off and layer_col_off:
                 
-                # قائمة المكاتب للفلترة
                 avail_offices = ["All Offices"] + sorted([str(o) for o in filtered_df[done_by_col_off].dropna().unique() if str(o).strip() != ''])
                 
-                # الفلتر هيكون حجمه صغير وشيك تحت الشارت
                 o_col1, o_col2 = st.columns([0.4, 0.6])
                 with o_col1:
                     selected_office_lg = st.selectbox("👨‍💼 اختر المكتب لعرض تفاصيل عمله:", avail_offices, key="office_ledger_filter")
                 
-                # فلترة الداتا بناءً على المكتب المختار
                 if selected_office_lg != "All Offices":
                     off_df = filtered_df[filtered_df[done_by_col_off].astype(str).str.strip() == selected_office_lg].copy()
                 else:
                     off_df = filtered_df.copy()
                     
-                # تظبيط التواريخ والأرقام
                 off_df[test_date_col_off] = pd.to_datetime(off_df[test_date_col_off], dayfirst=True, errors='coerce')
                 if sub_date_col_off:
                     off_df[sub_date_col_off] = pd.to_datetime(off_df[sub_date_col_off], dayfirst=True, errors='coerce')
@@ -1813,11 +1808,14 @@ def render_dashboard():
                     off_df['Total Points'] = 1
                     pts_col_off = 'Total Points'
 
-                # داتا العينات الناجحة في المشروع كله
                 full_accepted_df = filtered_df[filtered_df[status_col_off].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].copy()
                 full_accepted_df[test_date_col_off] = pd.to_datetime(full_accepted_df[test_date_col_off], dayfirst=True, errors='coerce')
 
                 off_ledger_data = []
+                
+                samp_loc_col_off = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
+                zone_col_off = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
+                bldg_col_off = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
                 
                 for _, row in off_df.iterrows():
                     comp = str(row[comp_name_col_off])
@@ -1830,6 +1828,10 @@ def render_dashboard():
                     office_name = str(row[done_by_col_off])
                     pts = row[pts_col_off]
                     
+                    samp = str(row[samp_loc_col_off]) if samp_loc_col_off else 'N/A'
+                    zone = str(row[zone_col_off]) if zone_col_off else 'N/A'
+                    bldg = str(row[bldg_col_off]) if bldg_col_off else 'N/A'
+                    
                     if status in ['REJECTED', 'REVISE']:
                         future_accepts = full_accepted_df[
                             (full_accepted_df[comp_name_col_off].astype(str) == comp) &
@@ -1838,6 +1840,10 @@ def render_dashboard():
                             (full_accepted_df[test_col_off].astype(str) == t_type) &
                             (full_accepted_df[test_date_col_off] >= test_d)
                         ]
+                        if samp_loc_col_off: future_accepts = future_accepts[future_accepts[samp_loc_col_off].astype(str) == samp]
+                        if zone_col_off: future_accepts = future_accepts[future_accepts[zone_col_off].astype(str) == zone]
+                        if bldg_col_off: future_accepts = future_accepts[future_accepts[bldg_col_off].astype(str) == bldg]
+                        
                         resolution = "🔄 Resolved" if not future_accepts.empty else "🚨 Pending"
                     elif status in ['ACCEPTED', 'APPROVED AS NOTED']:
                         resolution = "✅ Accepted"
@@ -1857,9 +1863,11 @@ def render_dashboard():
                         'Sub Date': sub_d.strftime('%Y-%m-%d') if pd.notna(sub_d) else 'N/A'
                     })
                     
-                final_off_ledger = pd.DataFrame(off_ledger_data).sort_values(by=['Test Date', 'Contractor'], ascending=[False, True])
+                # 💡 التعديل الجذري هنا: إجبار السيستم على تعريف الأعمدة حتى لو الداتا فاضية
+                cols_order = ['Office', 'Contractor', 'Element', 'Layer', 'Test Type', 'Points', 'Status', 'Resolution', 'Test Date', 'Sub Date']
+                final_off_ledger = pd.DataFrame(off_ledger_data, columns=cols_order).sort_values(by=['Test Date', 'Contractor'], ascending=[False, True])
                 
-                if selected_office_lg != "All Offices":
+                if selected_office_lg != "All Offices" and 'Office' in final_off_ledger.columns:
                     final_off_ledger = final_off_ledger.drop(columns=['Office'])
                     
                 def color_res_off(val):
@@ -1868,9 +1876,12 @@ def render_dashboard():
                     elif 'Accepted' in str(val): return 'color: #2ecc71;'
                     return ''
                     
-                st.dataframe(final_off_ledger.style.map(color_res_off, subset=['Resolution']), use_container_width=True, hide_index=True)
-                export_table_tools(final_off_ledger, f"Office_Workload_Ledger_{selected_office_lg.replace(' ', '_')}")
-
+                # 💡 الدرع الواقي: يمنع تلوين الجدول لو كان فاضي عشان نتفادى الـ StreamlitAPIException
+                if not final_off_ledger.empty:
+                    st.dataframe(final_off_ledger.style.map(color_res_off, subset=['Resolution']), use_container_width=True, hide_index=True)
+                    export_table_tools(final_off_ledger, f"Office_Workload_Ledger_{selected_office_lg.replace(' ', '_')}")
+                else:
+                    st.info(f"💡 لا توجد داتا مطابقة لعرضها في سجل المكاتب.")
         # ==========================================
         # 🪨 Overall Soil Classifications
         # ==========================================
