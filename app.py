@@ -1292,10 +1292,9 @@ def render_dashboard():
     }
     exported_figs = {}
     # ==========================================
-    # 🌟 Premium Dashboard Header Banner
+    # 🌟 Premium Dashboard Header Logo
     # ==========================================
-    # غير اسم الصورة هنا لاسم صورتك الجديدة عالية الجودة
-    header_img = "southmed_hd.jpg" 
+    header_img = "2_5.JPG" # تأكد إن ده اسم صورة اللوجو بتاعتك
     
     if os.path.exists(header_img):
         try:
@@ -1303,10 +1302,10 @@ def render_dashboard():
             with open(header_img, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode()
             
-            # عرض الصورة كبانر بانورامي لا يتأثر بتغيير مقاسات الشاشة
+            # عرض الصورة كلوجو احترافي يحافظ على أبعاده بدون قص أو بكسلة
             st.markdown(f"""
-            <div style="width: 100%; height: 280px; border-radius: 16px; overflow: hidden; margin-bottom: 25px; box-shadow: 0 8px 25px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);">
-                <img src="data:image/jpeg;base64,{encoded_string}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 60%;">
+            <div style="width: 100%; display: flex; justify-content: center; align-items: center; margin-bottom: 30px; padding: 20px; background: rgba(255,255,255,0.03); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.05);">
+                <img src="data:image/jpeg;base64,{encoded_string}" style="max-height: 160px; max-width: 100%; width: auto; object-fit: contain; filter: drop-shadow(0px 4px 10px rgba(0,0,0,0.1));">
             </div>
             """, unsafe_allow_html=True)
         except Exception as e:
