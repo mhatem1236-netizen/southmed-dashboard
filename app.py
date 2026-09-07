@@ -568,20 +568,21 @@ def render_home_page():
     }
     
     # Header
-    col_h1, col_h2 = st.columns([0.8, 0.2])
-    with col_h1:
+    col_h1, col_h2 = st.columns([0.7, 0.3])
+    with col_h1: 
         st.title("🏗️ Mega Infrastructure Command Center")
     with col_h2:
-        st.markdown(f"""
-        <div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center;'>
-            <span style='color:{ui["text_muted"]}; font-size:12px;'>Logged in as</span><br>
-            <b style='color:#ffaa00;'>{user["Name"]}</b><br>
-            <span style='color:#2ecc71; font-size:12px;'>{user["Role"]} Account</span>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Logout", use_container_width=True):
-            st.session_state["authenticated"] = False
-            st.rerun()
+        st.markdown(f"<div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center; margin-bottom:10px;'><span style='color:{ui['text_muted']}; font-size:12px;'>Logged in as</span><br><b style='color:#ffaa00;'>{user['Name']}</b><br><span style='color:#2ecc71; font-size:12px;'>{user['Role']} Account</span></div>", unsafe_allow_html=True)
+        
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            if st.button("🏠 Back to Home", use_container_width=True, key="top_home_btn"):
+                st.session_state["current_page"] = "home"
+                st.rerun()
+        with btn_col2:
+            if st.button("🚪 Logout", use_container_width=True):
+                st.session_state["authenticated"] = False
+                st.rerun()
     
     st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
     
@@ -5508,12 +5509,7 @@ def render_dashboard():
                     st.balloons()
                 except Exception as e:
                     st.error(f"❌ Error generating PowerPoint: {str(e)}. Make sure 'kaleido' is installed.")
-        # Back to Home Button
-        st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
-        if st.button("🏠 Back to Home", use_container_width=True, key="back_to_home_dashboard"):
-            st.session_state["current_page"] = "home"
-            st.rerun()
-
+        
     else:
         st.info("👈 Please connect a Data Source or Upload a CSV to activate the Enterprise Engine.")
 
