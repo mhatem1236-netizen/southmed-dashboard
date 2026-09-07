@@ -1798,9 +1798,7 @@ def render_dashboard():
                 else:
                     off_df = filtered_df.copy()
                     
-                # استبعاد اختبارات التربة
-                if test_col_off:
-                    off_df = off_df[~off_df[test_col_off].astype(str).str.upper().str.contains('SOIL', na=False)]
+                # 💡 تم إرجاع اختبارات التربة (SOIL) لهذا الجدول لضمان حصر كل أعمال المكاتب
                     
                 off_df[test_date_col_off] = pd.to_datetime(off_df[test_date_col_off], dayfirst=True, errors='coerce')
                 if sub_date_col_off:
@@ -1854,7 +1852,6 @@ def render_dashboard():
                     else:
                         resolution = "ℹ️ Unknown"
                         
-                    # 💡 تحويل الداتا لنصوص صريحة عشان الـ PyArrow ميضربش
                     off_ledger_data.append({
                         'Office': str(office_name),
                         'Contractor': str(comp),
@@ -1884,7 +1881,6 @@ def render_dashboard():
                     elif 'Accepted' in str(val): return 'color: #2ecc71;'
                     return ''
                     
-                # 💡 الدرع الواقي (Try-Except): لو التلوين فشل لأي سبب هندسي، ارسم الجدول من غير تلوين وماتقفلش الشاشة
                 if not final_off_ledger.empty:
                     try:
                         st.dataframe(final_off_ledger.style.map(color_res_off, subset=['Resolution']), use_container_width=True, hide_index=True)
@@ -1893,7 +1889,7 @@ def render_dashboard():
                         
                     export_table_tools(final_off_ledger, f"Office_Workload_Ledger_{selected_office_lg.replace(' ', '_')}")
                 else:
-                    st.info(f"💡 لا توجد عينات DPL أو Plate Load مسجلة حالياً لعرضها.")
+                    st.info(f"💡 لا توجد داتا مسجلة حالياً لعرضها في سجل المكاتب.")
         # ==========================================
         # 🪨 Overall Soil Classifications
         # ==========================================
