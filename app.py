@@ -1292,9 +1292,9 @@ def render_dashboard():
     }
     exported_figs = {}
     # ==========================================
-    # 🌟 Premium Dashboard Header Logo
+    # 🌟 Premium Dashboard Hero Banner (Smart Blend)
     # ==========================================
-    header_img = "2_5.JPG" # تأكد إن ده اسم صورة اللوجو بتاعتك
+    header_img = "2_5.JPG" # اسم صورة اللوجو بتاعتك
     
     if os.path.exists(header_img):
         try:
@@ -1302,10 +1302,20 @@ def render_dashboard():
             with open(header_img, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode()
             
-            # عرض الصورة كلوجو احترافي يحافظ على أبعاده بدون قص أو بكسلة
+            # تصميم "واجهة كفر" ذكية: خلفية فخمة تندمج مع اللوجو الأبيض
             st.markdown(f"""
-            <div style="width: 100%; display: flex; justify-content: center; align-items: center; margin-bottom: 30px; padding: 20px; background: rgba(255,255,255,0.03); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.05);">
-                <img src="data:image/jpeg;base64,{encoded_string}" style="max-height: 160px; max-width: 100%; width: auto; object-fit: contain; filter: drop-shadow(0px 4px 10px rgba(0,0,0,0.1));">
+            <div style="position: relative; width: 100%; height: 220px; border-radius: 16px; margin-bottom: 30px; 
+                        background: radial-gradient(circle, #ffffff 0%, #f4f7fa 100%); 
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.8); 
+                        display: flex; justify-content: center; align-items: center; overflow: hidden;">
+                
+                <!-- لمسات تصميمية (إضاءة خفيفة في زوايا الكفر تدي إيحاء تكنولوجي) -->
+                <div style="position: absolute; top: -50px; left: -50px; width: 250px; height: 250px; background: rgba(0, 210, 255, 0.05); border-radius: 50%; filter: blur(30px);"></div>
+                <div style="position: absolute; bottom: -50px; right: -50px; width: 300px; height: 300px; background: rgba(255, 170, 0, 0.05); border-radius: 50%; filter: blur(30px);"></div>
+                
+                <!-- اللوجو الفعلي بأعلى جودة مع دمج الخلفية البيضاء -->
+                <img src="data:image/jpeg;base64,{encoded_string}" 
+                     style="height: 140px; width: auto; max-width: 90%; object-fit: contain; z-index: 1; filter: drop-shadow(0px 8px 15px rgba(0,0,0,0.08)); mix-blend-mode: multiply;">
             </div>
             """, unsafe_allow_html=True)
         except Exception as e:
