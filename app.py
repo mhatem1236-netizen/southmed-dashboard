@@ -538,10 +538,15 @@ def render_login_screen():
                 <hr style="border: 0.5px solid #eee; margin-bottom: 30px;">
         """, unsafe_allow_html=True)
         st.markdown('<div class="login-title">SIGN IN</div>', unsafe_allow_html=True)
-        email = st.text_input("Email Address", placeholder="Enter your email...")
-        password = st.text_input("Password", type="password", placeholder="••••••••••••")
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Secure Login", use_container_width=True, type="primary"):
+        
+        # 💡 السر هنا: وضع الخانات وزرار الدخول داخل st.form لتفعيل زر الـ Enter أوتوماتيكياً
+        with st.form(key="login_form"):
+            email = st.text_input("Email Address", placeholder="")
+            password = st.text_input("Password", type="password", placeholder="••••••••••••")
+            st.markdown("<br>", unsafe_allow_html=True)
+            submit_btn = st.form_submit_button("Secure Login", use_container_width=True, type="primary")
+            
+        if submit_btn:
             success, msg = authenticate_user(email, password)
             if success:
                 st.success("Authentication Successful. Initializing System...")
@@ -550,7 +555,6 @@ def render_login_screen():
                 st.error(msg)
         st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
 # ==========================================
 # 9. Home/Navigation Page
 # ==========================================
