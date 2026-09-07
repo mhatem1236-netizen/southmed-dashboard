@@ -1291,10 +1291,25 @@ def render_dashboard():
         'highlight_bg': 'rgba(128, 128, 128, 0.05)'
     }
     exported_figs = {}
-    if os.path.exists("5.jpg"):
+    # ==========================================
+    # 🌟 Premium Dashboard Header Banner
+    # ==========================================
+    # غير اسم الصورة هنا لاسم صورتك الجديدة عالية الجودة
+    header_img = "southmed_hd.jpg" 
+    
+    if os.path.exists(header_img):
         try:
-            st.image("5.jpg", use_container_width=True)
-        except Exception:
+            import base64
+            with open(header_img, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode()
+            
+            # عرض الصورة كبانر بانورامي لا يتأثر بتغيير مقاسات الشاشة
+            st.markdown(f"""
+            <div style="width: 100%; height: 280px; border-radius: 16px; overflow: hidden; margin-bottom: 25px; box-shadow: 0 8px 25px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);">
+                <img src="data:image/jpeg;base64,{encoded_string}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 60%;">
+            </div>
+            """, unsafe_allow_html=True)
+        except Exception as e:
             pass
 
     col_h1, col_h2 = st.columns([0.7, 0.3])
