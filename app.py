@@ -1303,7 +1303,7 @@ def render_dashboard():
         <div style="position: absolute; bottom: -50px; right: -50px; width: 300px; height: 300px; background: rgba(255, 170, 0, 0.08); border-radius: 50%; filter: blur(30px);"></div>
         <div style="z-index: 1; text-align: center; filter: drop-shadow(0px 5px 10px rgba(0,0,0,0.05)); user-select: none;">
             <div style="font-size: 85px; line-height: 1; color: #043d67; white-space: nowrap;">
-                <span style="font-family: 'Playfair Display', serif; font-style: italic; font-weight: 600; padding-right: 2px;">South</span><span style="font-family: 'Playfair Display', serif; font-weight: 800; letter-spacing: 1px;">MED<span style="color: #00d2ff;">.</span></span>
+                <span style="font-family: 'Playfair Display', serif; font-style: italic; font-weight: 600; padding-right: 2px;">South</span><span style="font-family: 'Playfair Display', serif; font-weight: 800; letter-spacing: 1px;">MED</span>
             </div>
             <div style="font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 500; color: #043d67; letter-spacing: 16px; margin-top: 10px; margin-right: -16px;">
                 EGYPT
