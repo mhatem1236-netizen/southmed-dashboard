@@ -1298,16 +1298,9 @@ def render_dashboard():
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,600&family=Montserrat:wght@500&display=swap');
     </style>
-    <div style="position: relative; width: 100%; height: 220px; border-radius: 16px; margin-bottom: 30px; 
-                background: radial-gradient(circle, #ffffff 0%, #f4f7fa 100%); 
-                box-shadow: 0 10px 30px rgba(0,0,0,0.10); border: 1px solid rgba(255,255,255,0.8); 
-                display: flex; justify-content: center; align-items: center; overflow: hidden;">
-        
-        <!-- إضاءة الديكور في الخلفية -->
+    <div style="position: relative; width: 100%; height: 220px; border-radius: 16px; margin-bottom: 30px; background: radial-gradient(circle, #ffffff 0%, #f4f7fa 100%); box-shadow: 0 10px 30px rgba(0,0,0,0.10); border: 1px solid rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden;">
         <div style="position: absolute; top: -50px; left: -50px; width: 250px; height: 250px; background: rgba(0, 210, 255, 0.08); border-radius: 50%; filter: blur(30px);"></div>
         <div style="position: absolute; bottom: -50px; right: -50px; width: 300px; height: 300px; background: rgba(255, 170, 0, 0.08); border-radius: 50%; filter: blur(30px);"></div>
-        
-        <!-- اللوجو المصمم بالنصوص فائقة الدقة (Vector) -->
         <div style="z-index: 1; text-align: center; filter: drop-shadow(0px 5px 10px rgba(0,0,0,0.05)); user-select: none;">
             <div style="font-size: 85px; line-height: 1; color: #043d67; white-space: nowrap;">
                 <span style="font-family: 'Playfair Display', serif; font-style: italic; font-weight: 600; padding-right: 2px;">South</span><span style="font-family: 'Playfair Display', serif; font-weight: 800; letter-spacing: 1px;">MED<span style="color: #00d2ff;">.</span></span>
