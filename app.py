@@ -1798,6 +1798,10 @@ def render_dashboard():
                 else:
                     off_df = filtered_df.copy()
                     
+                # استبعاد اختبارات التربة
+                if test_col_off:
+                    off_df = off_df[~off_df[test_col_off].astype(str).str.upper().str.contains('SOIL', na=False)]
+                    
                 off_df[test_date_col_off] = pd.to_datetime(off_df[test_date_col_off], dayfirst=True, errors='coerce')
                 if sub_date_col_off:
                     off_df[sub_date_col_off] = pd.to_datetime(off_df[sub_date_col_off], dayfirst=True, errors='coerce')
@@ -1808,14 +1812,15 @@ def render_dashboard():
                     off_df['Total Points'] = 1
                     pts_col_off = 'Total Points'
 
-                full_accepted_df = filtered_df[filtered_df[status_col_off].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].copy()
+                success_keywords = ['ACCEPTED', 'APPROVED AS NOTED', 'APPROVE', 'APPROVED']
+                full_accepted_df = filtered_df[filtered_df[status_col_off].astype(str).str.upper().isin(success_keywords)].copy()
                 full_accepted_df[test_date_col_off] = pd.to_datetime(full_accepted_df[test_date_col_off], dayfirst=True, errors='coerce')
-
-                off_ledger_data = []
                 
                 samp_loc_col_off = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
                 zone_col_off = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
                 bldg_col_off = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
+
+                off_ledger_data = []
                 
                 for _, row in off_df.iterrows():
                     comp = str(row[comp_name_col_off])
@@ -1834,7 +1839,6 @@ def render_dashboard():
                     
                     if status in ['REJECTED', 'REVISE']:
                         future_accepts = full_accepted_df[
-                            (full_accepted_df[comp_name_col_off].astype(str) == comp) &
                             (full_accepted_df[elem_col_off].astype(str) == elem) &
                             (full_accepted_df[layer_col_off].astype(str) == layer) &
                             (full_accepted_df[test_col_off].astype(str) == t_type) &
@@ -1845,27 +1849,31 @@ def render_dashboard():
                         if bldg_col_off: future_accepts = future_accepts[future_accepts[bldg_col_off].astype(str) == bldg]
                         
                         resolution = "🔄 Resolved" if not future_accepts.empty else "🚨 Pending"
-                    elif status in ['ACCEPTED', 'APPROVED AS NOTED']:
+                    elif status in success_keywords:
                         resolution = "✅ Accepted"
                     else:
                         resolution = "ℹ️ Unknown"
                         
+                    # 💡 تحويل الداتا لنصوص صريحة عشان الـ PyArrow ميضربش
                     off_ledger_data.append({
-                        'Office': office_name,
-                        'Contractor': comp,
-                        'Element': elem,
-                        'Layer': layer,
-                        'Test Type': t_type,
-                        'Points': pts,
-                        'Status': status,
-                        'Resolution': resolution,
+                        'Office': str(office_name),
+                        'Contractor': str(comp),
+                        'Zone': str(zone),
+                        'Building': str(bldg),
+                        'Element': str(elem),
+                        'Layer': str(layer),
+                        'Test Type': str(t_type),
+                        'Status': str(status),
+                        'Resolution': str(resolution),
                         'Test Date': test_d.strftime('%Y-%m-%d') if pd.notna(test_d) else 'N/A',
                         'Sub Date': sub_d.strftime('%Y-%m-%d') if pd.notna(sub_d) else 'N/A'
                     })
                     
-                # 💡 التعديل الجذري هنا: إجبار السيستم على تعريف الأعمدة حتى لو الداتا فاضية
-                cols_order = ['Office', 'Contractor', 'Element', 'Layer', 'Test Type', 'Points', 'Status', 'Resolution', 'Test Date', 'Sub Date']
-                final_off_ledger = pd.DataFrame(off_ledger_data, columns=cols_order).sort_values(by=['Test Date', 'Contractor'], ascending=[False, True])
+                cols_order = ['Office', 'Contractor', 'Zone', 'Building', 'Element', 'Layer', 'Test Type', 'Status', 'Resolution', 'Test Date', 'Sub Date']
+                final_off_ledger = pd.DataFrame(off_ledger_data, columns=cols_order)
+                
+                if not final_off_ledger.empty:
+                    final_off_ledger = final_off_ledger.sort_values(by=['Test Date', 'Contractor'], ascending=[False, True])
                 
                 if selected_office_lg != "All Offices" and 'Office' in final_off_ledger.columns:
                     final_off_ledger = final_off_ledger.drop(columns=['Office'])
@@ -1876,12 +1884,16 @@ def render_dashboard():
                     elif 'Accepted' in str(val): return 'color: #2ecc71;'
                     return ''
                     
-                # 💡 الدرع الواقي: يمنع تلوين الجدول لو كان فاضي عشان نتفادى الـ StreamlitAPIException
+                # 💡 الدرع الواقي (Try-Except): لو التلوين فشل لأي سبب هندسي، ارسم الجدول من غير تلوين وماتقفلش الشاشة
                 if not final_off_ledger.empty:
-                    st.dataframe(final_off_ledger.style.map(color_res_off, subset=['Resolution']), use_container_width=True, hide_index=True)
+                    try:
+                        st.dataframe(final_off_ledger.style.map(color_res_off, subset=['Resolution']), use_container_width=True, hide_index=True)
+                    except Exception:
+                        st.dataframe(final_off_ledger, use_container_width=True, hide_index=True)
+                        
                     export_table_tools(final_off_ledger, f"Office_Workload_Ledger_{selected_office_lg.replace(' ', '_')}")
                 else:
-                    st.info(f"💡 لا توجد داتا مطابقة لعرضها في سجل المكاتب.")
+                    st.info(f"💡 لا توجد عينات DPL أو Plate Load مسجلة حالياً لعرضها.")
         # ==========================================
         # 🪨 Overall Soil Classifications
         # ==========================================
