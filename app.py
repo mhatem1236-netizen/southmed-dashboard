@@ -538,7 +538,7 @@ def render_login_screen():
                 <hr style="border: 0.5px solid #eee; margin-bottom: 30px;">
         """, unsafe_allow_html=True)
         st.markdown('<div class="login-title">SIGN IN</div>', unsafe_allow_html=True)
-        email = st.text_input("Email Address", placeholder="e.g., Mohamedhatem@kk.com")
+        email = st.text_input("Email Address", placeholder="Enter your email...")
         password = st.text_input("Password", type="password", placeholder="••••••••••••")
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Secure Login", use_container_width=True, type="primary"):
