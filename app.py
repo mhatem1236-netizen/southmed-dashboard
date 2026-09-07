@@ -5537,6 +5537,24 @@ def render_dashboard():
 def main():
     inject_custom_css()  
    
+    # 💡 نظام مانع الانقطاع (Anti-Sleep & Keep-Alive) للبرزنتيشن
+    try:
+        import streamlit.components.v1 as components
+        components.html(
+            """
+            <script>
+            // إرسال إشارة خفية (Ping) للسيرفر كل 45 ثانية عشان ميفصلش نهائياً
+            setInterval(function() {
+                fetch('/_stcore/health').catch(err => console.log('Network blink... auto-reconnecting.'));
+            }, 45000);
+            </script>
+            """,
+            height=0,
+            width=0
+        )
+    except Exception:
+        pass
+
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
 
