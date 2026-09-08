@@ -5553,16 +5553,28 @@ def render_dashboard():
 def main():
     inject_custom_css()  
    
-    # 💡 نظام مانع الانقطاع (Anti-Sleep & Keep-Alive) للبرزنتيشن
+    # 💡 نظام مانع الانقطاع (Anti-Sleep & Keep-Alive) - النسخة الفولاذية
     try:
         import streamlit.components.v1 as components
         components.html(
             """
             <script>
-            // إرسال إشارة خفية (Ping) للسيرفر كل 45 ثانية عشان ميفصلش نهائياً
-            setInterval(function() {
-                fetch('/_stcore/health').catch(err => console.log('Network blink... auto-reconnecting.'));
-            }, 45000);
+            function pingServer() {
+                try {
+                    // window.parent هي السر هنا عشان نكلم السيرفر الرئيسي بره الـ iframe
+                    window.parent.fetch('/_stcore/health');
+                } catch (e) {}
+            }
+            
+            // إرسال النبضة كل 25 ثانية (رقم آمن جداً ضد فصل المتصفحات)
+            setInterval(pingServer, 25000);
+            
+            // أول ما ترجع للتاب بتاع الداشبورد بعد ما كنت في تاب تاني، يبعت إشارة فوراً
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    pingServer();
+                }
+            });
             </script>
             """,
             height=0,
