@@ -574,7 +574,7 @@ def render_home_page():
     # Header
     col_h1, col_h2 = st.columns([0.7, 0.3])
     with col_h1: 
-        st.title("🏗️ Mega Infrastructure Command Center")
+        st.title(f"🏗️ {_t('Mega Infrastructure Command Center')}")
     with col_h2:
         st.markdown(f"<div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center; margin-bottom:10px;'><span style='color:{ui['text_muted']}; font-size:12px;'>Logged in as</span><br><b style='color:#ffaa00;'>{user['Name']}</b><br><span style='color:#2ecc71; font-size:12px;'>{user['Role']} Account</span></div>", unsafe_allow_html=True)
         
@@ -1315,7 +1315,7 @@ def render_dashboard():
 
     col_h1, col_h2 = st.columns([0.7, 0.3])
     with col_h1: 
-        st.title("🏗️ Mega Infrastructure Command Center")
+        st.title(f"🏗️ {_t('Mega Infrastructure Command Center')}")
     with col_h2:
         st.markdown(f"""
         <div style='background:rgba(255,170,0,0.1); padding:10px; border-radius:10px; border:1px solid #ffaa00; text-align:center; margin-bottom:10px;'>
@@ -1607,7 +1607,7 @@ def render_dashboard():
 
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
 
-        st.sidebar.markdown("### 🎯 2. Smart Filters")
+        st.sidebar.markdown(f"### 🎯 {_t('2. Smart Filters')}")
         global_search = st.sidebar.text_input("🔍 Global Search:", placeholder="Keyword (Serial, Date)...")
         if global_search:
             mask = df.astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
@@ -1729,7 +1729,7 @@ def render_dashboard():
                 st.success("✅ Logged Successfully!")
                 st.rerun() 
 
-        st.markdown("### 📊 Executive Key Performance Indicators")
+        st.markdown(f"### 📊 {_t('Executive Key Performance Indicators')}")
         col1, col2, col3, col4, col5 = st.columns(5)
         t_req = 1000; t_test = 5000; t_dpl = 20; t_dur = 10
         d1 = HistoryManager.get_delta_html(current_metrics["Total_Requests"], "Total_Requests", uploaded_file.name)
