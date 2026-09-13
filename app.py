@@ -5265,26 +5265,21 @@ def render_dashboard():
        # ==========================================
         # 🧊 MODULE 2: AI-Powered 3D Subsurface Digital Twin (Smart Time-Mapping)
         # ==========================================
-
-        # 1. العناوين والـ Legend الأصلي (HTML ثابت)
         st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="bi-title">🧊 3D Subsurface Digital Twin (Deep Analytics)</div>', unsafe_allow_html=True)
+        
         st.markdown("""
         <div style="display: flex; gap: 15px; font-size: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin-bottom: 10px;">
             <div><b>أشكال الاختبارات:</b> 🟢 (كرة) = DPL | 🔷 (ماسة) = Plate Load</div>
             <div><b>حالة الطبقة:</b> <span style="color:#00ff87;">أخضر</span> = مقبول | <span style="color:#ff007f;">أحمر</span> = مرفوض وتم معالجته | <span style="color:#ff9900; font-weight:bold;">برتقالي</span> = مرفوض معلق (لم يتم قبوله)</div>
         </div>
         """, unsafe_allow_html=True)
-
-        # 2. استخراج الأعمدة الأساسية
+        
         layer_col = next((c for c in filtered_df.columns if c.strip().lower() == 'layer'), None)
         status_col = next((c for c in filtered_df.columns if c.strip().lower() == 'sample status'), None)
         elem_col = next((c for c in filtered_df.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
         test_date_col = next((c for c in filtered_df.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
         test_col = next((c for c in filtered_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
-
-        # 💡 استخراج عمود Station (خاص بالطرق)
-        station_col = next((c for c in filtered_df.columns if 'STATION' in c.upper() or c.strip().lower() == 'station'), None)
 
         if layer_col and status_col and elem_col and test_col:
             df_viz = filtered_df.dropna(subset=[layer_col, status_col, elem_col, test_col]).copy()
@@ -5302,7 +5297,7 @@ def render_dashboard():
                 serial_col = next((c for c in filtered_df.columns if c.strip().lower() in ['serial', 'serial no', 'no']), None)
                 df_viz['Company_Info'] = df_viz[company_col] if company_col else 'N/A'
                 df_viz['Serial_Info'] = df_viz[serial_col] if serial_col else 'N/A'
-                
+
                 if test_date_col and test_date_col in df_viz.columns:
                     df_viz['Time_Axis'] = pd.to_datetime(df_viz[test_date_col], dayfirst=True, errors='coerce')
                     df_viz = df_viz.sort_values('Time_Axis')
@@ -5313,43 +5308,15 @@ def render_dashboard():
                     df_viz['Y_Val'] = "Static"
                     y_label = "Depth"
 
-                # 💡 معالجة عمود Station للطرق
-                is_roads_mode = False
-                if station_col:
-                    is_roads_mode = True
-                    def parse_station(station_str):
-                        try:
-                            station_str = str(station_str).strip()
-                            if ':' in station_str:
-                                start_part = station_str.split(':')[0].strip()
-                                end_part = station_str.split(':')[1].strip()
-                            else:
-                                start_part = station_str
-                                end_part = start_part
-                            
-                            def convert_part(p):
-                                if '+' in p:
-                                    km = float(p.split('+')[0])
-                                    m = float(p.split('+')[1])
-                                    return km + (m / 1000)
-                                return float(p)
-                            
-                            return convert_part(start_part), convert_part(end_part), (convert_part(start_part) + convert_part(end_part)) / 2
-                        except:
-                            return 0, 0, 0
-                    
-                    df_viz[['Station_Start', 'Station_End', 'Station_Mid']] = df_viz[station_col].apply(
-                        lambda x: pd.Series(parse_station(x))
-                    )
-
-                # الفلاتر
                 all_elements = sorted([e for e in df_viz[elem_col].unique() if str(e).strip() != '' and str(e).lower() != 'nan'])
                 col_filter, _ = st.columns([0.4, 0.6])
                 selected_elem_3d = col_filter.selectbox("📍 Isolate specific Element:", ["All Elements"] + all_elements, key="viz_3d_elem_filter")
+
                 plot_df = df_viz[df_viz[elem_col] == selected_elem_3d].copy() if selected_elem_3d != "All Elements" else df_viz.copy()
 
                 # 💡 1. الذكاء المكاني للـ Plate (ربط الارتفاع بالزمن بين طبقات الـ DPL)
-                plot_df['Visual_Z'] = plot_df['Layer_Num']
+                plot_df['Visual_Z'] = plot_df['Layer_Num'] # الافتراضي للـ DPL
+                
                 dpl_only = plot_df[plot_df['Test_Category'] == 'DPL'].sort_values('Time_Axis')
                 plate_idx = plot_df[plot_df['Test_Category'] == 'PLATE'].index
                 
@@ -5360,20 +5327,20 @@ def render_dashboard():
                             past_dpl = dpl_only[dpl_only['Time_Axis'] <= plate_date]
                             if not past_dpl.empty:
                                 base_layer = past_dpl['Layer_Num'].max()
-                                plot_df.loc[idx, 'Visual_Z'] = base_layer + 0.5
+                                plot_df.loc[idx, 'Visual_Z'] = base_layer + 0.5 # يوضع فوق آخر طبقة DPL بنص درجة
                             else:
                                 plot_df.loc[idx, 'Visual_Z'] = 0.5
                 else:
-                    for i, idx in enumerate(plate_idx): 
-                        plot_df.loc[idx, 'Visual_Z'] = i + 1
+                    # لو مفيش DPL خالص، نرص الـ Plate فوق بعضه برقم تسلسلي
+                    for i, idx in enumerate(plate_idx): plot_df.loc[idx, 'Visual_Z'] = i + 1
 
-                # 💡 2. اكتشاف الطبقات المعلقة (بالذكاء المحاسبي الجديد)
+                # 💡 2. اكتشاف الطبقات المعلقة (بالذكاء المحاسبي الجديد - البصمة المكانية والنقاط)
                 samp_loc_col_3d = next((c for c in filtered_df.columns if 'SAMPLING' in c.upper() and 'LOC' in c.upper()), None)
                 zone_col_3d = next((c for c in filtered_df.columns if 'ZONE' in c.upper()), None)
                 bldg_col_3d = next((c for c in filtered_df.columns if 'BUILDING' in c.upper()), None)
                 sub_date_col_3d = next((c for c in filtered_df.columns if 'DATE( SUB)' in c.upper() or c.strip() == 'Date( SUB)'), None)
                 num_tests_col_3d = next((c for c in filtered_df.columns if 'NUMBER OF TESTS' in c.upper() or 'NUM OF TEST' in c.upper()), None)
-                
+
                 def build_loc_id_3d(df_target):
                     s = df_target[samp_loc_col_3d].fillna('N/A').astype(str).str.strip().str.upper() if samp_loc_col_3d else 'N/A'
                     z = df_target[zone_col_3d].fillna('N/A').astype(str).str.strip().str.upper() if zone_col_3d else 'N/A'
@@ -5383,20 +5350,23 @@ def render_dashboard():
                     t = df_target[test_col].fillna('N/A').astype(str).str.strip().str.upper() if test_col else 'N/A'
                     return s + "_" + z + "_" + e + "_" + b + "_" + l + "_" + t
 
+                # سحب الداتا للمشروع كله لعمل البنك الناجح
                 all_data_3d = filtered_df.copy()
                 all_data_3d['Unique_Loc'] = build_loc_id_3d(all_data_3d)
+                
                 if test_date_col:
                     all_data_3d['Comp_Date'] = pd.to_datetime(all_data_3d[test_date_col], errors='coerce')
                 if 'Comp_Date' not in all_data_3d.columns or all_data_3d['Comp_Date'].isna().all():
                     all_data_3d['Comp_Date'] = pd.to_datetime(all_data_3d[sub_date_col_3d], errors='coerce') if sub_date_col_3d else pd.NaT
-                
+
                 if num_tests_col_3d:
                     all_data_3d['Points'] = pd.to_numeric(all_data_3d[num_tests_col_3d].astype(str).str.replace(',', '', regex=False), errors='coerce').fillna(1)
                 else:
                     all_data_3d['Points'] = 1
-                    
+
                 global_accepted_3d = all_data_3d[all_data_3d[status_col].astype(str).str.upper().isin(['ACCEPTED', 'APPROVED AS NOTED'])].sort_values('Comp_Date').copy()
 
+                # داتا الـ 3D المعروضة حالياً
                 plot_df['Unique_Loc'] = build_loc_id_3d(plot_df)
                 plot_df['Comp_Date'] = plot_df['Time_Axis']
                 if num_tests_col_3d:
@@ -5405,130 +5375,80 @@ def render_dashboard():
                     plot_df['Points'] = 1
 
                 rejected_plot_df = plot_df[plot_df['status_upper'].isin(['REJECTED', 'REVISE'])].sort_values('Comp_Date')
+
                 hanging_layers = []
+                
                 for idx, rej_row in rejected_plot_df.iterrows():
                     loc = rej_row['Unique_Loc']
                     r_date = rej_row['Comp_Date']
                     r_pts = rej_row['Points']
+                    
                     loc_accepts = global_accepted_3d[global_accepted_3d['Unique_Loc'] == loc]
                     resolved_pts = 0
+                    
                     for a_idx, a_row in loc_accepts.iterrows():
                         if resolved_pts >= r_pts: break
                         a_date = a_row['Comp_Date']
                         a_pts = a_row['Points']
+                        
+                        # 💡 التعديل هنا لضمان الحل في نفس اليوم والتوافق مع الجداول
                         if a_pts > 0 and (pd.isna(r_date) or pd.isna(a_date) or a_date >= r_date):
                             take = min(r_pts - resolved_pts, a_pts)
                             resolved_pts += take
-                            global_accepted_3d.at[a_idx, 'Points'] -= take
+                            global_accepted_3d.at[a_idx, 'Points'] -= take # خصم النقط
+                            
                     deficit = r_pts - resolved_pts
                     if deficit > 0:
                         hanging_layers.append((rej_row['Layer_Num'], rej_row['Test_Category']))
-                
+
                 hanging_layers = list(set(hanging_layers))
                 hanging_dpl = [lyr for lyr, cat in hanging_layers if cat == 'DPL']
                 hanging_plate = [lyr for lyr, cat in hanging_layers if cat == 'PLATE']
 
-                # 💡 تحديد الألوان (مع إضافة لون سماوي للـ Plate في وضع الطرق)
                 def get_point_color(row):
                     is_hanging = (row['Layer_Num'], row['Test_Category']) in hanging_layers
-                    if row['Test_Category'] == 'PLATE' and is_roads_mode:
-                        return '#00d4ff' # لون سماوي مميز للـ Plate في الطرق
                     if row['status_upper'] in ['REJECTED', 'REVISE']:
                         return '#ff9900' if is_hanging else '#ff007f'
                     return '#00ff87'
-
+                
                 plot_df['Color'] = plot_df.apply(get_point_color, axis=1)
                 plot_df['Symbol'] = plot_df['Test_Category'].apply(lambda x: 'diamond' if x == 'PLATE' else 'circle')
-
-                # تعديل الـ Hover Text ليشمل Station في وضع الطرق
-                if is_roads_mode:
-                    plot_df['Hover_Text'] = (
-                        "<b> Station:</b> " + plot_df[station_col].astype(str) + "<br>" +
-                        "<b>📌 Element:</b> " + plot_df[elem_col].astype(str) + "<br>" +
-                        "<b>📏 Real Elevation:</b> Level " + plot_df['Layer_Num'].astype(str) + "<br>" +
-                        "<b>🔬 Test Type:</b> " + plot_df['Test_Category'] + "<br>" +
-                        "<b>⚖️ Status:</b> " + plot_df['status_upper'] + "<br>" +
-                        "<b>📅 Date:</b> " + plot_df['Y_Val'] + "<br>" +
-                        "<b>📑 Serial:</b> " + plot_df['Serial_Info'].astype(str) + "<br>" +
-                        "<b> Company:</b> " + plot_df['Company_Info'].astype(str)
-                    )
-                else:
-                    plot_df['Hover_Text'] = (
-                        "<b>📌 Element:</b> " + plot_df[elem_col].astype(str) + "<br>" +
-                        "<b>📏 Real Elevation:</b> Level " + plot_df['Layer_Num'].astype(str) + "<br>" +
-                        "<b>🔬 Test Type:</b> " + plot_df['Test_Category'] + "<br>" +
-                        "<b>⚖️ Status:</b> " + plot_df['status_upper'] + "<br>" +
-                        "<b>📅 Date:</b> " + plot_df['Y_Val'] + "<br>" +
-                        "<b>📑 Serial:</b> " + plot_df['Serial_Info'].astype(str) + "<br>" +
-                        "<b>🏢 Company:</b> " + plot_df['Company_Info'].astype(str)
-                    )
-
-                # 💡 Legend إضافي خاص بالطرق
-                if is_roads_mode:
-                    st.markdown("""
-                    <div style="display: flex; gap: 15px; font-size: 12px; background: rgba(0,212,255,0.1); 
-                                padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid rgba(0,212,255,0.3);">
-                        <div><b>🛣️ Road Mode Active:</b></div>
-                        <div><b>Station:</b> موقع الطريق (كيلومتر + متر)</div>
-                        <div><b>Plate Between DPL:</b> <span style="color:#00d4ff; font-weight:bold;">سماوي</span> = اختبار Plate بين طبقتين DPL</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                
+                plot_df['Hover_Text'] = (
+                    "<b>📌 Element:</b> " + plot_df[elem_col].astype(str) + "<br>" +
+                    "<b>📏 Real Elevation:</b> Level " + plot_df['Layer_Num'].astype(str) + "<br>" +
+                    "<b>🔬 Test Type:</b> " + plot_df['Test_Category'] + "<br>" +
+                    "<b>⚖️ Status:</b> " + plot_df['status_upper'] + "<br>" +
+                    "<b>📅 Date:</b> " + plot_df['Y_Val'] + "<br>" +
+                    "<b>📑 Serial:</b> " + plot_df['Serial_Info'].astype(str) + "<br>" +
+                    "<b>🏢 Company:</b> " + plot_df['Company_Info'].astype(str)
+                )
 
                 col_3d, col_ai = st.columns([0.75, 0.25])
-                
+
                 with col_3d:
                     fig_3d = go.Figure()
-                    
-                    # في وضع الطرق، نضيف خطوط ربط بين النقاط لإظهار تتابع الطريق
-                    if is_roads_mode:
-                        plot_df_sorted = plot_df.sort_values(['Station_Mid', 'Time_Axis'])
-                        fig_3d.add_trace(go.Scatter3d(
-                            x=plot_df_sorted['Station_Mid'],
-                            y=plot_df_sorted['Y_Val'],
-                            z=plot_df_sorted['Visual_Z'],
-                            mode='lines',
-                            line=dict(color='rgba(255,255,255,0.2)', width=2),
-                            showlegend=False,
-                            hoverinfo='skip'
-                        ))
-                        x_axis_data = plot_df_sorted['Station_Mid']
-                        y_axis_data = plot_df_sorted['Y_Val']
-                        z_axis_data = plot_df_sorted['Visual_Z']
-                        color_data = plot_df_sorted['Color']
-                        symbol_data = plot_df_sorted['Symbol']
-                        hover_data = plot_df_sorted['Hover_Text']
-                        x_title = "Station (km)"
-                        chart_title = f"🛣️ Road Construction Sequence: {selected_elem_3d}"
-                    else:
-                        x_axis_data = plot_df[elem_col]
-                        y_axis_data = plot_df['Y_Val']
-                        z_axis_data = plot_df['Visual_Z']
-                        color_data = plot_df['Color']
-                        symbol_data = plot_df['Symbol']
-                        hover_data = plot_df['Hover_Text']
-                        x_title = "Element"
-                        chart_title = f"Time-Mapped Subsurface Profile: {selected_elem_3d}"
-
                     fig_3d.add_trace(go.Scatter3d(
-                        x=x_axis_data,
-                        y=y_axis_data,
-                        z=z_axis_data,
+                        x=plot_df[elem_col],
+                        y=plot_df['Y_Val'],
+                        # 💡 هنا بنرسم بناءً على الارتفاع البصري الجديد (Visual_Z) مش المنسوب الحقيقي
+                        z=plot_df['Visual_Z'],
                         mode='markers',
                         marker=dict(
-                            size=7 if selected_elem_3d == "All Elements" else 14,
-                            color=color_data,
-                            symbol=symbol_data,
+                            size=7 if selected_elem_3d == "All Elements" else 14, 
+                            color=plot_df['Color'],
+                            symbol=plot_df['Symbol'],
                             opacity=0.9,
-                            line=dict(color='rgba(255,255,255,0.7)', width=1.5)
+                            line=dict(color='rgba(255,255,255,0.7)', width=1.5) 
                         ),
-                        text=hover_data,
+                        text=plot_df['Hover_Text'],
                         hovertemplate="%{text}<extra></extra>"
                     ))
                     
                     fig_3d.update_layout(
-                        title=chart_title,
+                        title=f"Time-Mapped Subsurface Profile: {selected_elem_3d}",
                         scene=dict(
-                            xaxis=dict(title=x_title, backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#00d2ff")),
+                            xaxis=dict(title="Element", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#00d2ff")),
                             yaxis=dict(title=y_label, backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#ffaa00")),
                             zaxis=dict(title="Progress Sequence", backgroundcolor="rgba(0,0,0,0)", gridcolor="rgba(0,210,255,0.1)", showbackground=False, tickfont=dict(color="#2ecc71")),
                             camera=dict(eye=dict(x=1.8, y=-1.8, z=0.8))
@@ -5541,10 +5461,12 @@ def render_dashboard():
                     max_dpl = plot_df[plot_df['Test_Category'] == 'DPL']['Layer_Num'].max() if not plot_df[plot_df['Test_Category'] == 'DPL'].empty else 0
                     max_plate = plot_df[plot_df['Test_Category'] == 'PLATE']['Layer_Num'].max() if not plot_df[plot_df['Test_Category'] == 'PLATE'].empty else 0
                     
+                    # 💡 3. حساب التكرار للـ DPL فقط (إعفاء الـ Plate)
                     layer_counts = plot_df[plot_df['Test_Category'] == 'DPL'].groupby('Layer_Num').size()
                     repeated_dpl = layer_counts[layer_counts > 1].index.tolist()
                     
                     def format_list(lst): return ", ".join(map(lambda x: str(x).rstrip('0').rstrip('.') if x%1==0 else str(x), sorted(lst))) if lst else "✅ None"
+                    
                     h_dpl_str, h_plate_str = format_list(hanging_dpl), format_list(hanging_plate)
                     r_dpl_str = format_list(repeated_dpl)
                     
@@ -5564,40 +5486,39 @@ def render_dashboard():
                         
                     if not problem_html:
                         problem_html = "✅ Excellent execution. No critical anomalies."
-                        solution_html = " Maintain current QA/QC process."
+                        solution_html = "👉 Maintain current QA/QC process."
                     elif not solution_html:
                         solution_html = "👉 Audit contractor compaction methodology."
 
-                    #  الـ HTML الخاص بـ AI Diagnostics (ثابت كما هو)
                     st.markdown(f"""
-                    <div style="background: {ui['card_bg']}; border: 1px solid {ui['border_color']}; padding: 15px; border-radius: 8px; box-shadow: {ui['shadow']};">
-                        <div style="border-bottom: 2px solid var(--primary-color); margin-bottom: 15px; padding-bottom: 5px;">
-                            <b style="color: var(--primary-color); font-size: 16px;">🧠 AI Diagnostics</b>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                            <div>
-                                <div style="color: {ui['text_muted']}; font-size: 10px; text-transform: uppercase;">Max DPL Layer</div>
-                                <div style="color: var(--primary-color); font-size: 16px; font-weight: bold;">{max_dpl}</div>
-                            </div>
-                            <div>
-                                <div style="color: {ui['text_muted']}; font-size: 10px; text-transform: uppercase;">Max Plate Level</div>
-                                <div style="color: #00ff87; font-size: 16px; font-weight: bold;">{max_plate}</div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">DPL Velocity (Layers/Week)</div>
-                            <div style="color: #ffaa00; font-size: 18px; font-weight: bold;">{velocity_str}</div>
-                        </div>
-                        <div style="margin-top: 15px; margin-bottom: 5px; color: #ff9900; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(255,153,0,0.3);">⚠️ Hanging (Unresolved)</div>
-                        <div style="font-size: 12px; margin-bottom: 5px;"><b>DPL:</b> <span style="color: {'#ff9900' if hanging_dpl else '#2ecc71'};">{h_dpl_str}</span></div>
-                        <div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#ff9900' if hanging_plate else '#2ecc71'};">{h_plate_str}</span></div>
-                        <div style="margin-top: 10px; margin-bottom: 5px; color: #f1c40f; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(241,196,15,0.3);">🔁 Repeated (Reworked)</div>
-                        <div style="font-size: 12px; margin-bottom: 10px;"><b>DPL:</b> <span style="color: {'#f1c40f' if repeated_dpl else '#2ecc71'};">{r_dpl_str}</span></div>
-                        <hr style="border-color: {ui['border_color']}; margin: 15px 0;">
-                        <div style="margin-bottom: 10px;"><div style="color: #e74c3c; font-size: 12px; font-weight: bold;">⚠️ AI Diagnostics:</div><div style="color: {ui['text_main']}; font-size: 11px;">{problem_html}</div></div>
-                        <div><div style="color: #2ecc71; font-size: 12px; font-weight: bold;">💡 AI Prescription:</div><div style="color: {ui['text_main']}; font-size: 11px; background: rgba(46,204,113,0.1); padding: 5px; border-radius: 5px;">{solution_html}</div></div>
-                    </div>
-                    """, unsafe_allow_html=True)
+<div style="background: {ui['card_bg']}; border: 1px solid {ui['border_color']}; padding: 15px; border-radius: 8px; box-shadow: {ui['shadow']};">
+<div style="border-bottom: 2px solid var(--primary-color); margin-bottom: 15px; padding-bottom: 5px;">
+<b style="color: var(--primary-color); font-size: 16px;">🧠 AI Diagnostics</b>
+</div>
+<div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+<div>
+<div style="color: {ui['text_muted']}; font-size: 10px; text-transform: uppercase;">Max DPL Layer</div>
+<div style="color: var(--primary-color); font-size: 16px; font-weight: bold;">{max_dpl}</div>
+</div>
+<div>
+<div style="color: {ui['text_muted']}; font-size: 10px; text-transform: uppercase;">Max Plate Level</div>
+<div style="color: #00ff87; font-size: 16px; font-weight: bold;">{max_plate}</div>
+</div>
+</div>
+<div style="margin-bottom: 10px;">
+<div style="color: {ui['text_muted']}; font-size: 11px; text-transform: uppercase;">DPL Velocity (Layers/Week)</div>
+<div style="color: #ffaa00; font-size: 18px; font-weight: bold;">{velocity_str}</div>
+</div>
+<div style="margin-top: 15px; margin-bottom: 5px; color: #ff9900; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(255,153,0,0.3);">⚠️ Hanging (Unresolved)</div>
+<div style="font-size: 12px; margin-bottom: 5px;"><b>DPL:</b> <span style="color: {'#ff9900' if hanging_dpl else '#2ecc71'};">{h_dpl_str}</span></div>
+<div style="font-size: 12px; margin-bottom: 10px;"><b>Plate:</b> <span style="color: {'#ff9900' if hanging_plate else '#2ecc71'};">{h_plate_str}</span></div>
+<div style="margin-top: 10px; margin-bottom: 5px; color: #f1c40f; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(241,196,15,0.3);">🔁 Repeated (Reworked)</div>
+<div style="font-size: 12px; margin-bottom: 10px;"><b>DPL:</b> <span style="color: {'#f1c40f' if repeated_dpl else '#2ecc71'};">{r_dpl_str}</span></div>
+<hr style="border-color: {ui['border_color']}; margin: 15px 0;">
+<div style="margin-bottom: 10px;"><div style="color: #e74c3c; font-size: 12px; font-weight: bold;">⚠️ AI Diagnostics:</div><div style="color: {ui['text_main']}; font-size: 11px;">{problem_html}</div></div>
+<div><div style="color: #2ecc71; font-size: 12px; font-weight: bold;">💡 AI Prescription:</div><div style="color: {ui['text_main']}; font-size: 11px; background: rgba(46,204,113,0.1); padding: 5px; border-radius: 5px;">{solution_html}</div></div>
+</div>
+""", unsafe_allow_html=True)
             else:
                 st.info("💡 لا توجد عينات DPL أو Plate Load كافية لرسم المجسم ثلاثي الأبعاد.")
         else:
