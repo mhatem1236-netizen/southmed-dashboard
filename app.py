@@ -52,19 +52,37 @@ if "language" not in st.session_state:
 # ==========================================
 TRANSLATIONS = {
     "Mega Infrastructure Command Center": "مركز قيادة البنية التحتية العملاقة",
-    "Main Dashboard": "لوحة القيادة الرئيسية",
-    "Advanced Analytics Hub": "مركز التحليلات المتقدمة",
-    "Total Submittals": "إجمالي الطلبات (Submittals)",
-    "Total Tests": "إجمالي الاختبارات",
-    "Avg. Dur (Days)": "متوسط التأخير (أيام)",
-    "Total Paperwork": "إجمالي الورقيات",
-    "Logout": "تسجيل الخروج",
-    "UI/UX Mode": "مظهر الشاشة",
-    "Data Source": "مصدر البيانات",
-    "Language / اللغة": "Language / اللغة",
-    # تقدر تزود أي كلمة براحتك هنا بعدين
+    "1. Data Source": "١. مصدر البيانات",
+    "2. Smart Filters": "٢. الفلاتر الذكية",
+    "3. AI & Simulation": "٣. الذكاء الاصطناعي والمحاكاة",
+    "Executive Key Performance Indicators": "مؤشرات الأداء التنفيذية الرئيسية",
+    "Detailed Test Counts by Type": "تفاصيل أعداد الاختبارات حسب النوع",
+    "Overall Office Workload Analysis": "تحليل حجم العمل الشامل للمكاتب",
+    "Overall Soil Classifications": "التصنيفات الشاملة للتربة",
+    "Yield & Optimization Simulator": "محاكي الإنتاجية والتحسين",
+    "Head-to-Head: Contractor vs Contractor": "مقارنة مباشرة: مقاول ضد مقاول",
+    "Monthly Test Volume & Deficit Analysis": "التحليل الشهري لحجم الاختبارات والعجز",
+    "Activity Heatmap Calendar": "الخريطة الحرارية للنشاط اليومي",
+    "Comprehensive Timeline (Workload vs Quality Correlation)": "المخطط الزمني الشامل (الإنتاج مقابل الجودة)",
+    "Statistical Process Control (SPC) - Control Charts": "التحكم الإحصائي للعمليات (SPC)",
+    "Pareto Style": "تحليل باريتو للمقاولين (أسباب الرفض)",
+    "Predictive Quality Risk Forecasting (AI)": "توقع مخاطر الجودة بالذكاء الاصطناعي",
+    "Smart PDF Executive Report": "التقرير التنفيذي الذكي PDF",
+    "Contractor Materials & Sourcing Analysis": "تحليل مواد المقاولين ومصادر التوريد",
+    "Advanced Element Quality Auditor": "المدقق المتقدم لجودة العناصر",
+    "Action Tracker: Unresolved Rejections": "سجل المتابعة: العينات المرفوضة المعلقة",
+    "Action Tracker: Missing Layers": "سجل المتابعة: الطبقات المفقودة",
+    "3D Subsurface Digital Twin (Deep Analytics)": "التوأم الرقمي ثلاثي الأبعاد للطبقات السفلية",
+    "4D Cinematic Road Constructor (Station-Based)": "العرض السينمائي رباعي الأبعاد للطرق",
+    "PowerPoint Executive Deck": "عرض تقديمي للمديرين (PowerPoint)",
+    "360° Corporate Profile": "ملف الشركة 360 درجة",
+    "Stockpile Sourcing": "مصادر التشوينات (Stockpile)",
+    "Executive Progress & Compaction": "نسب التنفيذ والدمك",
+    "Quantities Rate": "معدلات الكميات",
+    "Add": "إضافة مستخدم",
+    "Edit": "تعديل صلاحيات",
+    "Backup": "نسخة احتياطية"
 }
-
 def _t(text):
     if st.session_state.get("language") == "AR":
         return TRANSLATIONS.get(text, text)
@@ -3345,6 +3363,55 @@ def render_dashboard():
                         st.plotly_chart(fig_comp_trend, use_container_width=True, key=f"comp_trend_bar_{selected_comp}")
                     else:
                         st.info("No Date data found for Compaction Trend.")
+                    # ==========================================
+                    # 🔝 Highest Reached Layers per Element (DPL & Sand Cone)
+                    # ==========================================
+                    st.divider()
+                    st.markdown("#### 🔝 Highest Reached Layers Tracker")
+                    st.caption("يعرض هذا الجدول أعلى طبقة دمج وصل إليها المقاول لكل قطاع/عنصر بناءً على اختبارات (DPL / Sand Cone) وتاريخ الوصول إليها.")
+
+                    elem_col_top = next((c for c in comp_df_full.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
+                    test_col_top = next((c for c in comp_df_full.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+                    date_col_top = next((c for c in comp_df_full.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
+                    layer_col_top = next((c for c in comp_df_full.columns if 'LAYER' in c.upper() or c.strip() == 'layer'), None)
+
+                    if elem_col_top and test_col_top and date_col_top and layer_col_top:
+                        # فلترة اختبارات الدمك فقط
+                        top_layer_df = comp_df_full[comp_df_full[test_col_top].astype(str).str.upper().str.contains('DPL|SAND', na=False)].copy()
+                        
+                        if not top_layer_df.empty:
+                            # استخراج الرقم الصافي للطبقة للترتيب الصحيح
+                            top_layer_df['Layer_Num'] = top_layer_df[layer_col_top].astype(str).str.extract(r'(\d+)').fillna(-1).astype(int)
+                            top_layer_df['Test_Date_Clean'] = pd.to_datetime(top_layer_df[date_col_top], dayfirst=True, errors='coerce')
+                            
+                            valid_layers = top_layer_df[top_layer_df['Layer_Num'] > 0]
+                            
+                            if not valid_layers.empty:
+                                # ترتيب الداتا من الأكبر للأصغر (عشان نجيب أعلى طبقة وأحدث تاريخ)
+                                valid_layers = valid_layers.sort_values(by=[elem_col_top, 'Layer_Num', 'Test_Date_Clean'], ascending=[True, False, False])
+                                
+                                # أخذ أول صف لكل عنصر فقط (أعلى طبقة)
+                                highest_layers = valid_layers.drop_duplicates(subset=[elem_col_top], keep='first').copy()
+                                highest_layers['Date Achieved'] = highest_layers['Test_Date_Clean'].dt.strftime('%Y-%m-%d').fillna('N/A')
+                                
+                                # تجهيز الجدول للطباعة والعرض
+                                display_top_layers = highest_layers[['Company Name', elem_col_top, layer_col_top, test_col_top, 'Date Achieved']].rename(columns={
+                                    'Company Name': 'Contractor',
+                                    elem_col_top: 'Element',
+                                    layer_col_top: 'Highest Layer',
+                                    test_col_top: 'Last Test Type'
+                                })
+                                
+                                st.dataframe(display_top_layers, use_container_width=True, hide_index=True)
+                                
+                                # أزرار التحميل السحرية
+                                export_table_tools(display_top_layers, f"Highest_Layers_{selected_comp.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}")
+                            else:
+                                st.info("No valid numbered layers found for DPL/Sand Cone.")
+                        else:
+                            st.info("No DPL or Sand Cone tests logged for this contractor.")
+                    else:
+                        st.warning("⚠️ Missing required columns to generate Highest Layers Tracker.")    
                     # ==========================================
                     # 📋 مدمج مع السيكشن: QA/QC Lifecycle Ledger 
                     # ==========================================
