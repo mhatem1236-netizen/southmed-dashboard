@@ -3370,14 +3370,26 @@ def render_dashboard():
                     st.markdown("#### 🔝 Highest Reached Layers Tracker")
                     st.caption("يعرض هذا الجدول أعلى طبقة دمج وصل إليها المقاول لكل قطاع/عنصر بناءً على اختبارات (DPL / Sand Cone) وتاريخ الوصول إليها.")
 
-                    elem_col_top = next((c for c in comp_df_full.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
-                    test_col_top = next((c for c in comp_df_full.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
-                    date_col_top = next((c for c in comp_df_full.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
-                    layer_col_top = next((c for c in comp_df_full.columns if 'LAYER' in c.upper() or c.strip() == 'layer'), None)
+                    # 💡 التعديل هنا: استخدام filtered_df بدلاً من comp_df_full لتمكين قراءة كل الشركات
+                    tracker_base_df = filtered_df.copy()
 
-                    if elem_col_top and test_col_top and date_col_top and layer_col_top:
+                    elem_col_top = next((c for c in tracker_base_df.columns if c.strip().upper() in ['ELMENT', 'ELEMENT', 'ELEMENT (ALL)']), None)
+                    test_col_top = next((c for c in tracker_base_df.columns if 'TEST TYPE' in c.upper() or c.strip() == 'Test Type'), None)
+                    date_col_top = next((c for c in tracker_base_df.columns if 'DATE' in c.upper() and 'TEST' in c.upper()), None)
+                    layer_col_top = next((c for c in tracker_base_df.columns if 'LAYER' in c.upper() or c.strip() == 'layer'), None)
+                    comp_name_col_top = next((c for c in tracker_base_df.columns if c.strip().lower() in ['company name', 'company', 'contractor']), None)
+
+                    if elem_col_top and test_col_top and date_col_top and layer_col_top and comp_name_col_top:
+                        
+                        # 💡 إضافة الفلتر السحري لاختيار الشركة أو الكل
+                        available_comps = ['All Contractors'] + sorted([str(c) for c in tracker_base_df[comp_name_col_top].dropna().unique() if str(c).strip() != ''])
+                        selected_top_comp = st.selectbox("🏢 فلترة بالشركة (Filter by Contractor):", available_comps, key="top_layer_comp_filter")
+                        
+                        if selected_top_comp != 'All Contractors':
+                            tracker_base_df = tracker_base_df[tracker_base_df[comp_name_col_top].astype(str).str.strip() == selected_top_comp]
+
                         # فلترة اختبارات الدمك فقط
-                        top_layer_df = comp_df_full[comp_df_full[test_col_top].astype(str).str.upper().str.contains('DPL|SAND', na=False)].copy()
+                        top_layer_df = tracker_base_df[tracker_base_df[test_col_top].astype(str).str.upper().str.contains('DPL|SAND', na=False)].copy()
                         
                         if not top_layer_df.empty:
                             # استخراج الرقم الصافي للطبقة للترتيب الصحيح
@@ -3388,15 +3400,15 @@ def render_dashboard():
                             
                             if not valid_layers.empty:
                                 # ترتيب الداتا من الأكبر للأصغر (عشان نجيب أعلى طبقة وأحدث تاريخ)
-                                valid_layers = valid_layers.sort_values(by=[elem_col_top, 'Layer_Num', 'Test_Date_Clean'], ascending=[True, False, False])
+                                valid_layers = valid_layers.sort_values(by=[comp_name_col_top, elem_col_top, 'Layer_Num', 'Test_Date_Clean'], ascending=[True, True, False, False])
                                 
-                                # أخذ أول صف لكل عنصر فقط (أعلى طبقة)
-                                highest_layers = valid_layers.drop_duplicates(subset=[elem_col_top], keep='first').copy()
+                                # أخذ أول صف لكل عنصر ومقاول
+                                highest_layers = valid_layers.drop_duplicates(subset=[comp_name_col_top, elem_col_top], keep='first').copy()
                                 highest_layers['Date Achieved'] = highest_layers['Test_Date_Clean'].dt.strftime('%Y-%m-%d').fillna('N/A')
                                 
                                 # تجهيز الجدول للطباعة والعرض
-                                display_top_layers = highest_layers[['Company Name', elem_col_top, layer_col_top, test_col_top, 'Date Achieved']].rename(columns={
-                                    'Company Name': 'Contractor',
+                                display_top_layers = highest_layers[[comp_name_col_top, elem_col_top, layer_col_top, test_col_top, 'Date Achieved']].rename(columns={
+                                    comp_name_col_top: 'Contractor',
                                     elem_col_top: 'Element',
                                     layer_col_top: 'Highest Layer',
                                     test_col_top: 'Last Test Type'
@@ -3405,13 +3417,14 @@ def render_dashboard():
                                 st.dataframe(display_top_layers, use_container_width=True, hide_index=True)
                                 
                                 # أزرار التحميل السحرية
-                                export_table_tools(display_top_layers, f"Highest_Layers_{selected_comp.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}")
+                                safe_comp_name = "All_Contractors" if selected_top_comp == 'All Contractors' else selected_top_comp.replace(' ', '_')
+                                export_table_tools(display_top_layers, f"Highest_Layers_{safe_comp_name}_{datetime.now(EGYPT_TZ).strftime('%Y%m%d')}")
                             else:
                                 st.info("No valid numbered layers found for DPL/Sand Cone.")
                         else:
-                            st.info("No DPL or Sand Cone tests logged for this contractor.")
+                            st.info("No DPL or Sand Cone tests logged for this selection.")
                     else:
-                        st.warning("⚠️ Missing required columns to generate Highest Layers Tracker.")    
+                        st.warning("⚠️ Missing required columns to generate Highest Layers Tracker.")  
                     # ==========================================
                     # 📋 مدمج مع السيكشن: QA/QC Lifecycle Ledger 
                     # ==========================================
