@@ -1927,7 +1927,7 @@
 1926,Sunday,22-06-25,5735,44,Al Thati 1,Soil,09-05-25,A-2-4,13,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,Arab Contractors Laboratory,44
 1927,Sunday,22-06-25,5736,44,Al Thati 1,Soil,09-05-25,A-2-4,12,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,Arab Contractors Laboratory,44
 1928,Sunday,22-06-25,5737,44,Al Thati 1,Soil,09-05-25,A-2-4,13,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,Arab Contractors Laboratory,44
-1929,Sunday,22-06-25,5738,44,Al Thati 1,Soil,09-05-25,A-2-4,120.2,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,Arab Contractors Laboratory,44
+1929,Sunday,22-06-25,5738,44,Al Thati 1,Soil,09-05-25,A-2-4,12.2,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,Arab Contractors Laboratory,44
 1930,Sunday,22-06-25,5739,44,Al Thati 1,Soil,09-05-25,A-2-4,11.4,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,Arab Contractors Laboratory,44
 1931,Sunday,22-06-25,5740,44,Al Thati 1,Soil,03-05-25,A-2-4,12.6,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,Arab Contractors Laboratory,50
 1932,Saturday,28-06-25,7163,44,Al Thati 1,Soil,23-04-25,A-2-4,10.2,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,66
@@ -6499,36 +6499,36 @@
 6498,Monday,15-09-25,26204,44,Al Qimam,Plate Load,31-05-25,,,,Fill,C01-B,BHL -121,,26.7,2,,,APPROVED AS NOTED,DONE,5,GLOBAL LAB,107
 6499,Monday,15-09-25,26203,44,Al Qimam,Plate Load,01-07-25,,,,Fill,C01-B,BHL -121,,29.45,2,,,APPROVED AS NOTED,DONE,5,GLOBAL LAB,76
 6500,Monday,15-09-25,26202,44,Al Qimam,Plate Load,20-07-25,,,,Fill,C01-B,BHL -121,,31.95,2,,,APPROVED AS NOTED,DONE,5,GLOBAL LAB,57
-6501,Monday,27-10-25,40257,44,Al Qimam,Soil,22-06-25,A-6,0.36,,Bottom of excavation,C01-A,BHL -72,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,127
-6502,Monday,27-10-25,40256,44,Al Qimam,Soil,11-09-25,A-2-4,0.16,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,46
-6503,Monday,27-10-25,40255,44,Al Qimam,Soil,08-09-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,49
-6504,Monday,27-10-25,40254,44,Al Qimam,Soil,06-09-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,51
-6505,Monday,27-10-25,40253,44,Al Qimam,Soil,02-09-25,A-3,0.09,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,55
-6506,Monday,27-10-25,40252,44,Al Qimam,Soil,30-08-25,A-2-4,0.16,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,58
-6507,Monday,27-10-25,40251,44,Al Qimam,Soil,27-08-25,A-2-4,0.13,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,61
-6508,Monday,27-10-25,40250,44,Al Qimam,Soil,27-08-25,A-1-B,0.09,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,61
-6509,Monday,27-10-25,40249,44,Al Qimam,Soil,24-08-25,A-2-4,0.22,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,64
-6510,Monday,27-10-25,40248,44,Al Qimam,Soil,22-08-25,A-2-4,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,66
-6511,Monday,27-10-25,40247,44,Al Qimam,Soil,19-08-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,69
-6512,Monday,27-10-25,40246,44,Al Qimam,Soil,14-08-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,74
-6513,Monday,27-10-25,40245,44,Al Qimam,Soil,08-08-25,A-1-B,0.19,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,80
-6514,Monday,27-10-25,40244,44,Al Qimam,Soil,05-08-25,A-2-4,0.1,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,83
-6515,Monday,27-10-25,40243,44,Al Qimam,Soil,02-08-25,A-2-4,0.11,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,86
-6516,Monday,27-10-25,40242,44,Al Qimam,Soil,30-07-25,A-1-B,0.1,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,89
-6517,Monday,27-10-25,40241,44,Al Qimam,Soil,28-07-25,A-1-B,0.11,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,91
-6518,Monday,27-10-25,40258,44,Al Qimam,Soil,22-06-25,A-6,0.38,,Bottom of excavation,C01-A,BHL -73,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,127
-6519,Monday,27-10-25,40229,44,Al Qimam,Soil,27-06-25,A-2-4,0.1,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,122
-6520,Monday,27-10-25,40230,44,Al Qimam,Soil,28-06-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,121
-6521,Monday,27-10-25,40231,44,Al Qimam,Soil,30-06-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,119
-6522,Monday,27-10-25,40232,44,Al Qimam,Soil,07-07-25,A-2-4,0.13,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,112
-6523,Monday,27-10-25,40233,44,Al Qimam,Soil,09-07-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,110
-6524,Monday,27-10-25,40234,44,Al Qimam,Soil,10-07-25,A-2-4,0.14,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,109
-6525,Monday,27-10-25,40235,44,Al Qimam,Soil,13-07-25,A-2-4,11-7%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,106
-6526,Monday,27-10-25,40236,44,Al Qimam,Soil,16-07-25,A-2-4,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,103
-6527,Monday,27-10-25,40237,44,Al Qimam,Soil,19-07-25,A-2-4,0.16,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,100
-6528,Monday,27-10-25,40238,44,Al Qimam,Soil,21-07-25,A-2-4,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,98
-6529,Monday,27-10-25,40239,44,Al Qimam,Soil,23-07-25,A-2-4,0.07,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,96
-6530,Monday,27-10-25,40240,44,Al Qimam,Soil,25-07-25,A-2-4,0.2,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,94
+6501,Monday,27-10-25,40257,44,Al Qimam,Soil,22-06-25,A-6,36.00%,,Bottom of excavation,C01-A,BHL -72,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,127
+6502,Monday,27-10-25,40256,44,Al Qimam,Soil,11-09-25,A-2-4,15.70%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,46
+6503,Monday,27-10-25,40255,44,Al Qimam,Soil,08-09-25,A-2-4,21.30%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,49
+6504,Monday,27-10-25,40254,44,Al Qimam,Soil,06-09-25,A-2-4,20.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,51
+6505,Monday,27-10-25,40253,44,Al Qimam,Soil,02-09-25,A-3,8.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,55
+6506,Monday,27-10-25,40252,44,Al Qimam,Soil,30-08-25,A-2-4,16.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,58
+6507,Monday,27-10-25,40251,44,Al Qimam,Soil,27-08-25,A-2-4,12.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,61
+6508,Monday,27-10-25,40250,44,Al Qimam,Soil,27-08-25,A-1-B,8.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,61
+6509,Monday,27-10-25,40249,44,Al Qimam,Soil,24-08-25,A-2-4,21.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,64
+6510,Monday,27-10-25,40248,44,Al Qimam,Soil,22-08-25,A-2-4,18.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,66
+6511,Monday,27-10-25,40247,44,Al Qimam,Soil,19-08-25,A-2-4,21.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,69
+6512,Monday,27-10-25,40246,44,Al Qimam,Soil,14-08-25,A-2-4,21.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,74
+6513,Monday,27-10-25,40245,44,Al Qimam,Soil,08-08-25,A-1-B,19.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,80
+6514,Monday,27-10-25,40244,44,Al Qimam,Soil,05-08-25,A-2-4,10.30%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,83
+6515,Monday,27-10-25,40243,44,Al Qimam,Soil,02-08-25,A-2-4,10.70%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,86
+6516,Monday,27-10-25,40242,44,Al Qimam,Soil,30-07-25,A-1-B,10.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,89
+6517,Monday,27-10-25,40241,44,Al Qimam,Soil,28-07-25,A-1-B,11.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,91
+6518,Monday,27-10-25,40258,44,Al Qimam,Soil,22-06-25,A-6,38.20%,,Bottom of excavation,C01-A,BHL -73,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,127
+6519,Monday,27-10-25,40229,44,Al Qimam,Soil,27-06-25,A-2-4,10.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,122
+6520,Monday,27-10-25,40230,44,Al Qimam,Soil,28-06-25,A-2-4,21.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,121
+6521,Monday,27-10-25,40231,44,Al Qimam,Soil,30-06-25,A-2-4,21.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,119
+6522,Monday,27-10-25,40232,44,Al Qimam,Soil,07-07-25,A-2-4,12.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,112
+6523,Monday,27-10-25,40233,44,Al Qimam,Soil,09-07-25,A-2-4,20.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,110
+6524,Monday,27-10-25,40234,44,Al Qimam,Soil,10-07-25,A-2-4,13.70%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,109
+6525,Monday,27-10-25,40235,44,Al Qimam,Soil,13-07-25,A-2-4,11.7,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,106
+6526,Monday,27-10-25,40236,44,Al Qimam,Soil,16-07-25,A-2-4,17.30%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,103
+6527,Monday,27-10-25,40237,44,Al Qimam,Soil,19-07-25,A-2-4,15.90%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,100
+6528,Monday,27-10-25,40238,44,Al Qimam,Soil,21-07-25,A-2-4,17.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,98
+6529,Monday,27-10-25,40239,44,Al Qimam,Soil,23-07-25,A-2-4,6.90%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,96
+6530,Monday,27-10-25,40240,44,Al Qimam,Soil,25-07-25,A-2-4,19.90%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,94
 6531,Monday,27-10-25,40344,44,Al Qimam,DPL,28-06-25,,,49.02,Fill,C01-A,BHL -73,,LAYER-1,10,,,APPROVED AS NOTED,DONE,12,DR/ OMAR OSMAN ,121
 6532,Monday,27-10-25,40343,44,Al Qimam,Sand Cone,03-07-25,,,,Fill,C01-A,BHL -73,,LAYER-2,20,,,APPROVED AS NOTED,DONE,3,DR/ OMAR OSMAN ,116
 6533,Monday,27-10-25,40342,44,Al Qimam,DPL + S.C,06-07-25,,,38.93,Fill,C01-A,BHL -73,,LAYER-3,16,,,APPROVED AS NOTED,DONE,8,DR/ OMAR OSMAN  + CEL,113
@@ -6617,89 +6617,89 @@
 6616,Monday,27-10-25,40260,44,Al Qimam,Plate Load,09-07-25,,,,Fill,C01-A,BHL -72,,20.95,1,,,APPROVED AS NOTED,DONE,3,GLOBAL LAB,110
 6617,Thursday,27-11-25,45134,44,Al Qimam,Plate Load,16-11-25,,,,Fill,C01-A,BHL -72,,31.95,1,,,APPROVED AS NOTED,DONE,3,GLOBAL LAB,11
 6618,Monday,27-10-25,40259,44,Al Qimam,Plate Load,20-06-25,,,,Bottom of excavation,C01-A,BHL -72,,18.45,3,,,APPROVED AS NOTED,DONE,7,GLOBAL LAB,129
-6619,Wednesday,22-10-25,39440,44,Al Gharably,Soil,22-06-25,A-6,0.41,,Bottom of excavation,C01-A,VILLA 71,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,122
-6620,Wednesday,22-10-25,39441,44,Al Gharably,Soil,22-06-25,A-6,0.36,,Bottom of excavation,C01-A,VILLA 72,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,122
-6621,Wednesday,22-10-25,39442,44,Al Gharably,Soil,22-06-25,A-6,0.37,,Bottom of excavation,C01-A,VILLA 73,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,122
-6622,Wednesday,22-10-25,37443,44,Al Gharably,Soil,24-06-25,A-6,0.41,,Bottom of excavation,C01-A,VILLA 74,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,120
-6623,Wednesday,22-10-25,39444,44,Al Gharably,Soil,24-06-25,A-6,0.43,,Bottom of excavation,C01-A,VILLA 75,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,120
-6624,Wednesday,22-10-25,39445,44,Al Gharably,Soil,24-06-25,A-6,0.37,,Bottom of excavation,C01-A,VILLA 76,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,120
-6625,Wednesday,22-10-25,39446,44,Al Gharably,Soil,25-06-25,A-6,0.35,,Bottom of excavation,C01-A,BHL -22,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,119
-6626,Wednesday,22-10-25,39447,44,Al Gharably,Soil,25-06-25,A-6,0.37,,Bottom of excavation,C01-A,BHL -26,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,119
-6627,Wednesday,22-10-25,39448,44,Al Gharably,Soil,25-06-25,A-6,0.44,,Bottom of excavation,C01-A,BHL -27,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,119
-6628,Wednesday,22-10-25,39449,44,Al Gharably,Soil,17-07-25,A-6,0.38,,Bottom of excavation,C01-A,BHL -21,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,97
-6629,Wednesday,22-10-25,39450,44,Al Gharably,Soil,17-07-25,A-6,0.53,,Bottom of excavation,C01-A,BHL -22,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,97
-6630,Wednesday,22-10-25,39451,44,Al Gharably,Soil,17-06-25,A-1-B,0.14,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,127
-6631,Wednesday,22-10-25,39452,44,Al Gharably,Soil,17-06-25,A-2-4,0.16,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,127
-6632,Wednesday,22-10-25,39453,44,Al Gharably,Soil,26-06-25,A-1-B,0.07,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,118
-6633,Wednesday,22-10-25,39454,44,Al Gharably,Soil,26-06-25,A-1-B,0.19,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,118
-6634,Wednesday,22-10-25,39455,44,Al Gharably,Soil,02-07-25,A-1-B,0.07,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,112
-6635,Wednesday,22-10-25,39456,44,Al Gharably,Soil,06-07-25,A-2-4,0.22,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,108
-6636,Wednesday,22-10-25,39457,44,Al Gharably,Soil,08-07-25,A-2-4,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,106
-6637,Wednesday,22-10-25,39458,44,Al Gharably,Soil,10-07-25,A-1-B,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,104
-6638,Wednesday,22-10-25,39459,44,Al Gharably,Soil,10-07-25,A-2-4,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,104
-6639,Wednesday,22-10-25,39460,44,Al Gharably,Soil,12-07-25,A-2-4,0.13,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,102
-6640,Wednesday,22-10-25,39461,44,Al Gharably,Soil,12-07-25,A-2-4,0.12,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,102
-6641,Wednesday,22-10-25,39462,44,Al Gharably,Soil,13-07-25,A-1-B,0.06,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,101
-6642,Wednesday,22-10-25,39463,44,Al Gharably,Soil,14-07-25,A-2-4,0.19,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,100
-6643,Wednesday,22-10-25,39464,44,Al Gharably,Soil,15-07-25,A-1-B,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,99
-6644,Wednesday,22-10-25,39465,44,Al Gharably,Soil,16-07-25,A-1-B,0.09,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,98
-6645,Wednesday,22-10-25,39466,44,Al Gharably,Soil,17-07-25,A-2-4,0.14,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,97
-6646,Wednesday,22-10-25,39467,44,Al Gharably,Soil,18-07-25,A-1-B,0.08,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,96
-6647,Wednesday,22-10-25,39468,44,Al Gharably,Soil,19-07-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,95
-6648,Wednesday,22-10-25,39469,44,Al Gharably,Soil,20-07-25,A-2-4,0.15,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,94
-6649,Wednesday,22-10-25,39470,44,Al Gharably,Soil,21-07-25,A-1-B,0.15,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,93
-6650,Wednesday,22-10-25,39471,44,Al Gharably,Soil,22-07-25,A-2-4,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,92
-6651,Wednesday,22-10-25,39472,44,Al Gharably,Soil,23-07-25,A-2-4,0.13,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,91
-6652,Wednesday,22-10-25,39473,44,Al Gharably,Soil,24-07-25,A-2-4,0.12,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,90
-6653,Wednesday,22-10-25,39474,44,Al Gharably,Soil,25-07-25,A-1-B,0.05,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,89
-6654,Wednesday,22-10-25,39475,44,Al Gharably,Soil,26-07-25,A-1-B,0.07,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,88
-6655,Wednesday,22-10-25,39476,44,Al Gharably,Soil,27-07-25,A-2-4,0.16,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,87
-6656,Wednesday,22-10-25,39477,44,Al Gharably,Soil,28-07-25,A-2-4,0.15,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,86
-6657,Wednesday,22-10-25,39478,44,Al Gharably,Soil,29-07-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,85
-6658,Wednesday,22-10-25,39479,44,Al Gharably,Soil,30-07-25,A-2-4,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,84
-6659,Wednesday,22-10-25,39480,44,Al Gharably,Soil,31-07-25,A-1-B,0.08,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,83
-6660,Wednesday,22-10-25,39481,44,Al Gharably,Soil,01-08-25,A-1-B,0.12,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,82
-6661,Wednesday,22-10-25,39482,44,Al Gharably,Soil,02-08-25,A-2-4,0.12,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,81
-6662,Wednesday,22-10-25,39483,44,Al Gharably,Soil,03-08-25,A-1-B,0.13,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,80
-6663,Wednesday,22-10-25,39484,44,Al Gharably,Soil,04-08-25,A-2-4,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,79
-6664,Wednesday,22-10-25,39485,44,Al Gharably,Soil,05-08-25,A-1-B,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,78
-6665,Wednesday,22-10-25,39486,44,Al Gharably,Soil,06-08-25,A-2-4,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,77
-6666,Wednesday,22-10-25,39487,44,Al Gharably,Soil,07-08-25,A-2-4,0.11,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,76
-6667,Wednesday,22-10-25,39488,44,Al Gharably,Soil,08-08-25,A-2-4,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,75
-6668,Wednesday,22-10-25,39489,44,Al Gharably,Soil,09-08-25,A-1-B,0.09,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,74
-6669,Wednesday,22-10-25,39490,44,Al Gharably,Soil,10-08-25,A-1-B,0.08,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,73
-6670,Wednesday,22-10-25,39491,44,Al Gharably,Soil,11-08-25,A-1-B,0.22,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,72
-6671,Wednesday,22-10-25,39492,44,Al Gharably,Soil,12-08-25,A-1-B,0.22,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,71
-6672,Wednesday,22-10-25,39493,44,Al Gharably,Soil,13-08-25,A-2-4,0.14,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,70
-6673,Wednesday,22-10-25,39494,44,Al Gharably,Soil,17-08-25,A-1-B,0.15,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,66
-6674,Wednesday,22-10-25,39495,44,Al Gharably,Soil,21-08-25,A-1-B,0.07,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,62
-6675,Wednesday,22-10-25,39496,44,Al Gharably,Soil,24-08-25,A-1-B,0.16,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,59
-6676,Wednesday,22-10-25,39497,44,Al Gharably,Soil,24-08-25,A-1-B,0.13,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,59
-6677,Wednesday,22-10-25,39498,44,Al Gharably,Soil,27-08-25,A-1-B,0.15,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,56
-6678,Wednesday,22-10-25,39499,44,Al Gharably,Soil,30-08-25,A-1-B,0.16,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,53
-6679,Wednesday,22-10-25,39500,44,Al Gharably,Soil,30-08-25,A-1-B,0.08,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,53
-6680,Wednesday,22-10-25,39501,44,Al Gharably,Soil,05-09-25,A-1-B,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,47
-6681,Wednesday,22-10-25,39502,44,Al Gharably,Soil,05-09-25,A-1-B,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,47
-6682,Wednesday,22-10-25,39503,44,Al Gharably,Soil,09-09-25,A-1-B,0.13,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,43
-6683,Wednesday,22-10-25,39504,44,Al Gharably,Soil,09-09-25,A-1-B,0.13,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,43
-6684,Wednesday,22-10-25,39505,44,Al Gharably,Soil,13-09-25,A-1-B,0.22,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,39
-6685,Wednesday,22-10-25,39506,44,Al Gharably,Soil,13-09-25,A-1-B,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,39
-6686,Wednesday,22-10-25,39507,44,Al Gharably,Soil,16-09-25,A-1-B,0.16,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,36
-6687,Wednesday,22-10-25,39508,44,Al Gharably,Soil,16-09-25,A-1-B,0.15,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,36
-6688,Wednesday,22-10-25,39509,44,Al Gharably,Soil,21-09-25,A-1-B,0.06,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,31
-6689,Wednesday,22-10-25,39510,44,Al Gharably,Soil,21-09-25,A-1-B,0.08,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,31
-6690,Wednesday,22-10-25,39511,44,Al Gharably,Soil,25-09-25,A-1-B,0.04,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,27
-6691,Wednesday,22-10-25,39512,44,Al Gharably,Soil,25-09-25,A-1-B,0.07,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,27
-6692,Wednesday,22-10-25,39513,44,Al Gharably,Soil,28-09-25,A-1-B,0.12,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,24
-6693,Wednesday,22-10-25,39514,44,Al Gharably,Soil,28-09-25,A-1-B,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,24
-6694,Wednesday,22-10-25,39515,44,Al Gharably,Soil,30-09-25,A-1-B,0.14,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,22
-6695,Wednesday,22-10-25,39516,44,Al Gharably,Soil,30-09-25,A-1-B,0.07,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,22
-6696,Wednesday,22-10-25,39517,44,Al Gharably,Soil,01-10-25,A-1-B,0.21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,21
-6697,Wednesday,22-10-25,39518,44,Al Gharably,Soil,01-10-25,A-1-B,0.09,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,21
-6698,Wednesday,22-10-25,39519,44,Al Gharably,Soil,04-10-25,A-1-B,0.19,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,18
-6699,Wednesday,22-10-25,39520,44,Al Gharably,Soil,04-10-25,A-1-B,0.18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,18
-6700,Wednesday,22-10-25,39521,44,Al Gharably,Soil,09-10-25,A-1-B,0.17,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,13
-6701,Wednesday,22-10-25,39522,44,Al Gharably,Soil,09-10-25,A-1-B,0.11,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,13
+6619,Wednesday,22-10-25,39440,44,Al Gharably,Soil,22-06-25,A-6,40.70%,,Bottom of excavation,C01-A,VILLA 71,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,122
+6620,Wednesday,22-10-25,39441,44,Al Gharably,Soil,22-06-25,A-6,36.00%,,Bottom of excavation,C01-A,VILLA 72,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,122
+6621,Wednesday,22-10-25,39442,44,Al Gharably,Soil,22-06-25,A-6,37.20%,,Bottom of excavation,C01-A,VILLA 73,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,122
+6622,Wednesday,22-10-25,37443,44,Al Gharably,Soil,24-06-25,A-6,40.70%,,Bottom of excavation,C01-A,VILLA 74,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,120
+6623,Wednesday,22-10-25,39444,44,Al Gharably,Soil,24-06-25,A-6,43.40%,,Bottom of excavation,C01-A,VILLA 75,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,120
+6624,Wednesday,22-10-25,39445,44,Al Gharably,Soil,24-06-25,A-6,37.00%,,Bottom of excavation,C01-A,VILLA 76,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,120
+6625,Wednesday,22-10-25,39446,44,Al Gharably,Soil,25-06-25,A-6,35.30%,,Bottom of excavation,C01-A,BHL -22,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,119
+6626,Wednesday,22-10-25,39447,44,Al Gharably,Soil,25-06-25,A-6,37.30%,,Bottom of excavation,C01-A,BHL -26,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,119
+6627,Wednesday,22-10-25,39448,44,Al Gharably,Soil,25-06-25,A-6,43.60%,,Bottom of excavation,C01-A,BHL -27,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,119
+6628,Wednesday,22-10-25,39449,44,Al Gharably,Soil,17-07-25,A-6,38.10%,,Bottom of excavation,C01-A,BHL -21,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,97
+6629,Wednesday,22-10-25,39450,44,Al Gharably,Soil,17-07-25,A-6,52.50%,,Bottom of excavation,C01-A,BHL -22,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,97
+6630,Wednesday,22-10-25,39451,44,Al Gharably,Soil,17-06-25,A-1-B,13.90%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,127
+6631,Wednesday,22-10-25,39452,44,Al Gharably,Soil,17-06-25,A-2-4,16.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,127
+6632,Wednesday,22-10-25,39453,44,Al Gharably,Soil,26-06-25,A-1-B,6.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,118
+6633,Wednesday,22-10-25,39454,44,Al Gharably,Soil,26-06-25,A-1-B,18.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,118
+6634,Wednesday,22-10-25,39455,44,Al Gharably,Soil,02-07-25,A-1-B,7.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,112
+6635,Wednesday,22-10-25,39456,44,Al Gharably,Soil,06-07-25,A-2-4,21.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,108
+6636,Wednesday,22-10-25,39457,44,Al Gharably,Soil,08-07-25,A-2-4,17.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,106
+6637,Wednesday,22-10-25,39458,44,Al Gharably,Soil,10-07-25,A-1-B,18.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,104
+6638,Wednesday,22-10-25,39459,44,Al Gharably,Soil,10-07-25,A-2-4,18.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,104
+6639,Wednesday,22-10-25,39460,44,Al Gharably,Soil,12-07-25,A-2-4,13.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,102
+6640,Wednesday,22-10-25,39461,44,Al Gharably,Soil,12-07-25,A-2-4,11.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,102
+6641,Wednesday,22-10-25,39462,44,Al Gharably,Soil,13-07-25,A-1-B,5.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,101
+6642,Wednesday,22-10-25,39463,44,Al Gharably,Soil,14-07-25,A-2-4,18.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,100
+6643,Wednesday,22-10-25,39464,44,Al Gharably,Soil,15-07-25,A-1-B,17.90%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,99
+6644,Wednesday,22-10-25,39465,44,Al Gharably,Soil,16-07-25,A-1-B,9.10%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,98
+6645,Wednesday,22-10-25,39466,44,Al Gharably,Soil,17-07-25,A-2-4,14.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,97
+6646,Wednesday,22-10-25,39467,44,Al Gharably,Soil,18-07-25,A-1-B,8.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,96
+6647,Wednesday,22-10-25,39468,44,Al Gharably,Soil,19-07-25,A-2-4,20.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,95
+6648,Wednesday,22-10-25,39469,44,Al Gharably,Soil,20-07-25,A-2-4,15.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,94
+6649,Wednesday,22-10-25,39470,44,Al Gharably,Soil,21-07-25,A-1-B,15.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,93
+6650,Wednesday,22-10-25,39471,44,Al Gharably,Soil,22-07-25,A-2-4,17.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,92
+6651,Wednesday,22-10-25,39472,44,Al Gharably,Soil,23-07-25,A-2-4,13.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,91
+6652,Wednesday,22-10-25,39473,44,Al Gharably,Soil,24-07-25,A-2-4,12.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,90
+6653,Wednesday,22-10-25,39474,44,Al Gharably,Soil,25-07-25,A-1-B,5.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,89
+6654,Wednesday,22-10-25,39475,44,Al Gharably,Soil,26-07-25,A-1-B,6.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,88
+6655,Wednesday,22-10-25,39476,44,Al Gharably,Soil,27-07-25,A-2-4,16.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,87
+6656,Wednesday,22-10-25,39477,44,Al Gharably,Soil,28-07-25,A-2-4,15.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,86
+6657,Wednesday,22-10-25,39478,44,Al Gharably,Soil,29-07-25,A-2-4,21.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,85
+6658,Wednesday,22-10-25,39479,44,Al Gharably,Soil,30-07-25,A-2-4,17.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,84
+6659,Wednesday,22-10-25,39480,44,Al Gharably,Soil,31-07-25,A-1-B,7.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,83
+6660,Wednesday,22-10-25,39481,44,Al Gharably,Soil,01-08-25,A-1-B,11.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,82
+6661,Wednesday,22-10-25,39482,44,Al Gharably,Soil,02-08-25,A-2-4,11.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,81
+6662,Wednesday,22-10-25,39483,44,Al Gharably,Soil,03-08-25,A-1-B,12.70%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,80
+6663,Wednesday,22-10-25,39484,44,Al Gharably,Soil,04-08-25,A-2-4,17.10%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,79
+6664,Wednesday,22-10-25,39485,44,Al Gharably,Soil,05-08-25,A-1-B,16.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,78
+6665,Wednesday,22-10-25,39486,44,Al Gharably,Soil,06-08-25,A-2-4,18.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,77
+6666,Wednesday,22-10-25,39487,44,Al Gharably,Soil,07-08-25,A-2-4,11.30%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,76
+6667,Wednesday,22-10-25,39488,44,Al Gharably,Soil,08-08-25,A-2-4,21.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,75
+6668,Wednesday,22-10-25,39489,44,Al Gharably,Soil,09-08-25,A-1-B,8.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,74
+6669,Wednesday,22-10-25,39490,44,Al Gharably,Soil,10-08-25,A-1-B,8.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,73
+6670,Wednesday,22-10-25,39491,44,Al Gharably,Soil,11-08-25,A-1-B,21.70%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,72
+6671,Wednesday,22-10-25,39492,44,Al Gharably,Soil,12-08-25,A-1-B,21.90%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,71
+6672,Wednesday,22-10-25,39493,44,Al Gharably,Soil,13-08-25,A-2-4,13.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,70
+6673,Wednesday,22-10-25,39494,44,Al Gharably,Soil,17-08-25,A-1-B,14.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,66
+6674,Wednesday,22-10-25,39495,44,Al Gharably,Soil,21-08-25,A-1-B,7.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,62
+6675,Wednesday,22-10-25,39496,44,Al Gharably,Soil,24-08-25,A-1-B,16.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,59
+6676,Wednesday,22-10-25,39497,44,Al Gharably,Soil,24-08-25,A-1-B,13.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,59
+6677,Wednesday,22-10-25,39498,44,Al Gharably,Soil,27-08-25,A-1-B,14.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,56
+6678,Wednesday,22-10-25,39499,44,Al Gharably,Soil,30-08-25,A-1-B,16.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,53
+6679,Wednesday,22-10-25,39500,44,Al Gharably,Soil,30-08-25,A-1-B,7.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,53
+6680,Wednesday,22-10-25,39501,44,Al Gharably,Soil,05-09-25,A-1-B,17.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,47
+6681,Wednesday,22-10-25,39502,44,Al Gharably,Soil,05-09-25,A-1-B,17.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,47
+6682,Wednesday,22-10-25,39503,44,Al Gharably,Soil,09-09-25,A-1-B,12.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,43
+6683,Wednesday,22-10-25,39504,44,Al Gharably,Soil,09-09-25,A-1-B,13.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,43
+6684,Wednesday,22-10-25,39505,44,Al Gharably,Soil,13-09-25,A-1-B,21.60%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,39
+6685,Wednesday,22-10-25,39506,44,Al Gharably,Soil,13-09-25,A-1-B,17.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,39
+6686,Wednesday,22-10-25,39507,44,Al Gharably,Soil,16-09-25,A-1-B,16.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,36
+6687,Wednesday,22-10-25,39508,44,Al Gharably,Soil,16-09-25,A-1-B,14.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,36
+6688,Wednesday,22-10-25,39509,44,Al Gharably,Soil,21-09-25,A-1-B,6.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,31
+6689,Wednesday,22-10-25,39510,44,Al Gharably,Soil,21-09-25,A-1-B,8.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,31
+6690,Wednesday,22-10-25,39511,44,Al Gharably,Soil,25-09-25,A-1-B,4.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,27
+6691,Wednesday,22-10-25,39512,44,Al Gharably,Soil,25-09-25,A-1-B,6.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,27
+6692,Wednesday,22-10-25,39513,44,Al Gharably,Soil,28-09-25,A-1-B,12.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,24
+6693,Wednesday,22-10-25,39514,44,Al Gharably,Soil,28-09-25,A-1-B,17.20%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,24
+6694,Wednesday,22-10-25,39515,44,Al Gharably,Soil,30-09-25,A-1-B,13.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,22
+6695,Wednesday,22-10-25,39516,44,Al Gharably,Soil,30-09-25,A-1-B,6.70%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,22
+6696,Wednesday,22-10-25,39517,44,Al Gharably,Soil,01-10-25,A-1-B,20.80%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,21
+6697,Wednesday,22-10-25,39518,44,Al Gharably,Soil,01-10-25,A-1-B,9.30%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,21
+6698,Wednesday,22-10-25,39519,44,Al Gharably,Soil,04-10-25,A-1-B,19.40%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,18
+6699,Wednesday,22-10-25,39520,44,Al Gharably,Soil,04-10-25,A-1-B,18.00%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,18
+6700,Wednesday,22-10-25,39521,44,Al Gharably,Soil,09-10-25,A-1-B,16.50%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,13
+6701,Wednesday,22-10-25,39522,44,Al Gharably,Soil,09-10-25,A-1-B,11.10%,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,13
 6702,Wednesday,22-10-25,39226,44,Al Gharably,Sand Cone,18-06-25,,,,Fill,C01-A,VILLA 71,,LAYER-1,5,,,APPROVED AS NOTED,DONE,2,DR/ OMAR OSMAN ,126
 6703,Wednesday,22-10-25,39227,44,Al Gharably,Sand Cone,22-06-25,,,,Fill,C01-A,VILLA 71,,LAYER-2,5,,,APPROVED AS NOTED,DONE,2,DR/ OMAR OSMAN ,122
 6704,Wednesday,22-10-25,39228,44,Al Gharably,Sand Cone,27-06-25,,,,Fill,C01-A,VILLA 71,,LAYER-3,5,,,APPROVED AS NOTED,DONE,2,DR/ OMAR OSMAN ,117
@@ -9005,7 +9005,7 @@
 9004,Tuesday,04-11-25,43157,44,Global,soil,17-05-25,A-1-B,14.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,171
 9005,Tuesday,04-11-25,43158,44,Global,soil,20-07-25,A-1-B,15.5,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,107
 9006,Tuesday,04-11-25,43159,44,Global,soil,22-07-25,A-1-B,17.4,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,105
-9007,Tuesday,04-11-25,43160,44,Global,soil,27-07-25,A-1-B,"16,6",,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,100
+9007,Tuesday,04-11-25,43160,44,Global,soil,27-07-25,A-1-B,16.6,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,100
 9008,Tuesday,04-11-25,43161,44,Global,soil,30-07-25,A-1-B,20.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,97
 9009,Tuesday,04-11-25,43162,44,Global,soil,04-08-25,A-1-B,12.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,92
 9010,Tuesday,04-11-25,43163,44,Global,soil,06-08-25,A-2-4,21.5,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,90
@@ -10028,7 +10028,7 @@
 10027,Monday,29-09-25,27956,44,Al Samman,SOIL,26-05-25,A-2-4,20.4,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,126
 10028,Monday,29-09-25,27955,44,Al Samman,SOIL,22-05-25,A-1-B,5.2,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,130
 10029,Monday,29-09-25,27954,44,Al Samman,SOIL,18-05-25,A-1-B,11.7,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,134
-10030,Monday,29-09-25,27949,44,Al Samman,SOIL,25-05-25,,,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,127
+10030,Monday,29-09-25,27949,44,Al Samman,SOIL,25-05-25,A-1-B,12,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,127
 10031,Monday,29-09-25,27991,44,Al Samman,PLATE LOAD,29-07-25,,,,Fill,C01-A,VILLA 52,,30.25,1,,,APPROVED AS NOTED,DONE,3,HELIOPOLIS,62
 10032,Monday,29-09-25,27989,44,Al Samman,PLATE LOAD,12-07-25,,,,Fill,C01-A,VILLA 52,,26.25,1,,,APPROVED AS NOTED,DONE,3,HELIOPOLIS,79
 10033,Monday,29-09-25,27988,44,Al Samman,PLATE LOAD,02-07-25,,,,Fill,C01-A,VILLA 52,,23.75,1,,,APPROVED AS NOTED,DONE,3,HELIOPOLIS,89
@@ -12487,7 +12487,7 @@
 12486,Sunday,12-10-25,33253,44,Sami Asaad,SOIL,02-08-25,A-2-4,11,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,71
 12487,Sunday,12-10-25,33254,44,Sami Asaad,SOIL,03-08-25,A-2-4,16.4,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,70
 12488,Sunday,12-10-25,33255,44,Sami Asaad,SOIL,04-08-25,A-2-4,20.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,69
-12489,Sunday,12-10-25,70625,44,Sami Asaad,SOIL,17-06-25,A-6,,,Bottom of excavation,C01-A,VILLA 83,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,117
+12489,Sunday,12-10-25,70625,44,Sami Asaad,SOIL,17-06-25,A-6,81.2,,Bottom of excavation,C01-A,VILLA 83,,,1,Sieve analysis,,APPROVED AS NOTED,DONE,2,LOGIC,117
 12490,Sunday,12-10-25,33256,44,Sami Asaad,SOIL,05-08-25,A-2-4,19.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,68
 12491,Sunday,12-10-25,33257,44,Sami Asaad,SOIL,06-08-25,A-1-B,18.2,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,67
 12492,Sunday,12-10-25,33258,44,Sami Asaad,SOIL,07-08-25,A-1-B,18.9,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,66
@@ -15221,7 +15221,7 @@
 15220,Sunday,09-11-25,44328,44,Al Anoud,SOIL,29-06-25,A-1-B,19.7,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,133
 15221,Sunday,09-11-25,44329,44,Al Anoud,SOIL,29-06-25,A-2-4,17.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,133
 15222,Sunday,09-11-25,44330,44,Al Anoud,SOIL,30-06-25,A-2-4,15.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,132
-15223,Sunday,09-11-25,44331,44,Al Anoud,SOIL,01-07-25,A-1-B,"14,4",,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,131
+15223,Sunday,09-11-25,44331,44,Al Anoud,SOIL,01-07-25,A-1-B,14.4,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,131
 15224,Sunday,09-11-25,44332,44,Al Anoud,SOIL,03-07-25,A-1-B,18,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,129
 15225,Sunday,09-11-25,44333,44,Al Anoud,SOIL,06-07-25,A-2-4,11.3,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,126
 15226,Sunday,09-11-25,44334,44,Al Anoud,SOIL,06-07-25,A-1-B,8.1,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,126
@@ -17650,7 +17650,7 @@
 17649,Sunday,12-10-25,33012,44,Detac,SOIL,23-07-25,A-1-B,12.4,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,81
 17650,Sunday,12-10-25,33011,44,Detac,SOIL,24-07-25,A-2-4,14.6,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,80
 17651,Sunday,12-10-25,33010,44,Detac,SOIL,26-07-25,A-3,6.7,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,78
-17652,Sunday,12-10-25,33009,44,Detac,SOIL,27-07-25,A-2-4,2-.1,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,77
+17652,Sunday,12-10-25,33009,44,Detac,SOIL,27-07-25,A-2-4,21,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,77
 17653,Tuesday,23-06-26,70707,44,Detac,SOIL,29-07-25,A-3,6.1,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,329
 17654,Sunday,12-10-25,33007,44,Detac,SOIL,30-07-25,A-2-4,19.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,74
 17655,Sunday,12-10-25,49828,44,Detac,SAND CONE,25-07-25,,,,Fill,C01-A,VILLA 172,,LAYER-33,6,,,APPROVED AS NOTED,DONE,2,DR/ OMAR OSMAN ,79
@@ -21401,7 +21401,7 @@
 21400,Wednesday,06-05-26,49670,44,El Masriya Hassan Abdel-Sattar,SOIL,28-06-25,A-2-4,16.2,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,312
 21401,Wednesday,06-05-26,49669,44,El Masriya Hassan Abdel-Sattar,SOIL,25-06-25,A-1-B,16.8,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,315
 21402,Wednesday,06-05-26,49681,44,El Masriya Hassan Abdel-Sattar,SOIL,15-07-25,A-2-4,15.4,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,295
-21403,Wednesday,06-05-26,49683,44,El Masriya Hassan Abdel-Sattar,SOIL,17-07-25,A-2-4,15..1,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,293
+21403,Wednesday,06-05-26,49683,44,El Masriya Hassan Abdel-Sattar,SOIL,17-07-25,A-2-4,15.1,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,293
 21404,Wednesday,06-05-26,49684,44,El Masriya Hassan Abdel-Sattar,SOIL,18-07-25,A-2-4,18.4,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,292
 21405,Wednesday,06-05-26,49685,44,El Masriya Hassan Abdel-Sattar,SOIL,19-07-25,A-2-4,15.5,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,291
 21406,Wednesday,06-05-26,49686,44,El Masriya Hassan Abdel-Sattar,SOIL,20-07-25,A-2-4,14.2,,Stockpile,C01-A,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,290
@@ -23734,7 +23734,7 @@
 23733,Wednesday,01-07-26,71150,44,Arabco,SOIL,20-12-25,A-1-B,13.6,,Stockpile,C01-B,, PN-12,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,CEL ,193
 23734,Wednesday,01-07-26,71149,44,Arabco,SOIL,18-12-25,A-1-B,14.8,,Stockpile,C01-B,, PN-12,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,CEL ,195
 23735,Wednesday,01-07-26,71148,44,Arabco,SOIL,16-12-25,A-1-B,17.2,,Stockpile,C01-B,, PN-12,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,CEL ,197
-23736,Wednesday,01-07-26,71147,44,Arabco,SOIL,,A-1-B,,,Stockpile,C01-B,, PN-12,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,CEL ,
+23736,Wednesday,01-07-26,71147,44,Arabco,SOIL,,A-1-B,11.6,,Stockpile,C01-B,, PN-12,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,CEL ,
 23737,Wednesday,01-07-26,71146,44,Arabco,SOIL,12-12-25,A-1-B,10.6,,Stockpile,C01-B,, PN-12,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,CEL ,201
 23738,Wednesday,01-07-26,71145,44,Arabco,SOIL,10-12-25,A-1-B,13.6,,Stockpile,C01-B,, PN-12,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,CEL ,203
 23739,Wednesday,01-07-26,71144,44,Arabco,SOIL,01-12-25,A-1-B,8,,Stockpile,C01-B,, PN-12,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,CEL ,212
@@ -24573,7 +24573,7 @@
 24572,Tuesday,07-07-26,75242,44,Al Qahira,SOIL,18-01-26,A-1-B,14,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,170
 24573,Tuesday,07-07-26,75241,44,Al Qahira,SOIL,15-01-26,A-1-B,19.4,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,173
 24574,Tuesday,07-07-26,75240,44,Al Qahira,SOIL,14-01-26,A-1-B,19.2,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,174
-24575,Tuesday,07-07-26,,44,Al Qahira,SOIL,,A-1-B,,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,
+24575,Tuesday,07-07-26,,44,Al Qahira,SOIL,,A-1-B,12.6,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,
 24576,Tuesday,07-07-26,75238,44,Al Qahira,SOIL,09-01-26,A-1-B,17.8,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,179
 24577,Tuesday,07-07-26,75237,44,Al Qahira,SOIL,07-01-26,A-1-B,16.6,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,181
 24578,Tuesday,07-07-26,75236,44,Al Qahira,SOIL,31-12-25,A-1-B,19.6,,Stockpile,C01-B,,,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,3,LOGIC,188
@@ -28730,7 +28730,7 @@
 28729,Tuesday,01-09-26,79306,44,Al Qahira,SOIL,03-08-26,A-1-B,21.2,,Stockpile,C01-A,,LS-02,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,LOGIC,29
 28730,Tuesday,01-09-26,79305,44,Al Qahira,SOIL,29-07-26,A-1-B,19.8,,Stockpile,C01-A,,LS-02,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,LOGIC,34
 28731,Tuesday,01-09-26,79304,44,Al Qahira,SOIL,25-07-26,A-2-4,27.6,,Stockpile,C01-A,,LS-02,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,LOGIC,38
-28732,Tuesday,01-09-26,79303,44,Al Qahira,SOIL,,A-1-B,,,Stockpile,C01-A,,LS-02,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,LOGIC,
+28732,Tuesday,01-09-26,79303,44,Al Qahira,SOIL,,A-1-B,10.5,,Stockpile,C01-A,,LS-02,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,LOGIC,
 28733,Tuesday,01-09-26,79302,44,Al Qahira,SOIL,09-07-26,A-1-B,25,,Stockpile,C01-A,,LS-02,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,LOGIC,54
 28734,Tuesday,01-09-26,79301,44,Al Qahira,SOIL,27-06-26,A-1-B,20.4,,Stockpile,C01-A,,LS-02,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,LOGIC,66
 28735,Tuesday,01-09-26,79300,44,Al Qahira,SOIL,20-06-26,A-4,30.4,,Stockpile,C01-A,,LS-02,,1,Sieve + Proctoer ,,APPROVED AS NOTED,DONE,4,LOGIC,73
